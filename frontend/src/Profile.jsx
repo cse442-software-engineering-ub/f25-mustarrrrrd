@@ -1,4 +1,4 @@
 export default function Profile() {
-    return <h1>Welcome to the Profile Page!</h1>;
+    return <h2>Welcome to the Profile Page</h2>;
   }
   

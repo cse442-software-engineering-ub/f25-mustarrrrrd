@@ -3,10 +3,17 @@ import Profile from "./Profile";
 
 function Home() {
   const navigate = useNavigate();
+
+  const handleLogin = () => {
+    // later this can connect to backend PHP
+    navigate("/profile");
+  };
+
   return (
-    <main style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
-      <button onClick={() => navigate("/profile")}>Login</button>
-    </main>
+    <div>
+      <h1>Welcome to CSE442 Project</h1>
+      <button onClick={handleLogin}>Login</button>
+    </div>
   );
 }
 
