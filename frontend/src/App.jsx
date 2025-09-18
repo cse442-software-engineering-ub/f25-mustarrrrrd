@@ -1,14 +1,22 @@
-export default function App() {
-  const handleClick = () => {
-    // For now just log something or redirect
-    console.log("Login button clicked");
-    // Example redirect (later this could go to profile page or backend)
-    window.location.href = "/CSE442/2025-Fall/cse-442ai/app/profile";
-  };
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import Profile from "./Profile";
 
+function Home() {
+  const navigate = useNavigate();
   return (
     <main style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
-      <button onClick={handleClick}>Login</button>
+      <button onClick={() => navigate("/profile")}>Login</button>
     </main>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/profile" element={<Profile />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
