@@ -1,0 +1,9 @@
+DirectoryIndex index.html
+
+RewriteEngine On
+RewriteBase /CSE442/2025-Fall/cse-442ai/app/
+
+# If the request is not a file or directory, send it to index.html
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . index.html [L]
