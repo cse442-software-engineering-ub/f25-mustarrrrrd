@@ -20,8 +20,7 @@
   - **SlimPHP**: Minimalist, works on constrained/shared hosting.
 
 - **Database**
-  - **MySQL** (default course backend).
-  - ORM suggestion (optional): Eloquent (lightweight version with Lumen).
+  - **MySQL** database management system that stores data in structured tables and supports SQL (Structured Query Language) for querying and manipulation.
 
 ### Additional Useful Dependencies
 
