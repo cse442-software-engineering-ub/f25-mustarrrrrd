@@ -12,6 +12,6 @@
 
     <hr>
 
-    <p><a href="app/index.html">Open the React Frontend</a></p>
+      <p><a href="/CSE442/2025-Fall/cse-442ai/app/">Open the React Frontend</a></p>
 </body>
 </html>

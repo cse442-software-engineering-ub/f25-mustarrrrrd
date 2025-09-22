@@ -1,29 +1,69 @@
-import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
-import Profile from "./Profile";
+import { useState } from "react";
 
-function Home() {
-  const navigate = useNavigate();
+const MAX = 191;
 
-  const handleLogin = () => {
-    // later this can connect to backend PHP
-    navigate("/profile");
-  };
+// Build an absolute base like "http://localhost/f25-mustarrrrrd/app/"
+// so URL() doesn't throw. BASE_URL is your Vite base (ends with /).
+const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
 
-  return (
-    <div>
-      <h1>Welcome to CSE442 Project</h1>
-      <button onClick={handleLogin}>Login</button>
-    </div>
-  );
-}
+
+const API_ROOT = new URL("../api/", ABS_BASE).pathname;
 
 export default function App() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+
+  const clamp = s => s.slice(0, MAX);
+
+  async function handleLogin() {
+    setMessage("");
+    try {
+      const res = await fetch(`${API_ROOT}verify.php`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email })
+      });
+      const data = await res.json();
+      setMessage(data.message || (data.match ? `Welcome ${name}` : "No match"));
+    } catch {
+      setMessage("server error");
+    }
+  }
+
   return (
-    <BrowserRouter basename="/CSE442/2025-Fall/cse-442ai/app">
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/profile" element={<Profile />} />
-      </Routes>
-    </BrowserRouter>
+    <div style={{ maxWidth: 520, margin: "40px auto", fontFamily: "system-ui, sans-serif" }}>
+      <h1>CSE442 Login</h1>
+
+      <label style={{ display: "block", marginBottom: 10 }}>
+        Name
+        <input
+          type="text"
+          value={name}
+          maxLength={MAX}
+          onChange={e => setName(clamp(e.target.value))}
+          placeholder="Your name"
+          style={{ width: "100%", padding: 8, marginTop: 4 }}
+        />
+        <small>{name.length}/{MAX}</small>
+      </label>
+
+      <label style={{ display: "block", marginBottom: 10 }}>
+        Email
+        <input
+          type="email"
+          value={email}
+          maxLength={MAX}
+          onChange={e => setEmail(clamp(e.target.value))}
+          placeholder="you@buffalo.edu"
+          style={{ width: "100%", padding: 8, marginTop: 4 }}
+        />
+        <small>{email.length}/{MAX}</small>
+      </label>
+
+      <button onClick={handleLogin}>Log in</button>
+
+      {message && <p style={{ marginTop: 12 }}>{message}</p>}
+    </div>
   );
 }
