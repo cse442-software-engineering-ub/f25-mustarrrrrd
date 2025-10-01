@@ -13,6 +13,7 @@ export default function App() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
 
   const clamp = s => s.slice(0, MAX);
 
@@ -59,6 +60,16 @@ export default function App() {
           style={{ width: "100%", padding: 8, marginTop: 4 }}
         />
         <small>{email.length}/{MAX}</small>
+      </label>
+
+      <label style={{ display: "block", marginBottom: 16, cursor: "pointer" }}>
+        <input
+          type="checkbox"
+          checked={rememberMe}
+          onChange={e => setRememberMe(e.target.checked)}
+          style={{ marginRight: 8, cursor: "pointer" }}
+        />
+        Remember Me
       </label>
 
       <button onClick={handleLogin}>Log in</button>
