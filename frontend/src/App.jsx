@@ -31,6 +31,25 @@ function Login() {
     }
   }
 
+  async function handleLogout() {
+    setMessage("");
+    try {
+      await fetch(`${API_ROOT}logout.php`, {
+        method: "POST",
+        credentials: "include" // important to send the session cookie
+      });
+
+      // Clear frontend state
+      setName("");
+      setEmail("");
+      setRememberMe(false);
+
+      setMessage("You have been logged out.");
+    } catch {
+      setMessage("Logout failed (server error).");
+    }
+  }
+
   return (
     <div
       style={{
@@ -110,23 +129,9 @@ function Login() {
           />
           Remember Me
         </label>
+      <button onClick={handleLogin}>Log in</button>
+      <button onClick={handleLogout} style={{ marginLeft: 10 }}>Sign Out</button>
 
-        <button
-          onClick={handleLogin}
-          style={{
-            width: "100%",
-            padding: "14px",
-            backgroundColor: "#fff",
-            color: "#000",
-            border: "none",
-            borderRadius: 6,
-            fontWeight: "bold",
-            fontSize: "1rem",
-            cursor: "pointer",
-          }}
-        >
-          Log in
-        </button>
 
         {message && <p style={{ marginTop: 16 }}>{message}</p>}
 
