@@ -76,6 +76,29 @@ export default function Login() {
     }
   }
 
+  async function handleLogout() {
+    setMessage("");
+    try {
+      await fetch(`${API_ROOT}logout.php`, {
+        method: "POST",
+        credentials: "include" // important to send the session cookie
+      });
+
+      // Clear cookies
+      deleteCookie("userEmail");
+
+      // Clear frontend state
+      setEmail("");
+      setPassword("");
+      setRememberMe(false);
+
+      setMessage("You have been logged out.");
+    } catch {
+      setMessage("Logout failed (server error).");
+    }
+
+  }
+
   function onKeyDown(e) {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -163,6 +186,10 @@ export default function Login() {
 
         <button onClick={handleLogin} disabled={loading} style={{ opacity: loading ? 0.7 : 1 }}>
           {loading ? "Logging in..." : "Log in"}
+        </button>
+
+        <button onClick={handleLogout} style={{ marginLeft: 10 }}>
+          Sign Out
         </button>
 
         {message && <p style={{ marginTop: 16 }}>{message}</p>}
