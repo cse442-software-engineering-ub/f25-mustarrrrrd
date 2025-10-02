@@ -32,6 +32,25 @@ export default function App() {
     }
   }
 
+  async function handleLogout() {
+    setMessage("");
+    try {
+      await fetch(`${API_ROOT}logout.php`, {
+        method: "POST",
+        credentials: "include" // important to send the session cookie
+      });
+
+      // Clear frontend state
+      setName("");
+      setEmail("");
+      setRememberMe(false);
+
+      setMessage("You have been logged out.");
+    } catch {
+      setMessage("Logout failed (server error).");
+    }
+  }
+
   return (
     <div style={{ maxWidth: 520, margin: "40px auto", fontFamily: "system-ui, sans-serif" }}>
       <h1>CSE442 Login</h1>
@@ -73,6 +92,7 @@ export default function App() {
       </label>
 
       <button onClick={handleLogin}>Log in</button>
+      <button onClick={handleLogout} style={{ marginLeft: 10 }}>Sign Out</button>
 
       {message && <p style={{ marginTop: 12 }}>{message}</p>}
     </div>
