@@ -1,10 +1,24 @@
-
+import MyCourses from './MyCourses.jsx';
 import { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import { HashRouter, Routes, Route, Link } from "react-router-dom";
 import SignUp from "./SignUp"; // ✅ SignUp stays untouched
 
 const MAX = 191;
 
+export default function App() {
+  return (
+    <div className="App">
+      <HashRouter>
+        <Routes>
+          <Route path="/" element={<Login />} />
+          <Route path="/mycourses" element={<MyCourses />} />
+          <Route path="/signup" element={<SignUp />} />
+        </Routes>
+      </HashRouter>
+    </div>
+  );
+}  
+  
 // Cookie helper functions
 const setCookie = (name, value, days) => {
   const expires = new Date();
@@ -200,16 +214,5 @@ function Login() {
         </p>
       </div>
     </div>
-  );
-}
-
-export default function App() {
-  return (
-    <Router basename={import.meta.env.BASE_URL}>
-      <Routes>
-        <Route path="/" element={<Login />} />
-        <Route path="/signup" element={<SignUp />} />
-      </Routes>
-    </Router>
   );
 }
