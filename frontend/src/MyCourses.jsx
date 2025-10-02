@@ -2,6 +2,7 @@ export default function MyCourses() {
   return (
     <div
       style={{
+        color:"white",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",   // centers horizontally

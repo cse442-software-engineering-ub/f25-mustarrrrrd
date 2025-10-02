@@ -1,4 +1,3 @@
-import Login from './Login.jsx';
 import MyCourses from './MyCourses.jsx';
 import { useState, useEffect } from "react";
 import { HashRouter, Routes, Route, Link } from "react-router-dom";
