@@ -1,10 +1,35 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import SignUp from "./SignUp"; // ✅ SignUp stays untouched
 
 const MAX = 191;
 
-// Build an absolute base like "http://localhost/.../app/"
+// Cookie helper functions
+const setCookie = (name, value, days) => {
+  const expires = new Date();
+  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+  document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires.toUTCString()};path=/`;
+};
+
+const getCookie = (name) => {
+  const nameEQ = name + "=";
+  const ca = document.cookie.split(';');
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+    if (c.indexOf(nameEQ) === 0) return decodeURIComponent(c.substring(nameEQ.length, c.length));
+  }
+  return null;
+};
+
+const deleteCookie = (name) => {
+  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/`;
+};
+
+// Build an absolute base like "http://localhost/f25-mustarrrrrd/app/"
+// so URL() doesn't throw. BASE_URL is your Vite base (ends with /).
+
 const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
 const API_ROOT = new URL("../api/", ABS_BASE).pathname;
 
@@ -16,6 +41,19 @@ function Login() {
 
   const clamp = (s) => s.slice(0, MAX);
 
+  // Check for saved login on mount
+  useEffect(() => {
+    const savedName = getCookie('userName');
+    const savedEmail = getCookie('userEmail');
+
+    if (savedName && savedEmail) {
+      setName(savedName);
+      setEmail(savedEmail);
+      setRememberMe(true);
+      setMessage(`Welcome ${savedName}`);
+    }
+  }, []);
+
   async function handleLogin() {
     setMessage("");
     try {
@@ -25,7 +63,22 @@ function Login() {
         body: JSON.stringify({ name, email }),
       });
       const data = await res.json();
-      setMessage(data.message || (data.match ? `Welcome ${name}` : "No match"));
+
+      if (data.match) {
+        setMessage(data.message || `Welcome ${name}`);
+
+        // Save to cookies if Remember Me is checked
+        if (rememberMe) {
+          setCookie('userName', name, 30); // Store for 30 days
+          setCookie('userEmail', email, 30);
+        } else {
+          // Clear cookies if Remember Me is unchecked
+          deleteCookie('userName');
+          deleteCookie('userEmail');
+        }
+      } else {
+        setMessage(data.message || "No match");
+      }
     } catch {
       setMessage("server error");
     }
@@ -38,6 +91,10 @@ function Login() {
         method: "POST",
         credentials: "include" // important to send the session cookie
       });
+
+      // Clear cookies
+      deleteCookie('userName');
+      deleteCookie('userEmail');
 
       // Clear frontend state
       setName("");
