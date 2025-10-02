@@ -1,6 +1,6 @@
 // src/Login.jsx
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom"; // removed useNavigate
 
 const MAX = 191;
 
@@ -24,7 +24,7 @@ const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
 const API_ROOT = new URL("../api/", ABS_BASE).pathname;
 
 export default function Login() {
-  const navigate = useNavigate();
+  // removed useNavigate
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,7 +34,6 @@ export default function Login() {
 
   const clamp = (s) => (s || "").slice(0, MAX);
 
-  // Restore saved email
   useEffect(() => {
     const savedEmail = getCookie("userEmail");
     if (savedEmail) {
@@ -55,7 +54,7 @@ export default function Login() {
       const res = await fetch(`${API_ROOT}verify.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include", // send/receive PHP session cookie
+        credentials: "include",
         body: JSON.stringify({ email: clamp(email), password: clamp(password) }),
       });
 
@@ -64,8 +63,12 @@ export default function Login() {
       if (data?.match) {
         if (rememberMe && email) setCookie("userEmail", email, 30);
         else deleteCookie("userEmail");
-        // go to same place as SignUp would
-        navigate("/dashboard");
+
+        // ✅ Show the user's name from the DB
+        setMessage(`Welcome ${data?.name ?? ""}`.trim());
+
+        // optional hygiene: clear password field
+        setPassword("");
       } else {
         setMessage(data?.message || "No match");
       }
@@ -81,13 +84,10 @@ export default function Login() {
     try {
       await fetch(`${API_ROOT}logout.php`, {
         method: "POST",
-        credentials: "include" // important to send the session cookie
+        credentials: "include"
       });
 
-      // Clear cookies
       deleteCookie("userEmail");
-
-      // Clear frontend state
       setEmail("");
       setPassword("");
       setRememberMe(false);
@@ -96,7 +96,6 @@ export default function Login() {
     } catch {
       setMessage("Logout failed (server error).");
     }
-
   }
 
   function onKeyDown(e) {
