@@ -1,6 +1,6 @@
 // src/Login.jsx
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom"; // removed useNavigate
+import { Link, useNavigate } from "react-router-dom";
 
 const MAX = 191;
 
@@ -24,7 +24,7 @@ const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
 const API_ROOT = new URL("../api/", ABS_BASE).pathname;
 
 export default function Login() {
-  // removed useNavigate
+  const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -69,6 +69,9 @@ export default function Login() {
 
         // optional hygiene: clear password field
         setPassword("");
+
+        // Navigate to dashboard on successful login
+        navigate("/dashboard");
       } else {
         setMessage(data?.message || "No match");
       }

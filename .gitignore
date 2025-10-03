@@ -25,4 +25,5 @@ dist-ssr
 *.sw?
 
 api/db.php
-/app/assets
+app/assets/
+app/index.html
