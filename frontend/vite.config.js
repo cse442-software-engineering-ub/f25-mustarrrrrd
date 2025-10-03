@@ -1,9 +1,8 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// for local: VITE_BASE=/f25-mustarrrrrd/app/ npm run build
-const base = process.env.VITE_BASE || '/CSE442/2025-Fall/cse-442ai/auto_oh/'
-
+//for local: VITE_BASE=/f25-mustarrrrrd/app/ npm run build
+const base = process.env.VITE_BASE || '/CSE442/2025-Fall/cse-442ai/app/'
 export default defineConfig({
   base,
   build: {
@@ -11,7 +10,4 @@ export default defineConfig({
     emptyOutDir: true,  // clear old files first
   },
   plugins: [react()],
-  server: {
-    historyApiFallback: true,  // ✅ this makes refresh work for /signup
-  }
 })
