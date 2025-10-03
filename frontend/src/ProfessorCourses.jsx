@@ -9,10 +9,9 @@ export default function ProfCourses() {
 
   // State for inputs
   const [code, setCode] = useState("");
-  const [credits, setCredits] = useState("");
   const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
   const [lectureTimes, setLectureTimes] = useState("");
+  const [room, setRoom] = useState("");
 
   const clamp = (s) => s.slice(0, MAX);
 
@@ -20,10 +19,9 @@ export default function ProfCourses() {
   async function createCourse() {
     const courseData = {
       code,
-      credits,
       name,
-      description,
       lectureTimes,
+      room,
     };
 
     try {
@@ -276,17 +274,6 @@ export default function ProfCourses() {
               />
             </div>
             <div className="form-group">
-              <label>Credits</label>
-              <input 
-                type="number" 
-                placeholder="e.g. 4" 
-                min="1" 
-                max="6" 
-                step="1" 
-                onChange={(e) => setCredits(clamp(e.target.value))}
-              />
-            </div>
-            <div className="form-group">
               <label>Name</label>
               <input 
                 type="text" 
@@ -295,18 +282,19 @@ export default function ProfCourses() {
               />
             </div>
             <div className="form-group">
-              <label>Description</label>
-              <textarea 
-                placeholder="Brief description of the course" 
-                onChange={(e) => setDescription(clamp(e.target.value))}
-              ></textarea>
-            </div>
-            <div className="form-group">
               <label>Lecture Times</label>
               <input 
                 type="text" 
                 placeholder="e.g. MWF 1:00-1:50 PM" 
                 onChange={(e) => setLectureTimes(clamp(e.target.value))}
+              />
+            </div>
+            <div className="form-group">
+              <label>Room</label>
+              <input 
+                type="text" 
+                placeholder="e.g. Davis 110" 
+                onChange={(e) => setRoom(clamp(e.target.value))}
               />
             </div>
             {/* Create Course Button */}
