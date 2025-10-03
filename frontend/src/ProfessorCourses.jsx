@@ -209,13 +209,13 @@ export default function ProfCourses() {
             className={`mc-tab ${activeTab === "my" ? "active" : ""}`}
             onClick={() => setActiveTab("my")}
           >
-            My Courses (2)
+            My Courses 
           </button>
           <button
             className={`mc-tab ${activeTab === "find" ? "active" : ""}`}
             onClick={() => setActiveTab("find")}
           >
-            Find Courses
+            Create Courses
           </button>
         </div>
       </div>
@@ -230,13 +230,13 @@ export default function ProfCourses() {
           <form className="course-form">
             <div className="form-group">
               <label>Code</label>
-              <input type="text" placeholder="e.g. CS101" />
+              <input type="text" placeholder="e.g. CSE220" />
             </div>
             <div className="form-group">
               <label>Credits</label>
               <input 
                 type="number" 
-                placeholder="e.g. 3" 
+                placeholder="e.g. 4" 
                 min="1" 
                 max="6" 
                 step="1" 
@@ -244,7 +244,7 @@ export default function ProfCourses() {
             </div>
             <div className="form-group">
               <label>Name</label>
-              <input type="text" placeholder="Course name" />
+              <input type="text" placeholder="e.g. Systems Programming" />
             </div>
             <div className="form-group">
               <label>Description</label>
@@ -252,7 +252,7 @@ export default function ProfCourses() {
             </div>
             <div className="form-group">
               <label>Lecture Times</label>
-              <input type="text" placeholder="e.g. Mon/Wed 10:00 - 11:30 AM" />
+              <input type="text" placeholder="e.g. MWF 1:00-1:50 PM" />
             </div>
             {/* Create Course Button */}
             <button type="button" className="create-btn">
