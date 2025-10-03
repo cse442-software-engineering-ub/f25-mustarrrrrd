@@ -2,6 +2,7 @@ import MyCourses from './MyCourses.jsx';
 import { useState, useEffect } from "react";
 import { HashRouter, Routes, Route, Link } from "react-router-dom";
 import SignUp from "./SignUp"; // ✅ SignUp stays untouched
+import ProfCourses from './ProfessorCourses.jsx';
 
 const MAX = 191;
 
@@ -13,6 +14,7 @@ export default function App() {
           <Route path="/" element={<Login />} />
           <Route path="/mycourses" element={<MyCourses />} />
           <Route path="/signup" element={<SignUp />} />
+          <Route path="/profcourses" element={<ProfCourses />} />
         </Routes>
       </HashRouter>
     </div>
