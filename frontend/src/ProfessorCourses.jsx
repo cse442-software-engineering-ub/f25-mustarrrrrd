@@ -1,8 +1,47 @@
 import React, { useState } from "react";
 
+const MAX = 191;
+const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
+const API_ROOT = new URL("../api/", ABS_BASE).pathname;
+
 export default function ProfCourses() {
   const [activeTab, setActiveTab] = useState("my");
 
+  // State for inputs
+  const [code, setCode] = useState("");
+  const [credits, setCredits] = useState("");
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [lectureTimes, setLectureTimes] = useState("");
+
+  const clamp = (s) => s.slice(0, MAX);
+
+  // ✅ Async function to create course
+  async function createCourse() {
+    const courseData = {
+      code,
+      credits,
+      name,
+      description,
+      lectureTimes,
+    };
+
+    try {
+      const res = await fetch(`${API_ROOT}create_course.php`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(courseData),
+      });
+
+      const data = await res.json();
+      console.log("Server response:", data);
+      alert("Course created successfully!");
+    } catch (error) {
+      console.error("Error creating course:", error);
+      alert("Error creating course. Please try again.");
+    }
+  }
+  
   return (
     <div className="mc-root">
       <style>{`
@@ -230,7 +269,11 @@ export default function ProfCourses() {
           <form className="course-form">
             <div className="form-group">
               <label>Code</label>
-              <input type="text" placeholder="e.g. CSE220" />
+              <input 
+                type="text" 
+                placeholder="e.g. CSE220" 
+                onChange={(e) => setCode(clamp(e.target.value))}
+              />
             </div>
             <div className="form-group">
               <label>Credits</label>
@@ -240,22 +283,34 @@ export default function ProfCourses() {
                 min="1" 
                 max="6" 
                 step="1" 
+                onChange={(e) => setCredits(clamp(e.target.value))}
               />
             </div>
             <div className="form-group">
               <label>Name</label>
-              <input type="text" placeholder="e.g. Systems Programming" />
+              <input 
+                type="text" 
+                placeholder="e.g. Systems Programming" 
+                onChange={(e) => setName(clamp(e.target.value))}
+              />
             </div>
             <div className="form-group">
               <label>Description</label>
-              <textarea placeholder="Brief description of the course"></textarea>
+              <textarea 
+                placeholder="Brief description of the course" 
+                onChange={(e) => setDescription(clamp(e.target.value))}
+              ></textarea>
             </div>
             <div className="form-group">
               <label>Lecture Times</label>
-              <input type="text" placeholder="e.g. MWF 1:00-1:50 PM" />
+              <input 
+                type="text" 
+                placeholder="e.g. MWF 1:00-1:50 PM" 
+                onChange={(e) => setLectureTimes(clamp(e.target.value))}
+              />
             </div>
             {/* Create Course Button */}
-            <button type="button" className="create-btn">
+            <button type="button" onClick={createCourse} className="create-btn">
               Create Course
             </button>
           </form>
