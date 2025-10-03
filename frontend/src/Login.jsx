@@ -1,8 +1,12 @@
 // src/Login.jsx
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom"; // removed useNavigate
+import { Link } from "react-router-dom"; // no useNavigate
 
 const MAX = 191;
+
+// toggles (set to false to hide either button)
+const SHOW_PROFILE_LINK = true;
+const SHOW_DEV_PROFILE_BUTTON = true;
 
 // Cookie helpers
 const setCookie = (name, value, days) => {
@@ -24,8 +28,6 @@ const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
 const API_ROOT = new URL("../api/", ABS_BASE).pathname;
 
 export default function Login() {
-  // removed useNavigate
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -63,11 +65,7 @@ export default function Login() {
       if (data?.match) {
         if (rememberMe && email) setCookie("userEmail", email, 30);
         else deleteCookie("userEmail");
-
-        // ✅ Show the user's name from the DB
         setMessage(`Welcome ${data?.name ?? ""}`.trim());
-
-        // optional hygiene: clear password field
         setPassword("");
       } else {
         setMessage(data?.message || "No match");
@@ -82,16 +80,11 @@ export default function Login() {
   async function handleLogout() {
     setMessage("");
     try {
-      await fetch(`${API_ROOT}logout.php`, {
-        method: "POST",
-        credentials: "include"
-      });
-
+      await fetch(`${API_ROOT}logout.php`, { method: "POST", credentials: "include" });
       deleteCookie("userEmail");
       setEmail("");
       setPassword("");
       setRememberMe(false);
-
       setMessage("You have been logged out.");
     } catch {
       setMessage("Logout failed (server error).");
@@ -105,6 +98,47 @@ export default function Login() {
     }
   }
 
+  // DEV helper: create/login a dummy account then go to /profile
+  async function goDevProfile() {
+    const target = new URL("profile", ABS_BASE).pathname; // e.g. /f25-.../app/profile
+    try {
+      const res = await fetch(`${API_ROOT}dev_dummy_login.php`, {
+        method: "POST",
+        credentials: "include",
+      });
+      let data = null;
+      try { data = await res.json(); } catch {}
+      if (!res.ok || !data?.ok) {
+        const msg = (data && (data.message || JSON.stringify(data))) || `HTTP ${res.status}`;
+        alert("Dev login failed: " + msg);
+        return;
+      }
+      // Prefer SPA navigation; fall back to hard nav
+      try {
+        window.history.pushState({}, "", target);
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      } catch {
+        window.location.href = target;
+      }
+    } catch {
+      alert("Dev login error (see console)");
+    }
+  }
+
+  // small pill styles reused for both buttons
+  const pillBase = {
+    padding: "8px 12px",
+    borderRadius: 999,
+    border: 0,
+    fontSize: 12,
+    fontWeight: 700,
+    cursor: "pointer",
+    textDecoration: "none",
+    display: "inline-block",
+  };
+  const linkPill = { ...pillBase, background: "#2a2a2a", color: "#fff", border: "1px solid #444" };
+  const devPill  = { ...pillBase, background: "#1f6feb", color: "#fff", marginLeft: 8 };
+
   return (
     <div
       style={{
@@ -115,12 +149,37 @@ export default function Login() {
         alignItems: "center",
         fontFamily: "system-ui, sans-serif",
         backgroundColor: "#000000",
+        padding: "48px 24px",
       }}
     >
-      <div style={{ width: "100%", maxWidth: 420, padding: 24, color: "#fff" }}>
-        <h1 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: 24 }}>
-          CSE442 Login
-        </h1>
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 960,
+          padding: 32,
+          color: "#fff",
+          background: "#0f0f0f",
+          border: "1px solid #222",
+          borderRadius: 12,
+          boxShadow: "0 12px 32px rgba(0,0,0,0.45)",
+        }}
+      >
+        {/* Header row with actions on the right */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+          <h1 style={{ fontSize: "2rem", fontWeight: "bold", margin: 0 }}>CSE442 Login</h1>
+          <div>
+            {SHOW_PROFILE_LINK && (
+              <Link to="/profile" style={linkPill}>
+                Profile →
+              </Link>
+            )}
+            {SHOW_DEV_PROFILE_BUTTON && (
+              <button onClick={goDevProfile} style={devPill} title="Dev: open profile with dummy user">
+                Dev: Profile
+              </button>
+            )}
+          </div>
+        </div>
 
         {/* Email */}
         <label style={{ display: "block", marginBottom: 16 }}>
