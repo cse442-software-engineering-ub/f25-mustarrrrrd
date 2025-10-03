@@ -35,3 +35,9 @@ CREATE TABLE `enrollments` (
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_0900_ai_ci;
+
+-- Run these commands in phpMyAdmin (in order):
+-- ALTER TABLE `courses` DROP `term`;
+-- ALTER TABLE `courses` DROP `year`;
+-- ALTER TABLE `courses` ADD `lecture_times` VARCHAR(32) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL AFTER `title`;
+-- ALTER TABLE `courses` ADD `room` VARCHAR(32) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL AFTER `lecture_times`;
