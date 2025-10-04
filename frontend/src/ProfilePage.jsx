@@ -104,8 +104,13 @@ export default function ProfilePage() {
 
   /** === Layout: fixed header, extra top whitespace, no h-scroll, wider cards === */
   const HEADER_H = 64;
-  // Increased spacer so nothing sits under the fixed bar.
-  const TOP_SPACER = 128;
+  // Increase this to push everything down further (try 144–176 if needed)
+  const TOP_SPACER = 160;
+  // Extra cushion when editing so the form isn't tucked under the bar
+  const EDIT_BONUS = 293;
+
+  // One computed value so view + edit stay aligned
+  const effectiveTopPad = HEADER_H + TOP_SPACER + (editing ? EDIT_BONUS : 0);
 
   const page = {
     minHeight:"100vh",
@@ -115,7 +120,7 @@ export default function ProfilePage() {
     fontFamily:"system-ui, sans-serif",
     overflowX:"hidden",
     // Ensure anchor jumps / scrollIntoView don't hide under the bar
-    scrollPaddingTop: HEADER_H + TOP_SPACER,
+    scrollPaddingTop: effectiveTopPad,
   };
 
   // Fixed header
@@ -143,7 +148,7 @@ export default function ProfilePage() {
 
   const contentWrap = {
     ...container,
-    paddingTop: HEADER_H + TOP_SPACER, // key line: pad down by header + spacer
+    paddingTop: effectiveTopPad, // key line: pushes content below the header
     paddingBottom: 64,
   };
 

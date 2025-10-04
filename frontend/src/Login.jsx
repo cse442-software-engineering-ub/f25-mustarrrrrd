@@ -4,10 +4,6 @@ import { Link } from "react-router-dom"; // no useNavigate
 
 const MAX = 191;
 
-// toggles (set to false to hide either button)
-const SHOW_PROFILE_LINK = true;
-const SHOW_DEV_PROFILE_BUTTON = true;
-
 // Cookie helpers
 const setCookie = (name, value, days) => {
   const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();
@@ -98,47 +94,6 @@ export default function Login() {
     }
   }
 
-  // DEV helper: create/login a dummy account then go to /profile
-  async function goDevProfile() {
-    const target = new URL("profile", ABS_BASE).pathname; // e.g. /f25-.../app/profile
-    try {
-      const res = await fetch(`${API_ROOT}dev_dummy_login.php`, {
-        method: "POST",
-        credentials: "include",
-      });
-      let data = null;
-      try { data = await res.json(); } catch {}
-      if (!res.ok || !data?.ok) {
-        const msg = (data && (data.message || JSON.stringify(data))) || `HTTP ${res.status}`;
-        alert("Dev login failed: " + msg);
-        return;
-      }
-      // Prefer SPA navigation; fall back to hard nav
-      try {
-        window.history.pushState({}, "", target);
-        window.dispatchEvent(new PopStateEvent("popstate"));
-      } catch {
-        window.location.href = target;
-      }
-    } catch {
-      alert("Dev login error (see console)");
-    }
-  }
-
-  // small pill styles reused for both buttons
-  const pillBase = {
-    padding: "8px 12px",
-    borderRadius: 999,
-    border: 0,
-    fontSize: 12,
-    fontWeight: 700,
-    cursor: "pointer",
-    textDecoration: "none",
-    display: "inline-block",
-  };
-  const linkPill = { ...pillBase, background: "#2a2a2a", color: "#fff", border: "1px solid #444" };
-  const devPill  = { ...pillBase, background: "#1f6feb", color: "#fff", marginLeft: 8 };
-
   return (
     <div
       style={{
@@ -164,21 +119,9 @@ export default function Login() {
           boxShadow: "0 12px 32px rgba(0,0,0,0.45)",
         }}
       >
-        {/* Header row with actions on the right */}
+        {/* Header row (title only now) */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
           <h1 style={{ fontSize: "2rem", fontWeight: "bold", margin: 0 }}>CSE442 Login</h1>
-          <div>
-            {SHOW_PROFILE_LINK && (
-              <Link to="/profile" style={linkPill}>
-                Profile →
-              </Link>
-            )}
-            {SHOW_DEV_PROFILE_BUTTON && (
-              <button onClick={goDevProfile} style={devPill} title="Dev: open profile with dummy user">
-                Dev: Profile
-              </button>
-            )}
-          </div>
         </div>
 
         {/* Email */}
