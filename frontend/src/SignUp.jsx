@@ -10,13 +10,64 @@ export default function SignUp() {
     role: "" // student or professor
   });
 
+  const [submitting, setSubmitting] = useState(false);
+
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  // Derive API base:
+  // - Locally:   /f25-mustarrrrrd/app/  -> /f25-mustarrrrrd/
+  // - Aptitude:  /CSE442/.../auto_oh/   -> /CSE442/.../cse-442ai/ (strip 'app/')
+  const apiBase = (import.meta.env.BASE_URL ?? "/").replace(/app\/?$/, "");
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Form submitted:", form);
+    if (submitting) return;
+
+    // quick front-end checks to avoid empty requests
+    if (!form.firstName || !form.lastName || !form.email || !form.password || !form.confirmPassword || !form.role) {
+      alert("Please fill out all fields.");
+      return;
+    }
+    if (form.password !== form.confirmPassword) {
+      alert("Passwords do not match.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${apiBase}api/signup.php`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: form.firstName,
+          lastName: form.lastName,
+          email: form.email,
+          password: form.password,
+          confirmPassword: form.confirmPassword,
+          role: form.role // server maps "professor" -> "instructor"
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || !data.ok) {
+        const msg = data?.message || `Signup failed (HTTP ${res.status}).`;
+        alert(msg);
+        console.error("Signup error:", data);
+      } else {
+        // success -> you can redirect or just notify
+        alert("Account created successfully!");
+        console.log("Created user:", data.user);
+        // window.location.href = import.meta.env.BASE_URL; // optional: go back to login
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Network error. Is Apache running and signup.php accessible?");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -137,6 +188,7 @@ export default function SignUp() {
 
           <button
             type="submit"
+            disabled={submitting}
             style={{
               padding: "14px",
               fontSize: "1.2rem",
@@ -146,15 +198,16 @@ export default function SignUp() {
               border: "none",
               borderRadius: 8,
               cursor: "pointer",
+              opacity: submitting ? 0.7 : 1,
             }}
           >
-            Sign Up
+            {submitting ? "Signing Up..." : "Sign Up"}
           </button>
         </form>
 
         <p style={{ marginTop: 24, textAlign: "center", fontSize: "1.1rem" }}>
           Already have an account?{" "}
-          <a href="/" style={{ color: "#4ea1ff" }}>
+          <a href={import.meta.env.BASE_URL} style={{ color: "#4ea1ff" }}>
             Log in
           </a>
         </p>
