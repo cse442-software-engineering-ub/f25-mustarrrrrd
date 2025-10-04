@@ -35,13 +35,36 @@ export default function Login() {
   const clamp = (s) => (s || "").slice(0, MAX);
 
   useEffect(() => {
-    const savedEmail = getCookie("userEmail");
-    if (savedEmail) {
-      setEmail(savedEmail);
-      setRememberMe(true);
-      setMessage("Welcome back");
-    }
-  }, []);
+    // Check if user has an active session
+    const checkSession = async () => {
+      try {
+        const res = await fetch(`${API_ROOT}check_session.php`, {
+          method: "GET",
+          credentials: "include",
+        });
+        const data = await res.json();
+
+        if (data?.loggedIn) {
+          // User is already logged in, redirect to dashboard
+          navigate("/dashboard");
+          return;
+        }
+      } catch (err) {
+        // If session check fails, continue with normal login flow
+        console.error("Session check failed:", err);
+      }
+
+      // If not logged in, check for saved email
+      const savedEmail = getCookie("userEmail");
+      if (savedEmail) {
+        setEmail(savedEmail);
+        setRememberMe(true);
+        setMessage("Welcome back");
+      }
+    };
+
+    checkSession();
+  }, [navigate]);
 
   async function handleLogin() {
     if (!email || !password) {
