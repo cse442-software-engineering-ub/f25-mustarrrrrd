@@ -87,14 +87,16 @@ export default function Login() {
         if (rememberMe && email) setCookie("userEmail", email, 30);
         else deleteCookie("userEmail");
 
-        // ✅ Show the user's name from the DB
         setMessage(`Welcome ${data?.name ?? ""}`.trim());
-
-        // optional hygiene: clear password field
         setPassword("");
 
-        // Navigate to dashboard on successful login
-        navigate("/dashboard");
+        // Redirect
+        if (data?.role === "professor") {
+          console.log("Prof")
+          navigate("/professorview");
+        } else {
+          navigate("/dashboard");
+        }
       } else {
         setMessage(data?.message || "No match");
       }

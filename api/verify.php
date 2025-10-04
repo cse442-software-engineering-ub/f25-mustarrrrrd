@@ -3,7 +3,6 @@ require_once __DIR__ . '/db.php';
 
 header('Content-Type: application/json');
 
-// CORS
 if (isset($_SERVER['HTTP_ORIGIN'])) {
   header('Access-Control-Allow-Origin: ' . $_SERVER['HTTP_ORIGIN']);
   header('Access-Control-Allow-Credentials: true');
@@ -14,7 +13,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
   exit;
 }
 
-// Read JSON body
 $in = read_json();
 $email = clamp191($in['email'] ?? '');
 $password = $in['password'] ?? '';
@@ -25,7 +23,6 @@ if (!$email || !$password) {
   exit;
 }
 
-// Get PDO connection from db.php
 try {
   $pdo = pdo();
 } catch (Exception $e) {
@@ -34,26 +31,25 @@ try {
   exit;
 }
 
-// Query by email
-$stmt = $pdo->prepare('SELECT id, name, email, password_hash FROM users WHERE email = ? LIMIT 1');
+$stmt = $pdo->prepare('SELECT id, name, email, password_hash, role FROM users WHERE email = ? LIMIT 1');
 $stmt->execute([$email]);
-$user = $stmt->fetch();
+$user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// Compare directly with password_hash column (plain text)
 if (!$user || $user['password_hash'] !== $password) {
   echo json_encode(['match'=>false,'message'=>'Invalid email or password']);
   exit;
 }
 
-// Success
 session_start();
 session_regenerate_id(true);
 $_SESSION['user_id'] = (int)$user['id'];
 $_SESSION['email']   = $user['email'];
 $_SESSION['name']    = $user['name'];
+$_SESSION['role']    = $user['role'];
 
 echo json_encode([
-  'match'=>true,
-  'message'=>'Login successful',
-  'name'=>$user['name']
+  'match'   => true,
+  'message' => 'Login successful',
+  'name'    => $user['name'],
+  'role'    => $user['role']
 ]);
