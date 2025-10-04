@@ -7,25 +7,44 @@ export default function SignUp() {
     email: "",
     password: "",
     confirmPassword: "",
-    role: "" // student or professor
+    role: "" // "student" or "professor"
   });
-
   const [submitting, setSubmitting] = useState(false);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // Derive API base:
-  // - Locally:   /f25-mustarrrrrd/app/  -> /f25-mustarrrrrd/
-  // - Aptitude:  /CSE442/.../auto_oh/   -> /CSE442/.../cse-442ai/ (strip 'app/')
-  const apiBase = (import.meta.env.BASE_URL ?? "/").replace(/app\/?$/, "");
+  // Build two possible API roots from the deployed BASE_URL:
+  // 1) Primary:  .../auto_oh/api/
+  // 2) Fallback: .../api/  (strip the auto_oh/ segment)
+  const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin); // ends with /
+  const API_PRIMARY = new URL("api/", ABS_BASE).pathname;                     // .../auto_oh/api/
+  const API_FALLBACK = new URL("../api/", ABS_BASE).pathname;                 // .../api/
+
+  async function trySignup(apiRoot) {
+    const res = await fetch(`${apiRoot}signup.php`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        firstName: form.firstName,
+        lastName: form.lastName,
+        email: form.email,
+        password: form.password,
+        confirmPassword: form.confirmPassword,
+        role: form.role, // server maps "professor" -> "instructor"
+      }),
+    });
+    let data = {};
+    try { data = await res.json(); } catch {}
+    return { res, data };
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (submitting) return;
 
-    // quick front-end checks to avoid empty requests
+    // minimal front-end checks (no visual changes)
     if (!form.firstName || !form.lastName || !form.email || !form.password || !form.confirmPassword || !form.role) {
       alert("Please fill out all fields.");
       return;
@@ -37,34 +56,27 @@ export default function SignUp() {
 
     setSubmitting(true);
     try {
-      const res = await fetch(`${apiBase}api/signup.php`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          firstName: form.firstName,
-          lastName: form.lastName,
-          email: form.email,
-          password: form.password,
-          confirmPassword: form.confirmPassword,
-          role: form.role // server maps "professor" -> "instructor"
-        }),
-      });
+      // Try under .../auto_oh/api/ first
+      let { res, data } = await trySignup(API_PRIMARY);
 
-      const data = await res.json().catch(() => ({}));
+      // If that endpoint doesn’t exist on server, fall back to .../api/
+      if (res.status === 404) {
+        ({ res, data } = await trySignup(API_FALLBACK));
+      }
 
-      if (!res.ok || !data.ok) {
+      if (!res.ok || !data?.ok) {
         const msg = data?.message || `Signup failed (HTTP ${res.status}).`;
         alert(msg);
         console.error("Signup error:", data);
       } else {
-        // success -> you can redirect or just notify
         alert("Account created successfully!");
         console.log("Created user:", data.user);
-        // window.location.href = import.meta.env.BASE_URL; // optional: go back to login
+        // optional: go back to login (hash routing)
+        // window.location.hash = "#/";
       }
     } catch (err) {
       console.error(err);
-      alert("Network error. Is Apache running and signup.php accessible?");
+      alert("Network error. Is the PHP endpoint reachable?");
     } finally {
       setSubmitting(false);
     }
@@ -207,7 +219,7 @@ export default function SignUp() {
 
         <p style={{ marginTop: 24, textAlign: "center", fontSize: "1.1rem" }}>
           Already have an account?{" "}
-          <a href={import.meta.env.BASE_URL} style={{ color: "#4ea1ff" }}>
+          <a href="#/" style={{ color: "#4ea1ff" }}>
             Log in
           </a>
         </p>
