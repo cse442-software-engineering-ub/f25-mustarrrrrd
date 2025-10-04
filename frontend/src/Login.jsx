@@ -1,6 +1,6 @@
 // src/Login.jsx
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom"; // removed useNavigate
+import { Link, useNavigate } from "react-router-dom";
 
 const MAX = 191;
 
@@ -24,7 +24,7 @@ const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
 const API_ROOT = new URL("../api/", ABS_BASE).pathname;
 
 export default function Login() {
-  // removed useNavigate
+  const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,13 +35,36 @@ export default function Login() {
   const clamp = (s) => (s || "").slice(0, MAX);
 
   useEffect(() => {
-    const savedEmail = getCookie("userEmail");
-    if (savedEmail) {
-      setEmail(savedEmail);
-      setRememberMe(true);
-      setMessage("Welcome back");
-    }
-  }, []);
+    // Check if user has an active session
+    const checkSession = async () => {
+      try {
+        const res = await fetch(`${API_ROOT}check_session.php`, {
+          method: "GET",
+          credentials: "include",
+        });
+        const data = await res.json();
+
+        if (data?.loggedIn) {
+          // User is already logged in, redirect to dashboard
+          navigate("/dashboard");
+          return;
+        }
+      } catch (err) {
+        // If session check fails, continue with normal login flow
+        console.error("Session check failed:", err);
+      }
+
+      // If not logged in, check for saved email
+      const savedEmail = getCookie("userEmail");
+      if (savedEmail) {
+        setEmail(savedEmail);
+        setRememberMe(true);
+        setMessage("Welcome back");
+      }
+    };
+
+    checkSession();
+  }, [navigate]);
 
   async function handleLogin() {
     if (!email || !password) {
@@ -64,11 +87,16 @@ export default function Login() {
         if (rememberMe && email) setCookie("userEmail", email, 30);
         else deleteCookie("userEmail");
 
-        // ✅ Show the user's name from the DB
         setMessage(`Welcome ${data?.name ?? ""}`.trim());
-
-        // optional hygiene: clear password field
         setPassword("");
+
+        // Redirect
+        if (data?.role === "professor") {
+          console.log("Prof")
+          navigate("/professorview");
+        } else {
+          navigate("/dashboard");
+        }
       } else {
         setMessage(data?.message || "No match");
       }
