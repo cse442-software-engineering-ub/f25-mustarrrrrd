@@ -260,7 +260,7 @@ export default function ProfCourses() {
       {/* Main content */}
       <main className="mc-main">
         {activeTab === "my" ? (
-          <p style={{ color: "#9a9a9a" }}>
+          <p style={{ color: "#9a9a9a" , textAlign: "center"} }>
             This is where your courses will appear.
           </p>
         ) : (
