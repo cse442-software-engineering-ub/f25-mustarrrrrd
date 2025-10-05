@@ -1,6 +1,15 @@
+// src/CourseCardDashboard.jsx
 import { Star, Clock, MapPin, Users } from "lucide-react";
+import { useNavigate } from "react-router-dom"; // ✅ added
 
 export function CourseCardDashboard({ course }) {
+  const navigate = useNavigate(); // ✅ added
+
+  // ✅ navigate to your Queue Details route, carrying the course in state
+  const handleJoinQueue = () => {
+    navigate(`/queue/${course.code}`, { state: { course } });
+  };
+
   return (
     <div style={{
       background: 'white',
@@ -102,18 +111,20 @@ export function CourseCardDashboard({ course }) {
         alignItems: 'center',
         justifyContent: 'flex-end'
       }}>
-        <button style={{
-          padding: '0.5rem 1rem',
-          background: '#111',
-          color: 'white',
-          border: 'none',
-          borderRadius: '0.5rem',
-          fontSize: '0.875rem',
-          cursor: 'pointer',
-          fontWeight: '500'
-        }}
-        onMouseOver={(e) => e.currentTarget.style.background = '#1f2937'}
-        onMouseOut={(e) => e.currentTarget.style.background = '#111'}
+        <button
+          style={{
+            padding: '0.5rem 1rem',
+            background: '#111',
+            color: 'white',
+            border: 'none',
+            borderRadius: '0.5rem',
+            fontSize: '0.875rem',
+            cursor: 'pointer',
+            fontWeight: '500'
+          }}
+          onMouseOver={(e) => e.currentTarget.style.background = '#1f2937'}
+          onMouseOut={(e) => e.currentTarget.style.background = '#111'}
+          onClick={handleJoinQueue} // ✅ added — only behavior change
         >
           Join Queue
         </button>

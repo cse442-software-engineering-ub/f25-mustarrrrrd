@@ -6,6 +6,7 @@ import ProfCourses from './ProfessorCourses.jsx';
 import { Dashboard } from "./Dashboard";
 import ThemeToggle from "./ThemeToggle";
 import ProfessorView from "./professorview";
+import QueueDetails from "./QueueDetails"; 
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
           <Route path="/profcourses" element={<ProfCourses />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/professorview" element={<ProfessorView />} />
+          <Route path="/queue/:courseId" element={<QueueDetails />} />
         </Routes>
       </HashRouter>
     </>
