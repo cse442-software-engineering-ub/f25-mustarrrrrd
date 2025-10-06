@@ -61,6 +61,7 @@ export function Dashboard() {
       time: "Mon, Wed, Fri 2:00-4:00 PM",
       location: "Davis Hall 338",
       studentsInQueue: 0,
+      status: "upcoming",
     },
     {
       id: "2",
@@ -70,8 +71,13 @@ export function Dashboard() {
       time: "Tue, Thu 1:00-3:00 PM",
       location: "Davis Hall 101",
       studentsInQueue: 0,
+      status: "upcoming",
     },
   ];
+
+  // Calculate course counts
+  const availableCount = courses.filter(c => c.status === 'available').length;
+  const upcomingCount = courses.filter(c => c.status === 'upcoming').length;
 
   return (
     <div
@@ -214,7 +220,7 @@ export function Dashboard() {
             cursor: 'pointer',
             fontWeight: '500'
           }}>
-            Available
+            Available ({availableCount})
           </button>
           <button style={{
             padding: '0.375rem 0.75rem',
@@ -226,7 +232,7 @@ export function Dashboard() {
             cursor: 'pointer',
             fontWeight: '500'
           }}>
-            Upcoming
+            Upcoming ({upcomingCount})
           </button>
         </div>
 
