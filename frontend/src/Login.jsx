@@ -113,16 +113,11 @@ export default function Login() {
   async function handleLogout() {
     setMessage("");
     try {
-      await fetch(`${API_ROOT}logout.php`, {
-        method: "POST",
-        credentials: "include"
-      });
-
+      await fetch(`${API_ROOT}logout.php`, { method: "POST", credentials: "include" });
       deleteCookie("userEmail");
       setEmail("");
       setPassword("");
       setRememberMe(false);
-
       setMessage("You have been logged out.");
     } catch {
       setMessage("Logout failed (server error).");
@@ -146,12 +141,25 @@ export default function Login() {
         alignItems: "center",
         fontFamily: "system-ui, sans-serif",
         backgroundColor: "#000000",
+        padding: "48px 24px",
       }}
     >
-      <div style={{ width: "100%", maxWidth: 420, padding: 24, color: "#fff" }}>
-        <h1 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: 24 }}>
-          CSE442 Login
-        </h1>
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 960,
+          padding: 32,
+          color: "#fff",
+          background: "#0f0f0f",
+          border: "1px solid #222",
+          borderRadius: 12,
+          boxShadow: "0 12px 32px rgba(0,0,0,0.45)",
+        }}
+      >
+        {/* Header row (title only now) */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+          <h1 style={{ fontSize: "2rem", fontWeight: "bold", margin: 0 }}>CSE442 Login</h1>
+        </div>
 
         {/* Email */}
         <label style={{ display: "block", marginBottom: 16 }}>
