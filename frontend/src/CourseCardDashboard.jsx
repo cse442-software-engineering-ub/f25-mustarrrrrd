@@ -63,6 +63,22 @@ export function CourseCardDashboard({ course }) {
         </button>
       </div>
 
+      {/* Status Badge */}
+      <div style={{
+        marginBottom: '0.75rem'
+      }}>
+        <span style={{
+          padding: '0.25rem 0.5rem',
+          background: '#3b82f6',
+          color: 'white',
+          borderRadius: '0.25rem',
+          fontSize: '0.75rem',
+          fontWeight: '500'
+        }}>
+          Upcoming
+        </span>
+      </div>
+
       {/* Course Details */}
       <div style={{
         display: 'flex',
