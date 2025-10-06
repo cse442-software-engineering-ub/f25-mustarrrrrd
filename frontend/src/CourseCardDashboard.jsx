@@ -69,13 +69,13 @@ export function CourseCardDashboard({ course }) {
       }}>
         <span style={{
           padding: '0.25rem 0.5rem',
-          background: '#3b82f6',
+          background: course.status === 'available' ? '#10b981' : '#3b82f6',
           color: 'white',
           borderRadius: '0.25rem',
           fontSize: '0.75rem',
           fontWeight: '500'
         }}>
-          Upcoming
+          {course.status === 'available' ? 'Available Now' : 'Upcoming'}
         </span>
       </div>
 
