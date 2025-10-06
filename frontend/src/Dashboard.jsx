@@ -179,14 +179,12 @@ export function Dashboard() {
       {/* Main Content */}
       <div style={{ maxWidth: "64rem", margin: "0 auto", padding: "1.5rem" }}>
         {/* Favorites Header */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            marginBottom: "1.5rem",
-          }}
-        >
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          marginBottom: '1rem'
+        }}>
           <Star size={20} color="#eab308" fill="#eab308" />
           <h2
             style={{
@@ -198,6 +196,38 @@ export function Dashboard() {
           >
             Favorites
           </h2>
+        </div>
+
+        {/* Course Tags */}
+        <div style={{
+          display: 'flex',
+          gap: '0.5rem',
+          marginBottom: '1.5rem'
+        }}>
+          <button style={{
+            padding: '0.375rem 0.75rem',
+            background: '#10b981',
+            color: 'white',
+            border: 'none',
+            borderRadius: '0.375rem',
+            fontSize: '0.875rem',
+            cursor: 'pointer',
+            fontWeight: '500'
+          }}>
+            Available
+          </button>
+          <button style={{
+            padding: '0.375rem 0.75rem',
+            background: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '0.375rem',
+            fontSize: '0.875rem',
+            cursor: 'pointer',
+            fontWeight: '500'
+          }}>
+            Upcoming
+          </button>
         </div>
 
         {/* Course Cards Grid */}

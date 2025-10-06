@@ -45,8 +45,12 @@ export default function Login() {
         const data = await res.json();
 
         if (data?.loggedIn) {
-          // User is already logged in, redirect to dashboard
-          navigate("/dashboard");
+          // User is already logged in, redirect based on role
+          if (data?.role === "student") {
+            navigate("/dashboard");
+          } else if (data?.role === "professor") {
+            navigate("/professorview");
+          }
           return;
         }
       } catch (err) {
@@ -90,12 +94,11 @@ export default function Login() {
         setMessage(`Welcome ${data?.name ?? ""}`.trim());
         setPassword("");
 
-        // Redirect
-        if (data?.role === "professor") {
-          console.log("Prof")
-          navigate("/professorview");
-        } else {
+        // Redirect based on role
+        if (data?.role === "student") {
           navigate("/dashboard");
+        } else if (data?.role === "professor") {
+          navigate("/professorview");
         }
       } else {
         setMessage(data?.message || "No match");
