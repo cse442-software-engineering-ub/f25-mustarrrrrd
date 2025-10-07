@@ -534,17 +534,6 @@ export default function MyCourses() {
                         </div>
                       </div>
                       <div className="course-actions">
-                        <button
-                          className="star-btn"
-                          onClick={() => toggleFavorite(course.id, course.is_favorited)}
-                          title={course.is_favorited ? "Remove from favorites" : "Add to favorites"}
-                        >
-                          <Star
-                            size={18}
-                            color={course.is_favorited ? "#eab308" : "#666"}
-                            fill={course.is_favorited ? "#eab308" : "none"}
-                          />
-                        </button>
                         {course.is_enrolled ? (
                           <div style={{
                             padding: '6px 12px',
