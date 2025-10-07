@@ -43,8 +43,8 @@ ALTER TABLE `courses` ADD `lecture_times` VARCHAR(32) CHARACTER SET utf8 COLLATE
 ALTER TABLE `courses` ADD `room` VARCHAR(32) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL AFTER `lecture_times`;
 
 CREATE TABLE favorites (
-    user_id INT NOT NULL,
-    course_id INT NOT NULL,
+    user_id INT UNSIGNED NOT NULL,
+    course_id INT UNSIGNED NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, course_id),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,

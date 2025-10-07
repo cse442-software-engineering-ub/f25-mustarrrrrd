@@ -12,8 +12,59 @@ export function Dashboard() {
   const navigate = useNavigate();
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
   const btnRef = useRef(null);
   const menuRef = useRef(null);
+
+  // Fetch favorites on mount
+  useEffect(() => {
+    fetchFavorites();
+  }, []);
+
+  async function fetchFavorites() {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_ROOT}favorites.php`, {
+        method: "GET",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (data.favorites) {
+        // Transform API data to match expected course format
+        const formattedCourses = data.favorites.map(fav => ({
+          id: fav.id,
+          code: fav.code,
+          name: fav.title,
+          professor: "Professor", // You may want to add professor info to the API
+          time: fav.lecture_times,
+          location: fav.room,
+          studentsInQueue: 0,
+          status: "upcoming",
+        }));
+        setCourses(formattedCourses);
+      }
+    } catch (err) {
+      console.error("Error fetching favorites:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function removeFavorite(courseId) {
+    try {
+      await fetch(`${API_ROOT}favorites.php`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ course_id: courseId }),
+      });
+      // Remove from local state
+      setCourses(courses.filter(c => c.id !== courseId));
+    } catch (err) {
+      console.error("Error removing favorite:", err);
+    }
+  }
 
   // Close the menu on outside click / Esc
   useEffect(() => {
@@ -52,28 +103,6 @@ export function Dashboard() {
     navigate(to);
   };
 
-  const courses = [
-    {
-      id: "1",
-      code: "CSE116",
-      name: "Intro to Computer Science II",
-      professor: "Professor Dickson",
-      time: "Mon, Wed, Fri 2:00-4:00 PM",
-      location: "Davis Hall 338",
-      studentsInQueue: 0,
-      status: "upcoming",
-    },
-    {
-      id: "2",
-      code: "CSE250",
-      name: "Data Structures",
-      professor: "Professor Mikida",
-      time: "Tue, Thu 1:00-3:00 PM",
-      location: "Davis Hall 101",
-      studentsInQueue: 0,
-      status: "upcoming",
-    },
-  ];
 
   // Calculate course counts
   const availableCount = courses.filter(c => c.status === 'available').length;
@@ -237,17 +266,27 @@ export function Dashboard() {
         </div>
 
         {/* Course Cards Grid */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-            gap: "1rem",
-          }}
-        >
-          {courses.map((course) => (
-            <CourseCardDashboard key={course.id} course={course} />
-          ))}
-        </div>
+        {loading ? (
+          <p style={{ textAlign: 'center', color: '#6b7280' }}>Loading favorites...</p>
+        ) : courses.length === 0 ? (
+          <p style={{ textAlign: 'center', color: '#6b7280' }}>No favorite courses yet. Add some from the My Courses page!</p>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+              gap: "1rem",
+            }}
+          >
+            {courses.map((course) => (
+              <CourseCardDashboard
+                key={course.id}
+                course={course}
+                onRemoveFavorite={removeFavorite}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
