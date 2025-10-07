@@ -34,10 +34,19 @@ CREATE TABLE `enrollments` (
         ON DELETE CASCADE
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
-  COLLATE=utf8mb4_0900_ai_ci;
 
 -- Run these commands in phpMyAdmin (in order):
--- ALTER TABLE `courses` DROP `term`;
--- ALTER TABLE `courses` DROP `year`;
--- ALTER TABLE `courses` ADD `lecture_times` VARCHAR(32) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL AFTER `title`;
--- ALTER TABLE `courses` ADD `room` VARCHAR(32) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL AFTER `lecture_times`;
+ALTER TABLE users ADD COLUMN password_hash VARCHAR(255) NOT NULL;
+ALTER TABLE `courses` DROP `term`;
+ALTER TABLE `courses` DROP `year`;
+ALTER TABLE `courses` ADD `lecture_times` VARCHAR(32) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL AFTER `title`;
+ALTER TABLE `courses` ADD `room` VARCHAR(32) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL AFTER `lecture_times`;
+
+CREATE TABLE favorites (
+    user_id INT UNSIGNED NOT NULL,
+    course_id INT UNSIGNED NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, course_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+) ENGINE=InnoDB;

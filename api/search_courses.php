@@ -19,9 +19,9 @@ $searchTerm = clamp191($input["query"]);
 try {
     $pdo = pdo();
 
-    // ✅ Search only by code or title, matching from the beginning (order-sensitive)
+    // Search only by code or title, matching from the beginning (order-sensitive)
     $sql = "
-        SELECT code, title, lecture_times, room
+        SELECT id, code, title, lecture_times, room
         FROM courses
         WHERE code LIKE :search
            OR title LIKE :search
