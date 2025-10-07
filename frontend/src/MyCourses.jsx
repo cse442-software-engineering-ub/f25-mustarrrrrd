@@ -63,20 +63,25 @@ export default function MyCourses() {
       const data = JSON.parse(text);
 
       if (data.courses) {
-        // Fetch favorites to mark courses
-        const favRes = await fetch(`${API_ROOT}favorites.php`, {
-          method: "GET",
-          credentials: "include",
-        });
-        const favData = await favRes.json();
-        const favoriteIds = new Set(favData.favorites?.map(f => f.id) || []);
+        // Fetch favorites and enrollments to mark courses
+        const [favRes, enrollRes] = await Promise.all([
+          fetch(`${API_ROOT}favorites.php`, { method: "GET", credentials: "include" }),
+          fetch(`${API_ROOT}my_courses.php`, { method: "GET", credentials: "include" })
+        ]);
 
-        // Add is_favorited flag to search results
-        const coursesWithFav = data.courses.map(course => ({
+        const favData = await favRes.json();
+        const enrollData = await enrollRes.json();
+
+        const favoriteIds = new Set(favData.favorites?.map(f => f.id) || []);
+        const enrolledIds = new Set(enrollData.courses?.map(c => c.id) || []);
+
+        // Add is_favorited and is_enrolled flags to search results
+        const coursesWithFlags = data.courses.map(course => ({
           ...course,
-          is_favorited: favoriteIds.has(course.id)
+          is_favorited: favoriteIds.has(course.id),
+          is_enrolled: enrolledIds.has(course.id)
         }));
-        setResults(coursesWithFav);
+        setResults(coursesWithFlags);
       } else {
         setResults([]);
       }
@@ -114,6 +119,36 @@ export default function MyCourses() {
       }
     } catch (err) {
       console.error("Error toggling favorite:", err);
+    }
+  }
+
+  async function joinCourse(courseId) {
+    try {
+      const res = await fetch(`${API_ROOT}enroll.php`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ course_id: courseId, role: "student" }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        // Update the search results to show the course is now enrolled
+        setResults(results.map(course =>
+          course.id === courseId
+            ? { ...course, is_enrolled: true }
+            : course
+        ));
+
+        // Automatically switch to My Courses tab to show the newly joined course
+        setActiveTab("my");
+      } else if (data.error) {
+        setError(data.error);
+      }
+    } catch (err) {
+      console.error("Error joining course:", err);
+      setError("Failed to join course. Please try again.");
     }
   }
 
@@ -510,10 +545,29 @@ export default function MyCourses() {
                             fill={course.is_favorited ? "#eab308" : "none"}
                           />
                         </button>
-                        <button className="join-btn">
-                          <Plus size={16} />
-                          <span style={{ marginLeft: '4px' }}>Join</span>
-                        </button>
+                        {course.is_enrolled ? (
+                          <div style={{
+                            padding: '6px 12px',
+                            background: '#10b981',
+                            color: 'white',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}>
+                            ✓ Joined
+                          </div>
+                        ) : (
+                          <button
+                            className="join-btn"
+                            onClick={() => joinCourse(course.id)}
+                          >
+                            <Plus size={16} />
+                            <span style={{ marginLeft: '4px' }}>Join</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
