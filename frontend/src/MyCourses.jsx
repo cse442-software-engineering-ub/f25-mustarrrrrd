@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Search, Filter, Star, Plus } from "lucide-react";
+import { Search, Filter, Star, Plus, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function MyCourses() {
@@ -149,6 +149,29 @@ export default function MyCourses() {
     } catch (err) {
       console.error("Error joining course:", err);
       setError("Failed to join course. Please try again.");
+    }
+  }
+
+  async function unenrollCourse(courseId) {
+    try {
+      const res = await fetch(`${API_ROOT}unenroll.php`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ course_id: courseId }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        // Remove the course from myCourses list
+        setMyCourses(myCourses.filter(course => course.id !== courseId));
+      } else if (data.error) {
+        setError(data.error);
+      }
+    } catch (err) {
+      console.error("Error unenrolling from course:", err);
+      setError("Failed to unenroll from course. Please try again.");
     }
   }
 
@@ -381,6 +404,25 @@ export default function MyCourses() {
           background: #e5e5e5;
         }
 
+        .unenroll-btn {
+          padding: 6px 12px;
+          background: #dc2626;
+          color: #fff;
+          border: 1px solid #b91c1c;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 13px;
+          font-weight: 500;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          transition: all 120ms;
+        }
+
+        .unenroll-btn:hover {
+          background: #b91c1c;
+        }
+
         .joined-indicator {
           display: flex;
           align-items: center;
@@ -499,6 +541,14 @@ export default function MyCourses() {
                             color={course.is_favorited ? "#eab308" : "#666"}
                             fill={course.is_favorited ? "#eab308" : "none"}
                           />
+                        </button>
+                        <button
+                          className="unenroll-btn"
+                          onClick={() => unenrollCourse(course.id)}
+                          title="Unenroll from course"
+                        >
+                          <X size={16} />
+                          Unenroll
                         </button>
                       </div>
                     </div>
