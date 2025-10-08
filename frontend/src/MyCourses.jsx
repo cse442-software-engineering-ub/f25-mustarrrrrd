@@ -1,10 +1,13 @@
 import React, { useState } from "react";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, Star, Plus, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function MyCourses() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("my");
   const [searchTerm, setSearchTerm] = useState("");
-  const [results, setResults] = useState([]);
+  const [results, setResults] = useState([]); // stores search results
+  const [myCourses, setMyCourses] = useState([]); // stores enrolled courses
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
@@ -13,6 +16,35 @@ export default function MyCourses() {
 
   const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
   const API_ROOT = new URL("../api/", ABS_BASE).pathname;
+
+  // Fetch enrolled courses when tab switches to "my"
+  React.useEffect(() => {
+    if (activeTab === "my") {
+      fetchMyCourses();
+    }
+  }, [activeTab]);
+
+  async function fetchMyCourses() {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`${API_ROOT}my_courses.php`, {
+        method: "GET",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (data.courses) {
+        setMyCourses(data.courses);
+      } else {
+        setMyCourses([]);
+      }
+    } catch (err) {
+      console.error("Error fetching courses:", err);
+      setError("Failed to load your courses.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function searchCourse() {
     if (!searchTerm.trim()) {
@@ -36,12 +68,30 @@ export default function MyCourses() {
       const data = JSON.parse(text);
 
       if (data.courses) {
-        setResults(data.courses);
+        // Fetch favorites and enrollments to mark courses
+        const [favRes, enrollRes] = await Promise.all([
+          fetch(`${API_ROOT}favorites.php`, { method: "GET", credentials: "include" }),
+          fetch(`${API_ROOT}my_courses.php`, { method: "GET", credentials: "include" })
+        ]);
+
+        const favData = await favRes.json();
+        const enrollData = await enrollRes.json();
+
+        const favoriteIds = new Set(favData.favorites?.map(f => f.id) || []);
+        const enrolledIds = new Set(enrollData.courses?.map(c => c.id) || []);
+
+        // Add is_favorited and is_enrolled flags to search results
+        const coursesWithFlags = data.courses.map(course => ({
+          ...course,
+          is_favorited: favoriteIds.has(course.id),
+          is_enrolled: enrolledIds.has(course.id)
+        }));
+        setResults(coursesWithFlags);
       } else {
         setResults([]);
       }
     } catch (err) {
-      console.error("❌ Error searching courses:", err);
+      console.error("Error searching courses:", err);
       setError("An error occurred while searching. Please try again.");
     } finally {
       setLoading(false);
@@ -51,6 +101,88 @@ export default function MyCourses() {
   function selectFilter(option) {
     setFilterOption(option);
     setFilterOpen(false);
+  }
+  
+  async function toggleFavorite(courseId, currentlyFavorited) {
+    try {
+      const method = currentlyFavorited ? "DELETE" : "POST";
+      await fetch(`${API_ROOT}favorites.php`, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ course_id: courseId }),
+      });
+
+      // Update local state
+      if (activeTab === "find") {
+        setResults(results.map(course =>
+          course.id === courseId
+            ? { ...course, is_favorited: !currentlyFavorited }
+            : course
+        ));
+      } else {
+        setMyCourses(myCourses.map(course =>
+          course.id === courseId
+            ? { ...course, is_favorited: !currentlyFavorited }
+            : course
+        ));
+      }
+    } catch (err) {
+      console.error("Error toggling favorite:", err);
+    }
+  }
+
+  async function joinCourse(courseId) {
+    try {
+      const res = await fetch(`${API_ROOT}enroll.php`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ course_id: courseId, role: "student" }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        // Update the search results to show the course is now enrolled
+        setResults(results.map(course =>
+          course.id === courseId
+            ? { ...course, is_enrolled: true }
+            : course
+        ));
+
+        // Automatically switch to My Courses tab to show the newly joined course
+        setActiveTab("my");
+      } else if (data.error) {
+        setError(data.error);
+      }
+    } catch (err) {
+      console.error("Error joining course:", err);
+      setError("Failed to join course. Please try again.");
+    }
+  }
+
+  async function unenrollCourse(courseId) {
+    try {
+      const res = await fetch(`${API_ROOT}unenroll.php`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ course_id: courseId }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        // Remove the course from myCourses list
+        setMyCourses(myCourses.filter(course => course.id !== courseId));
+      } else if (data.error) {
+        setError(data.error);
+      }
+    } catch (err) {
+      console.error("Error unenrolling from course:", err);
+      setError("Failed to unenroll from course. Please try again.");
+    }
   }
 
   return (
@@ -246,21 +378,105 @@ export default function MyCourses() {
           padding: 16px;
           text-align: left;
           transition: background 150ms;
+          position: relative;
         }
 
         .course-card:hover {
           background: #1a1a1a;
         }
 
+        .course-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
         .course-title {
           font-size: 16px;
           font-weight: 600;
+          margin: 0 0 4px 0;
         }
 
         .course-meta {
           color: var(--muted);
           font-size: 14px;
           margin-top: 4px;
+        }
+
+        .course-credits {
+          display: inline-block;
+          background: #3b82f6;
+          color: white;
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 12px;
+          font-weight: 600;
+          margin-left: 8px;
+        }
+
+        .course-actions {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          flex-shrink: 0;
+        }
+
+        .star-btn, .join-btn {
+          padding: 6px;
+          background: transparent;
+          border: 1px solid #333;
+          border-radius: 6px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 120ms;
+        }
+
+        .star-btn:hover {
+          background: #222;
+        }
+
+        .join-btn {
+          padding: 6px 12px;
+          background: #fff;
+          color: #000;
+          font-size: 13px;
+          font-weight: 500;
+        }
+
+        .join-btn:hover {
+          background: #e5e5e5;
+        }
+
+        .unenroll-btn {
+          padding: 6px 12px;
+          background: #dc2626;
+          color: #fff;
+          border: 1px solid #b91c1c;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 13px;
+          font-weight: 500;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          transition: all 120ms;
+        }
+
+        .unenroll-btn:hover {
+          background: #b91c1c;
+        }
+
+        .joined-indicator {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          color: #10b981;
+          font-size: 13px;
+          font-weight: 500;
+          margin-top: 8px;
         }
 
         .mc-main {
@@ -288,7 +504,7 @@ export default function MyCourses() {
           <div className="mc-controls">
             <button
               className="mc-back"
-              onClick={() => console.log("Back to dashboard")}
+              onClick={() => navigate("/dashboard")}
             >
               Back to Dashboard
             </button>
@@ -359,9 +575,61 @@ export default function MyCourses() {
       {/* Main content */}
       <main className="mc-main">
         {activeTab === "my" ? (
-          <p style={{ color: "#9a9a9a" }}>
-            This is where your courses will appear.
-          </p>
+          <>
+            {loading && <p>Loading...</p>}
+            {error && <p style={{ color: "red" }}>{error}</p>}
+
+            <div className="results">
+              {myCourses.length > 0 ? (
+                myCourses.map((course, idx) => (
+                  <div key={idx} className="course-card">
+                    <div className="course-header">
+                      <div>
+                        <h3 className="course-title">
+                          {course.code}
+                          {course.credits && (
+                            <span className="course-credits">{course.credits} credits</span>
+                          )}
+                        </h3>
+                        <p style={{ color: '#ccc', fontSize: '14px', margin: '0 0 8px 0' }}>
+                          {course.title}
+                        </p>
+                        <div className="course-meta">
+                          {course.lecture_times} • {course.room}
+                        </div>
+                        <div className="joined-indicator">
+                          ✓ Joined
+                        </div>
+                      </div>
+                      <div className="course-actions">
+                        <button
+                          className="star-btn"
+                          onClick={() => toggleFavorite(course.id, course.is_favorited)}
+                          title={course.is_favorited ? "Remove from favorites" : "Add to favorites"}
+                        >
+                          <Star
+                            size={18}
+                            color={course.is_favorited ? "#eab308" : "#666"}
+                            fill={course.is_favorited ? "#eab308" : "none"}
+                          />
+                        </button>
+                        <button
+                          className="unenroll-btn"
+                          onClick={() => unenrollCourse(course.id)}
+                          title="Unenroll from course"
+                        >
+                          <X size={16} />
+                          Unenroll
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                !loading && <p style={{ color: "#9a9a9a" }}>No courses found. Join some courses to see them here!</p>
+              )}
+            </div>
+          </>
         ) : (
           <>
             {loading && <p>Loading...</p>}
@@ -371,17 +639,43 @@ export default function MyCourses() {
               {results.length > 0 ? (
                 results.map((course, idx) => (
                   <div key={idx} className="course-card">
-                    <div className="course-title">
-                      {course.code} — {course.title}
-                    </div>
-                    <div className="course-meta">
-                      {[
-                        "Professor " + course.professor || null,
-                        course.lecture_times || null,
-                        course.room || null
-                      ]
-                        .filter(Boolean)
-                        .join(" • ")}
+                    <div className="course-header">
+                      <div>
+                        <h3 className="course-title">
+                          {course.code}
+                        </h3>
+                        <p style={{ color: '#ccc', fontSize: '14px', margin: '0 0 8px 0' }}>
+                          {course.title}
+                        </p>
+                        <div className="course-meta">
+                          Professor {course.professor}  • {course.lecture_times} • {course.room}
+                        </div>
+                      </div>
+                      <div className="course-actions">
+                        {course.is_enrolled ? (
+                          <div style={{
+                            padding: '6px 12px',
+                            background: '#10b981',
+                            color: 'white',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}>
+                            ✓ Joined
+                          </div>
+                        ) : (
+                          <button
+                            className="join-btn"
+                            onClick={() => joinCourse(course.id)}
+                          >
+                            <Plus size={16} />
+                            <span style={{ marginLeft: '4px' }}>Join</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))
