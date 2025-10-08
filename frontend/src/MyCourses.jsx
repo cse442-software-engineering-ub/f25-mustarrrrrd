@@ -10,6 +10,9 @@ export default function MyCourses() {
   const [myCourses, setMyCourses] = useState([]); // stores enrolled courses
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterOption, setFilterOption] = useState("None");
+  const [hasSearched, setHasSearched] = useState(false); // ⬅ track if user searched at least once
 
   const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
   const API_ROOT = new URL("../api/", ABS_BASE).pathname;
@@ -46,17 +49,19 @@ export default function MyCourses() {
   async function searchCourse() {
     if (!searchTerm.trim()) {
       setResults([]);
+      setHasSearched(true);
       return;
     }
 
     setLoading(true);
     setError("");
+    setHasSearched(true); // ⬅ mark that a search has happened
 
     try {
       const res = await fetch(`${API_ROOT}search_courses.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: searchTerm }),
+        body: JSON.stringify({ query: searchTerm, filter: filterOption }),
       });
 
       const text = await res.text();
@@ -91,6 +96,11 @@ export default function MyCourses() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function selectFilter(option) {
+    setFilterOption(option);
+    setFilterOpen(false);
   }
 
   async function toggleFavorite(courseId, currentlyFavorited) {
@@ -298,6 +308,7 @@ export default function MyCourses() {
           max-width: 700px;
           padding: 10px 14px;
           box-sizing: border-box;
+          position: relative;
         }
 
         .search-bar input {
@@ -313,6 +324,41 @@ export default function MyCourses() {
         .search-bar svg {
           color: #9b9b9b;
           flex-shrink: 0;
+        }
+
+        /* Dropdown styles */
+        .filter-dropdown {
+          position: absolute;
+          right: 0;
+          top: 46px;
+          background: var(--panel);
+          border: 1px solid var(--divider);
+          border-radius: 10px;
+          overflow: hidden;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+          z-index: 2000;
+          width: 160px;
+        }
+
+        .filter-item {
+          padding: 10px 14px;
+          color: var(--muted);
+          font-size: 14px;
+          cursor: pointer;
+          background: transparent;
+          border: none;
+          text-align: left;
+          width: 100%;
+        }
+
+        .filter-item:hover {
+          background: var(--panel-2);
+          color: #fff;
+        }
+
+        .filter-selected {
+          color: #fff;
+          font-weight: 600;
         }
 
         .results {
@@ -491,12 +537,37 @@ export default function MyCourses() {
             <Search size={18} />
             <input
               type="text"
-              placeholder="Search by course code or name (i.e. CSE220, Systems Programming)"
+              placeholder={`Search by ${
+                filterOption === "None"
+                  ? "code, title, or professor"
+                  : filterOption.toLowerCase()
+              } (e.g. CSE220, Systems Programming, Blanton)`}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && searchCourse()}
             />
-            <Filter size={18} onClick={searchCourse} style={{ cursor: "pointer" }} />
+            <div style={{ position: "relative" }}>
+              <Filter
+                size={18}
+                onClick={() => setFilterOpen(!filterOpen)}
+                style={{ cursor: "pointer" }}
+              />
+              {filterOpen && (
+                <div className="filter-dropdown">
+                  {["None", "Code", "Title", "Professor"].map((opt) => (
+                    <button
+                      key={opt}
+                      className={`filter-item ${
+                        filterOption === opt ? "filter-selected" : ""
+                      }`}
+                      onClick={() => selectFilter(opt)}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -516,15 +587,12 @@ export default function MyCourses() {
                       <div>
                         <h3 className="course-title">
                           {course.code}
-                          {course.credits && (
-                            <span className="course-credits">{course.credits} credits</span>
-                          )}
                         </h3>
                         <p style={{ color: '#ccc', fontSize: '14px', margin: '0 0 8px 0' }}>
                           {course.title}
                         </p>
                         <div className="course-meta">
-                          {course.lecture_times} • {course.room}
+                          Professor {course.professor} • {course.lecture_times} • {course.room}
                         </div>
                         <div className="joined-indicator">
                           ✓ Joined
@@ -572,15 +640,12 @@ export default function MyCourses() {
                       <div>
                         <h3 className="course-title">
                           {course.code}
-                          {course.credits && (
-                            <span className="course-credits">{course.credits} credits</span>
-                          )}
                         </h3>
                         <p style={{ color: '#ccc', fontSize: '14px', margin: '0 0 8px 0' }}>
                           {course.title}
                         </p>
                         <div className="course-meta">
-                          {course.lecture_times} • {course.room}
+                          Professor {course.professor}  • {course.lecture_times} • {course.room}
                         </div>
                       </div>
                       <div className="course-actions">
@@ -612,7 +677,10 @@ export default function MyCourses() {
                   </div>
                 ))
               ) : (
-                !loading && <p style={{ color: "#9a9a9a" }}>No results found.</p>
+                !loading &&
+                hasSearched && (
+                  <p style={{ color: "#9a9a9a" }}>No results found.</p>
+                )
               )}
             </div>
           </>
