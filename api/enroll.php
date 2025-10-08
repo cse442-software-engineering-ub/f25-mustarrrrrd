@@ -38,6 +38,15 @@ try {
             exit;
         }
 
+        // Check if course exists
+        $courseStmt = $pdo->prepare("SELECT * FROM courses WHERE id = ?");
+        $courseStmt->execute([$course_id]);
+        if (!$courseStmt->fetch()) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Course not found']);
+            exit;
+        }
+
         // Check if already enrolled
         $stmt = $pdo->prepare("SELECT * FROM enrollments WHERE user_id = ? AND course_id = ?");
         $stmt->execute([$user_id, $course_id]);
