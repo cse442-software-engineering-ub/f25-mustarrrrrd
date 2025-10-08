@@ -102,7 +102,7 @@ export default function MyCourses() {
     setFilterOption(option);
     setFilterOpen(false);
   }
-  
+
   async function toggleFavorite(courseId, currentlyFavorited) {
     try {
       const method = currentlyFavorited ? "DELETE" : "POST";
@@ -587,15 +587,12 @@ export default function MyCourses() {
                       <div>
                         <h3 className="course-title">
                           {course.code}
-                          {course.credits && (
-                            <span className="course-credits">{course.credits} credits</span>
-                          )}
                         </h3>
                         <p style={{ color: '#ccc', fontSize: '14px', margin: '0 0 8px 0' }}>
                           {course.title}
                         </p>
                         <div className="course-meta">
-                          {course.lecture_times} • {course.room}
+                          Professor {course.professor} • {course.lecture_times} • {course.room}
                         </div>
                         <div className="joined-indicator">
                           ✓ Joined
