@@ -39,7 +39,7 @@ try {
     }
 
     $sql = "
-        SELECT code, title, lecture_times, room, professor
+        SELECT id, code, title, lecture_times, room, professor
         FROM courses
         WHERE $where
         ORDER BY title ASC

@@ -21,6 +21,10 @@ export default function MyCourses() {
   React.useEffect(() => {
     if (activeTab === "my") {
       fetchMyCourses();
+    } else if (activeTab === "find") {
+      // Clear search results when switching to Find Courses tab
+      setResults([]);
+      setHasSearched(false);
     }
   }, [activeTab]);
 
