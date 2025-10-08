@@ -41,6 +41,7 @@ ALTER TABLE `courses` DROP `term`;
 ALTER TABLE `courses` DROP `year`;
 ALTER TABLE `courses` ADD `lecture_times` VARCHAR(32) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL AFTER `title`;
 ALTER TABLE `courses` ADD `room` VARCHAR(32) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL AFTER `lecture_times`;
+ALTER TABLE `courses` ADD `professor` VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL AFTER `room`;
 
 CREATE TABLE favorites (
     user_id INT UNSIGNED NOT NULL,
@@ -50,5 +51,3 @@ CREATE TABLE favorites (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
-
--- ALTER TABLE `courses` ADD `professor` VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL AFTER `room`;
