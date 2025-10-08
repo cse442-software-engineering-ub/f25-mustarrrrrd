@@ -376,7 +376,7 @@ export default function MyCourses() {
                     </div>
                     <div className="course-meta">
                       {[
-                        course.professor || null,
+                        "Professor " + course.professor || null,
                         course.lecture_times || null,
                         course.room || null
                       ]
