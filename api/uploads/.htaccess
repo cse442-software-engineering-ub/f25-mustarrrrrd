@@ -1,0 +1,5 @@
+# /uploads/.htaccess
+php_flag engine off
+RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .phps
+AddType text/plain .php .phtml .php3 .php4 .php5 .php7 .phps
+Options -ExecCGI
