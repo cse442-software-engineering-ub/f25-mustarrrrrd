@@ -1,8 +1,10 @@
 <?php
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth.php';
 
 header('Content-Type: application/json');
 
+// CORS (reflect origin; allow credentials)
 if (isset($_SERVER['HTTP_ORIGIN'])) {
   header('Access-Control-Allow-Origin: ' . $_SERVER['HTTP_ORIGIN']);
   header('Access-Control-Allow-Credentials: true');
@@ -35,6 +37,7 @@ $stmt = $pdo->prepare('SELECT id, name, email, password_hash, role FROM users WH
 $stmt->execute([$email]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
+// NOTE: you said password_hash column stores plaintext for now
 if (!$user || $user['password_hash'] !== $password) {
   echo json_encode(['match'=>false,'message'=>'Invalid email or password']);
   exit;
@@ -47,9 +50,15 @@ $_SESSION['email']   = $user['email'];
 $_SESSION['name']    = $user['name'];
 $_SESSION['role']    = $user['role'];
 
+// Issue persistent remember-me cookie (server hashes; DB stores hash)
+issue_persistent_login($pdo, (int)$user['id']);
+
+// Map DB role "instructor" -> "professor" for the client
+$response_role = ($user['role'] === 'instructor') ? 'professor' : $user['role'];
+
 echo json_encode([
   'match'   => true,
   'message' => 'Login successful',
   'name'    => $user['name'],
-  'role'    => $user['role']
+  'role'    => $response_role,
 ]);
