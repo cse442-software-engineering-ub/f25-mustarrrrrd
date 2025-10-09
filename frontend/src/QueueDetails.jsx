@@ -1,5 +1,5 @@
 // frontend/src/QueueDetails.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ActivitySquare, MapPin, Users } from "lucide-react";
 
@@ -7,7 +7,19 @@ export default function QueueDetails() {
   const navigate = useNavigate();
   const { courseId } = useParams();
 
-  // Demo course data (can be wired up later)
+  // ----- API base (absolute path derived from Vite base) -----
+  const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
+  const API_ROOT = new URL("../api/", ABS_BASE).pathname;
+
+  // session user email (from check_session.php)
+  const [email, setEmail] = useState(null);
+
+  // live queue numbers from server
+  const [yourPosition, setYourPosition] = useState(1);
+  const [totalInQueue, setTotalInQueue] = useState(0);
+  const [status, setStatus] = useState("Active");
+
+  // course “model” (visuals unchanged)
   const course = useMemo(
     () =>
       ({
@@ -15,14 +27,14 @@ export default function QueueDetails() {
         title: courseId || "CSE116",
         sessionTime: "Mon, Wed, Fri 2:00–4:00 PM",
         location: "Davis Hall 338",
-        totalInQueue: 0,
-        yourPosition: 1,
-        status: "Active",
+        totalInQueue,
+        yourPosition,
+        status,
       }),
-    [courseId]
+    [courseId, totalInQueue, yourPosition, status]
   );
 
-  // Notes persisted per course
+  // notes persisted per course (keeps your existing UX)
   const storageKey = `queue_notes_${course.id}`;
   const [notes, setNotes] = useState("");
 
@@ -31,13 +43,143 @@ export default function QueueDetails() {
     if (existing !== null) setNotes(existing);
   }, [storageKey]);
 
+  // ----- polling + auto-join lifecycle (logic only; UI unchanged) -----
+  const pollTimer = useRef(null);
+  const triedAutoJoinRef = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function checkSession() {
+      const sres = await fetch(`${API_ROOT}check_session.php`, {
+        method: "GET",
+        credentials: "include",
+      });
+      const sdata = await sres.json().catch(() => ({}));
+      if (!sdata?.loggedIn || !sdata?.email) {
+        navigate("/"); // not logged in -> go to login
+        return null;
+      }
+      if (cancelled) return null;
+      setEmail(sdata.email);
+      return sdata.email;
+    }
+
+    async function joinOnce(userEmail, initialNotes) {
+      try {
+        await fetch(`${API_ROOT}queue_join.php`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            course_id: course.id,
+            user_email: userEmail,
+            notes: initialNotes ?? "",
+          }),
+        });
+      } catch {
+        // ignore; we'll try polling and possibly auto-join again on 404
+      }
+    }
+
+    async function pollOnce() {
+      try {
+        const res = await fetch(
+          `${API_ROOT}queue_status.php?course_id=${encodeURIComponent(course.id)}`,
+          { credentials: "include" }
+        );
+
+        if (res.status === 200) {
+          const data = await res.json().catch(() => ({}));
+          if (typeof data.total === "number") setTotalInQueue(data.total);
+          if (typeof data.position === "number") setYourPosition(data.position);
+          if (typeof data.status === "string") setStatus(data.status);
+
+          // hydrate notes from server once (don’t clobber active edits)
+          if (typeof data.notes === "string") {
+            const currentLocal = localStorage.getItem(storageKey) ?? "";
+            if ((notes ?? "") === currentLocal) {
+              setNotes(data.notes);
+              localStorage.setItem(storageKey, data.notes);
+            }
+          }
+          return;
+        }
+
+        if (res.status === 404) {
+          // not in queue yet -> try one more auto-join, then keep polling
+          if (!triedAutoJoinRef.current && email) {
+            triedAutoJoinRef.current = true;
+            await joinOnce(email, notes);
+          }
+          return;
+        }
+
+        if (res.status === 410) {
+          // queue closed/ended -> back to dashboard
+          navigate("/dashboard");
+          return;
+        }
+
+        // other statuses: ignore and next tick will retry
+      } catch {
+        // transient network/server issues -> ignore
+      }
+    }
+
+    async function bootstrap() {
+      const userEmail = await checkSession();
+      if (!userEmail || cancelled) return;
+
+      // initial join (idempotent on the server)
+      await joinOnce(userEmail, notes);
+
+      // first read
+      await pollOnce();
+
+      // start polling
+      pollTimer.current = setInterval(pollOnce, 3000);
+    }
+
+    bootstrap();
+
+    return () => {
+      cancelled = true;
+      if (pollTimer.current) clearInterval(pollTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [API_ROOT, course.id, navigate]); // re-bootstrap if course changes
+
   function saveNotes() {
+    // Save locally (keep existing UX)
     localStorage.setItem(storageKey, notes);
+
+    // Also persist to server (best-effort; UI unchanged)
+    if (email) {
+      fetch(`${API_ROOT}queue_save_notes.php`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          course_id: course.id,
+          user_email: email,
+          notes,
+        }),
+      }).catch(() => {});
+    }
     alert("Notes saved.");
   }
 
-  // Leave → Dashboard (server hook can be added later)
   function leaveQueue() {
+    if (pollTimer.current) clearInterval(pollTimer.current);
+    if (email) {
+      fetch(`${API_ROOT}queue_leave.php`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ course_id: course.id, user_email: email }),
+      }).catch(() => {});
+    }
     navigate("/dashboard");
   }
 
