@@ -21,6 +21,23 @@ function fail($msg, $http=400, $extra=[]) {
   exit;
 }
 
+// Headers first
+header('Content-Type: application/json');
+if (isset($_SERVER['HTTP_ORIGIN'])) {
+  header('Access-Control-Allow-Origin: ' . $_SERVER['HTTP_ORIGIN']);
+  header('Access-Control-Allow-Credentials: true');
+}
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+  header('Access-Control-Allow-Methods: POST, OPTIONS');
+  header('Access-Control-Allow-Headers: Content-Type');
+  exit;
+}
+
+// Includes: need BOTH db.php and auth.php for pdo(), read_json(), current_user()
+require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth.php';
+
+// Get current user (via session or remember cookie)
 $u = current_user();
 if (!$u) fail('Not signed in', 401);
 

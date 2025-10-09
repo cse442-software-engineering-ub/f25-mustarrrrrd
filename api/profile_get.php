@@ -10,6 +10,13 @@ if (isset($_SERVER['HTTP_ORIGIN'])) {
   header('Access-Control-Allow-Credentials: true');
 }
 
+header('Content-Type: application/json');
+if (isset($_SERVER['HTTP_ORIGIN'])) {
+  header('Access-Control-Allow-Origin: ' . $_SERVER['HTTP_ORIGIN']);
+  header('Access-Control-Allow-Credentials: true');
+}
+
+// Must be signed in
 $u = current_user();
 if (!$u) {
   http_response_code(401);

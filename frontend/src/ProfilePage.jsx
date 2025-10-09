@@ -71,19 +71,68 @@ export default function ProfilePage() {
     window.location.href = new URL("", ABS_BASE).pathname; // back to login
   }
 
-  // Front-end avatar (local preview only)
+  // ===== Avatar upload / delete =====
   function chooseAvatar() { fileRef.current?.click(); }
-  function onPick(e) {
+
+  async function onPick(e) {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Optional local preview while uploading
     const url = URL.createObjectURL(file);
     if (localAvatarURL) URL.revokeObjectURL(localAvatarURL);
     setLocalAvatarURL(url);
+
+    const fd = new FormData();
+    fd.append("avatar", file);
+
+    try {
+      const res = await fetch(`${API_ROOT}profile_upload_avatar.php`, {
+        method: "POST",
+        credentials: "include",
+        body: fd, // let browser set multipart boundary
+      });
+      const data = await res.json();
+      if (data?.ok) {
+        // Prefer server image; clear temp preview
+        URL.revokeObjectURL(url);
+        setLocalAvatarURL(null);
+        setProfile(p => ({ ...p, avatar_url: data.avatar_url, avatar_filename: data.filename }));
+        setDraft(d => d ? ({ ...d, avatar_url: data.avatar_url, avatar_filename: data.filename }) : d);
+        setMsg("Avatar updated.");
+        setTimeout(()=>setMsg(""), 2000);
+      } else {
+        setMsg(data?.message || "Avatar upload failed.");
+      }
+    } catch {
+      setMsg("Server error during upload.");
+    } finally {
+      if (fileRef.current) fileRef.current.value = ""; // allow re-pick same file
+    }
   }
-  function removeAvatar() {
-    if (localAvatarURL) URL.revokeObjectURL(localAvatarURL);
-    setLocalAvatarURL(null);
+
+  async function removeAvatar() {
+    try {
+      const res = await fetch(`${API_ROOT}profile_delete_avatar.php`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (data?.ok) {
+        if (localAvatarURL) URL.revokeObjectURL(localAvatarURL);
+        setLocalAvatarURL(null);
+        setProfile(p => ({ ...p, avatar_url: null, avatar_filename: null }));
+        setDraft(d => d ? ({ ...d, avatar_url: null, avatar_filename: null }) : d);
+        setMsg("Avatar removed.");
+        setTimeout(()=>setMsg(""), 1500);
+      } else {
+        setMsg(data?.message || "Remove failed.");
+      }
+    } catch {
+      setMsg("Server error during remove.");
+    }
   }
+  // ===== end avatar handlers =====
 
   if (loading) return <div style={{color:"#fff",padding:24,background:"#000",minHeight:"100vh"}}>Loading…</div>;
 
@@ -104,12 +153,8 @@ export default function ProfilePage() {
 
   /** === Layout: fixed header, extra top whitespace, no h-scroll, wider cards === */
   const HEADER_H = 64;
-  // Increase this to push everything down further (try 144–176 if needed)
   const TOP_SPACER = 160;
-  // Extra cushion when editing so the form isn't tucked under the bar
   const EDIT_BONUS = 293;
-
-  // One computed value so view + edit stay aligned
   const effectiveTopPad = HEADER_H + TOP_SPACER + (editing ? EDIT_BONUS : 0);
 
   const page = {
@@ -119,11 +164,9 @@ export default function ProfilePage() {
     color:"#fff",
     fontFamily:"system-ui, sans-serif",
     overflowX:"hidden",
-    // Ensure anchor jumps / scrollIntoView don't hide under the bar
     scrollPaddingTop: effectiveTopPad,
   };
 
-  // Fixed header
   const topBar = {
     position:"fixed",
     left:0,
@@ -148,7 +191,7 @@ export default function ProfilePage() {
 
   const contentWrap = {
     ...container,
-    paddingTop: effectiveTopPad, // key line: pushes content below the header
+    paddingTop: effectiveTopPad,
     paddingBottom: 64,
   };
 
@@ -253,10 +296,15 @@ export default function ProfilePage() {
                 width:120, height:120, borderRadius:"50%", background:"#222",
                 overflow:"hidden", display:"grid", placeItems:"center", fontWeight:800, fontSize:34, flex:"0 0 auto"
               }}>
-                {localAvatarURL ? (
-                  <img src={localAvatarURL} alt="Avatar" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                {(localAvatarURL || profile.avatar_url) ? (
+                  <img
+                    src={localAvatarURL || profile.avatar_url}
+                    alt="Avatar"
+                    style={{ width:"100%", height:"100%", objectFit:"cover" }}
+                  />
                 ) : (
-                  (profile.preferred_name || profile.name || "?").split(" ").slice(0,2).map(p=>p[0]?.toUpperCase()).join("") || "?"
+                  (profile.preferred_name || profile.name || "?")
+                    .split(" ").slice(0,2).map(p=>p[0]?.toUpperCase()).join("") || "?"
                 )}
               </div>
               <div style={{ minWidth: 200, flex:"1 1 auto" }}>
@@ -267,14 +315,14 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Front-end avatar controls */}
+            {/* Avatar controls */}
             {editing && (
               <>
                 <div style={{ display:"flex", gap:10, marginBottom:10, flexWrap:"wrap" }}>
                   <button onClick={chooseAvatar} style={{ background:"#2a2a2a", border:"1px solid #444", color:"#fff", padding:"8px 12px", borderRadius:10, fontSize:14 }}>
                     Choose Image
                   </button>
-                  {localAvatarURL && (
+                  {(localAvatarURL || profile.avatar_url) && (
                     <button onClick={removeAvatar} style={{ background:"transparent", border:"1px solid #444", color:"#fff", padding:"8px 12px", borderRadius:10, fontSize:14 }}>
                       Remove
                     </button>
@@ -282,7 +330,7 @@ export default function ProfilePage() {
                 </div>
                 <input ref={fileRef} type="file" accept="image/*" style={{ display:"none" }} onChange={onPick}/>
                 <div style={{ color:"#777", fontSize:12, marginBottom:10 }}>
-                  Preview is local only and won’t be saved to the server.
+                  Images are stored on the server under a random name.
                 </div>
               </>
             )}
@@ -378,7 +426,7 @@ export default function ProfilePage() {
                     <textarea
                       rows={6}
                       value={draft?.disabilities || ""}
-                      onChange={e=> setDraft(d => ({...d, disabilities: e.target.value}))}
+                      onChange={e=>setDraft(d => ({...d, disabilities: e.target.value}))}
                       style={{ ...inputBase, resize:"vertical" }}
                     />
                   </label>
