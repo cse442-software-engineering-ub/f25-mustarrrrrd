@@ -1,9 +1,10 @@
 <?php
-session_start();
+require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth.php';
 
 header('Content-Type: application/json');
 
-// CORS
+// CORS (reflect origin; allow credentials)
 if (isset($_SERVER['HTTP_ORIGIN'])) {
   header('Access-Control-Allow-Origin: ' . $_SERVER['HTTP_ORIGIN']);
   header('Access-Control-Allow-Credentials: true');
@@ -14,15 +15,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
   exit;
 }
 
-// Check if user is logged in
-if (isset($_SESSION['user_id']) && isset($_SESSION['email'])) {
+/* Prefer PHP session; fall back to remember-me cookie */
+$u = current_user();
+
+if ($u) {
+  $role = ($u['role'] === 'instructor') ? 'professor' : $u['role'];
   echo json_encode([
     'loggedIn' => true,
+    'role' => $role,
     'user' => [
-      'id' => $_SESSION['user_id'],
-      'email' => $_SESSION['email'],
-      'name' => $_SESSION['name'] ?? ''
-    ]
+      'id'    => (int)$u['id'],
+      'email' => $u['email'],
+      'name'  => $u['name'] ?? '',
+    ],
   ]);
 } else {
   echo json_encode(['loggedIn' => false]);

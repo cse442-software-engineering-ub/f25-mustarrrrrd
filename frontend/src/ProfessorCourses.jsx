@@ -15,13 +15,28 @@ export default function ProfCourses() {
 
   const clamp = (s) => s.slice(0, MAX);
 
+  // ✅ Cookie reader (same logic as in Login.jsx)
+  const getCookie = (name) => {
+    const nameEQ = `${name}=`;
+    const parts = document.cookie.split(";").map((c) => c.trim());
+    const hit = parts.find((c) => c.startsWith(nameEQ));
+    return hit ? decodeURIComponent(hit.slice(nameEQ.length)) : null;
+  };
+
   // ✅ Async function to create course
   async function createCourse() {
+    const userEmail = getCookie("userEmail"); // ✅ retrieve user email
+    if (!userEmail) {
+      alert("User email not found — please log in again.");
+      return;
+    }
+
     const courseData = {
       code,
       name,
       lectureTimes,
       room,
+      userEmail, // ✅ send to PHP
     };
 
     try {
@@ -33,13 +48,18 @@ export default function ProfCourses() {
 
       const data = await res.json();
       console.log("Server response:", data);
-      alert("Course created successfully!");
+
+      if (res.ok && data.success) {
+        alert(`✅ Course created successfully (Professor: ${data.professor})`);
+      } else {
+        alert(`❌ Error: ${data.message}`);
+      }
     } catch (error) {
       console.error("Error creating course:", error);
       alert("Error creating course. Please try again.");
     }
   }
-  
+
   return (
     <div className="mc-root">
       <style>{`
@@ -142,26 +162,25 @@ export default function ProfCourses() {
         .mc-tab.active { background: #333; color: #fff; font-weight: 600; }
 
         .mc-main {
-          padding: 180px 28px 60px; /* slightly reduced padding */
+          padding: 180px 28px 60px;
           box-sizing: border-box;
           background: var(--bg);
           min-height: 100vh; 
           width: 100%;
         }
 
-        /* Form styling */
         .course-form {
           max-width: 900px;
           margin: 0 auto;
           display: flex;
           flex-direction: column;
-          gap: 18px; /* reduced vertical spacing */
+          gap: 18px;
         }
 
         .form-group {
           display: flex;
           flex-direction: column;
-          gap: 6px; /* slightly reduced */
+          gap: 6px;
         }
 
         .form-group label {
@@ -172,16 +191,16 @@ export default function ProfCourses() {
         .form-group input,
         .form-group textarea {
           width: 100%;    
-          padding: 12px; /* smaller height */
+          padding: 12px;
           border-radius: 10px;
           border: 1px solid #333;
           background: #111;
           color: #fff;
-          font-size: 15px; /* slightly smaller */
+          font-size: 15px;
         }
 
         .form-group textarea {
-          min-height: 60px; /* reduced height */
+          min-height: 60px;
           resize: vertical;
         }
 
@@ -192,7 +211,6 @@ export default function ProfCourses() {
           background: #181818;
         }
 
-        /* Create Course Button */
         .create-btn {
           margin-top: 8px;
           padding: 12px 24px;
@@ -205,7 +223,7 @@ export default function ProfCourses() {
           cursor: pointer;
           transition: background 150ms, transform 100ms;
           align-self: center;
-          width: 45%; /* fits better */
+          width: 45%;
           max-width: 260px;
           text-align: center;
         }
@@ -297,7 +315,7 @@ export default function ProfCourses() {
                 onChange={(e) => setRoom(clamp(e.target.value))}
               />
             </div>
-            {/* Create Course Button */}
+
             <button type="button" onClick={createCourse} className="create-btn">
               Create Course
             </button>

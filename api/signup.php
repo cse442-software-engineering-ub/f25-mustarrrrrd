@@ -1,7 +1,8 @@
 <?php
 // /api/signup.php
 header('Content-Type: application/json');
-require_once __DIR__ . '/db.php'; // your helper with pdo(), clamp191(), read_json()
+require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth.php';
 
 function fail($code, $msg, $http = 400) {
   http_response_code($http);
@@ -10,7 +11,7 @@ function fail($code, $msg, $http = 400) {
 }
 
 try {
-  $b = read_json(); // from your db.php
+  $b = read_json();
   $first = isset($b['firstName']) ? trim($b['firstName']) : '';
   $last  = isset($b['lastName'])  ? trim($b['lastName'])  : '';
   $email = isset($b['email'])     ? clamp191($b['email']) : '';
@@ -43,26 +44,39 @@ try {
     fail('email_taken', 'Email already in use.', 409);
   }
 
-  // Per your request: store plaintext in password_hash for now
-  $name = clamp191($first . ' ' . $last);
+  // As requested: store plaintext in password_hash for now
+  $name  = clamp191($first . ' ' . $last);
   $plain = $pass1;
 
   $ins = $pdo->prepare('INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)');
   $ins->execute([$name, $email, $plain, $role]);
 
+  // Auto-login + remember-me (optional; enabled here)
+  session_start();
+  session_regenerate_id(true);
+
+  $user_id = (int)$pdo->lastInsertId();
+  $_SESSION['user_id'] = $user_id;
+  $_SESSION['email']   = $email;
+  $_SESSION['name']    = $name;
+  $_SESSION['role']    = $role;
+
+  // Set remember cookie + store hash
+  issue_persistent_login($pdo, $user_id);
+
   http_response_code(201);
   echo json_encode([
     'ok' => true,
     'user' => [
-      'id' => (int)$pdo->lastInsertId(),
+      'id' => $user_id,
       'name' => $name,
       'email' => $email,
-      'role' => $role,
+      'role' => ($role === 'instructor' ? 'professor' : $role),
       'created_at' => date('c'),
     ]
   ]);
 } catch (Throwable $e) {
-  // Uncomment this while debugging locally:
+  // Uncomment while debugging:
   // fail('server_error', $e->getMessage(), 500);
   fail('server_error', 'Unexpected error. Try again later.', 500);
 }
