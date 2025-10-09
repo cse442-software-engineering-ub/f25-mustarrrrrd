@@ -27,3 +27,4 @@ dist-ssr
 api/db.php
 app/assets/
 app/index.html
+api/uploads/avatars/

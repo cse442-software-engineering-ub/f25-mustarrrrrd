@@ -27,7 +27,7 @@ if (!$email || !$password) {
 
 try {
   $pdo = pdo();
-} catch (Exception $e) {
+} catch (Throwable $e) {
   http_response_code(500);
   echo json_encode(['match'=>false,'message'=>'DB connection error']);
   exit;
@@ -43,6 +43,7 @@ if (!$user || $user['password_hash'] !== $password) {
   exit;
 }
 
+// Start/refresh PHP session
 session_start();
 session_regenerate_id(true);
 $_SESSION['user_id'] = (int)$user['id'];
