@@ -2,12 +2,18 @@
 import { Star, Clock, MapPin, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom"; // ✅ added
 
-export function CourseCardDashboard({ course }) {
-  const navigate = useNavigate(); // ✅ added
+export function CourseCardDashboard({ course, onRemoveFavorite }) {
+  const navigate = useNavigate();
 
-  // ✅ navigate to your Queue Details route, carrying the course in state
   const handleJoinQueue = () => {
     navigate(`/queue/${course.code}`, { state: { course } });
+  };
+
+  const handleRemoveFavorite = (e) => {
+    e.stopPropagation();
+    if (onRemoveFavorite) {
+      onRemoveFavorite(course.id);
+    }
   };
 
   return (
@@ -46,18 +52,21 @@ export function CourseCardDashboard({ course }) {
             {course.professor}
           </p>
         </div>
-        <button style={{
-          padding: '0.25rem',
-          background: 'transparent',
-          border: 'none',
-          borderRadius: '0.25rem',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}
-        onMouseOver={(e) => e.currentTarget.style.background = '#f3f4f6'}
-        onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+        <button
+          onClick={handleRemoveFavorite}
+          title="Remove from favorites"
+          style={{
+            padding: '0.25rem',
+            background: 'transparent',
+            border: 'none',
+            borderRadius: '0.25rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          onMouseOver={(e) => e.currentTarget.style.background = '#f3f4f6'}
+          onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
         >
           <Star size={20} color="#eab308" fill="#eab308" />
         </button>
