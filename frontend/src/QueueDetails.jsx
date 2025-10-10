@@ -1,5 +1,5 @@
 // frontend/src/QueueDetails.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ActivitySquare, MapPin, Users } from "lucide-react";
 
@@ -7,7 +7,20 @@ export default function QueueDetails() {
   const navigate = useNavigate();
   const { courseId } = useParams();
 
-  // Demo course data (can be wired up later)
+  // -------- Robust API root (works on Local: /app -> /api, Aptitude: /auto_oh/ -> /api) --------
+  const ABS_BASE = new URL(import.meta.env.BASE_URL || "/", window.location.origin);
+  const API_ROOT = new URL("../api/", ABS_BASE).pathname; // e.g., /.../api/
+
+  // Session / boot gate
+  const [email, setEmail] = useState(null);
+  const [booted, setBooted] = useState(false); // render only after we check
+
+  // Live queue numbers (server-driven)
+  const [yourPosition, setYourPosition] = useState(1);
+  const [totalInQueue, setTotalInQueue] = useState(0);
+  const [status, setStatus] = useState("Active");
+
+  // Course model (visuals unchanged)
   const course = useMemo(
     () =>
       ({
@@ -15,29 +28,162 @@ export default function QueueDetails() {
         title: courseId || "CSE116",
         sessionTime: "Mon, Wed, Fri 2:00–4:00 PM",
         location: "Davis Hall 338",
-        totalInQueue: 0,
-        yourPosition: 1,
-        status: "Active",
+        totalInQueue,
+        yourPosition,
+        status,
       }),
-    [courseId]
+    [courseId, totalInQueue, yourPosition, status]
   );
 
-  // Notes persisted per course
+  // Notes (local persistence)
   const storageKey = `queue_notes_${course.id}`;
   const [notes, setNotes] = useState("");
-
   useEffect(() => {
     const existing = localStorage.getItem(storageKey);
     if (existing !== null) setNotes(existing);
   }, [storageKey]);
 
+  // Join + polling lifecycle (with safe session gate)
+  const pollTimer = useRef(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function bootstrap() {
+      try {
+        // 1) Check session. Only redirect if we are SURE user is not logged in.
+        const sres = await fetch(`${API_ROOT}check_session.php?t=${Date.now()}`, {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+          headers: { Accept: "application/json" },
+        });
+
+        if (!sres.ok) {
+          setBooted(true);
+          return;
+        }
+
+        let sdata = null;
+        try {
+          sdata = await sres.json();
+        } catch {
+          setBooted(true);
+          return;
+        }
+
+        if (sdata?.loggedIn && sdata?.email) {
+          if (cancelled) return;
+          setEmail(sdata.email);
+        } else if (sdata && sdata.loggedIn === false) {
+          navigate("/");
+          return;
+        } else {
+          setBooted(true);
+          return;
+        }
+
+        // 2) Attempt to join queue (idempotent server-side)
+        try {
+          const jres = await fetch(`${API_ROOT}queue_join.php`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            credentials: "include",
+            cache: "no-store",
+            body: JSON.stringify({
+              course_id: course.id, // can be code or id; server normalizes
+              user_email: sdata.email,
+              notes,
+            }),
+          });
+          // Optional: ignore body if not ok; we'll poll for state next.
+          if (!jres.ok) {
+            // no-op; polling will still show current status
+          }
+        } catch {
+          /* ignore */
+        }
+
+        // 3) Prime status and start polling
+        await pollOnce();
+        pollTimer.current = setInterval(pollOnce, 3000);
+      } finally {
+        if (!cancelled) setBooted(true);
+      }
+    }
+
+    async function pollOnce() {
+      try {
+        const res = await fetch(
+          `${API_ROOT}queue_status.php?course_id=${encodeURIComponent(course.id)}&t=${Date.now()}`,
+          {
+            credentials: "include",
+            cache: "no-store",
+            headers: { Accept: "application/json" },
+          }
+        );
+        if (!res.ok) return;
+
+        const data = await res.json().catch(() => null);
+        if (!data) return;
+
+        if (typeof data.total === "number") setTotalInQueue(data.total);
+        if (typeof data.position === "number") setYourPosition(data.position);
+        if (typeof data.status === "string") setStatus(data.status);
+
+        if (typeof data.notes === "string") {
+          const currentLocal = localStorage.getItem(storageKey) ?? "";
+          if ((notes ?? "") === currentLocal) {
+            setNotes(data.notes);
+            localStorage.setItem(storageKey, data.notes);
+          }
+        }
+      } catch {
+        // ignore transient errors
+      }
+    }
+
+    bootstrap();
+
+    return () => {
+      if (pollTimer.current) clearInterval(pollTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [API_ROOT, course.id, navigate]);
+
   function saveNotes() {
     localStorage.setItem(storageKey, notes);
+    if (email) {
+      fetch(`${API_ROOT}queue_save_notes.php`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        credentials: "include",
+        cache: "no-store",
+        body: JSON.stringify({
+          course_id: course.id,
+          user_email: email,
+          notes,
+        }),
+      }).catch(() => {});
+    }
     alert("Notes saved.");
   }
 
-  // Leave → Dashboard (server hook can be added later)
-  function leaveQueue() {
+  async function leaveQueue() {
+    if (pollTimer.current) clearInterval(pollTimer.current);
+    if (email) {
+      try {
+        await fetch(`${API_ROOT}queue_leave.php`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          credentials: "include",
+          cache: "no-store",
+          body: JSON.stringify({ course_id: course.id, user_email: email }),
+        });
+      } catch {
+        /* ignore */
+      }
+    }
     navigate("/dashboard");
   }
 
@@ -46,10 +192,14 @@ export default function QueueDetails() {
       ? Math.min(100, Math.round((course.yourPosition / course.totalInQueue) * 100))
       : 0;
 
+  // ---- Gate rendering until we've done the session check once
+  if (!booted) {
+    return null; // render nothing briefly instead of flashing login/dashboard
+  }
+
   return (
     <div
       style={{
-        // FULL-BLEED: fill entire viewport, no black borders
         position: "fixed",
         inset: 0,
         overflow: "auto",
@@ -94,7 +244,7 @@ export default function QueueDetails() {
             cursor: "pointer",
             fontSize: "0.95rem",
             fontWeight: 600,
-            marginRight: 56, // nudged left from dark-mode button area
+            marginRight: 56,
           }}
           onMouseOver={(e) => (e.currentTarget.style.background = "#f9fafb")}
           onMouseOut={(e) => (e.currentTarget.style.background = "#fff")}
@@ -170,7 +320,7 @@ export default function QueueDetails() {
           >
             <div>
               <div style={{ fontSize: 40, fontWeight: 800, color: "#111827", lineHeight: 1 }}>
-                {course.yourPosition}
+                {course.yourPosition ?? "-"}
               </div>
               <div style={{ color: "#6b7280" }}>Your Position</div>
             </div>

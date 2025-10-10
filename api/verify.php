@@ -54,6 +54,8 @@ $_SESSION['role']    = $user['role'];
 // Issue persistent remember-me cookie (server hashes; DB stores hash)
 issue_persistent_login($pdo, (int)$user['id']);
 
+session_write_close();
+
 // Map DB role "instructor" -> "professor" for the client
 $response_role = ($user['role'] === 'instructor') ? 'professor' : $user['role'];
 
