@@ -1,60 +1,61 @@
 <?php
-// api/check_session.php
 declare(strict_types=1);
 
-// --- Never output anything before headers/session_start ---
-header('Content-Type: application/json; charset=utf-8');
+header('Content-Type: application/json');
+header('Cache-Control: no-store, no-cache, must-revalidate');
+header('Pragma: no-cache');
 
-// CORS (reflect origin; allow credentials). Safe for local dev.
-// If you run frontend on a different port/origin, this lets cookies through.
-if (isset($_SERVER['HTTP_ORIGIN'])) {
-    header('Vary: Origin');
-    header('Access-Control-Allow-Origin: ' . $_SERVER['HTTP_ORIGIN']);
-    header('Access-Control-Allow-Credentials: true');
-}
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    header('Access-Control-Allow-Methods: GET, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type');
-    http_response_code(204);
-    exit;
+// Make sure app and API share the same cookie scope (parent of /app and /api).
+// If your site root is deeper, set that path (e.g. '/CSE442/2025-Fall/cse-442ai/auto_oh/').
+if (session_status() !== PHP_SESSION_ACTIVE) {
+  session_set_cookie_params([
+    'lifetime' => 0,
+    'path'     => '/',   // share across /app/ and /api/
+    'domain'   => '',    // current host
+    'secure'   => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+    'httponly' => true,
+    'samesite' => 'Lax',
+  ]);
+  session_start();
 }
 
 require_once __DIR__ . '/db.php';
-require_once __DIR__ . '/auth.php';
 
-// Ensure session is started (in case auth.php didn't).
-if (session_status() !== PHP_SESSION_ACTIVE) {
-    // If you need cross-site cookies (different port/origin), you may need:
-//    ini_set('session.cookie_samesite', 'None');
-//    ini_set('session.cookie_secure', '1'); // requires https
-    ini_set('session.cookie_httponly', '1');
-    session_start();
+function reply($ok, $extra = []) {
+  echo json_encode(array_merge(['ok' => $ok], $extra));
+  exit;
 }
 
-// current_user() should return an associative array like:
-// ['id' => 123, 'email' => 'x@y.com', 'role' => 'student'|'instructor', 'name' => '...']
-// or null/false if not logged in.
-$u = current_user();
+// 1) If session already has the user, we're done.
+if (!empty($_SESSION['email'])) {
+  reply(true, ['loggedIn' => true, 'email' => $_SESSION['email']]);
+}
 
-if ($u) {
-    $role = ($u['role'] ?? '') === 'instructor' ? 'professor' : ($u['role'] ?? 'student');
+// 2) Otherwise, try to rebuild the session from a remember_token cookie (if you use one).
+$token = $_COOKIE['remember_token'] ?? null;
+if ($token) {
+  try {
+    $pdo = pdo();
 
-    $payload = [
-        'loggedIn' => true,
-        'role'     => $role,
-        // top-level email so your React code that reads sdata.email works:
-        'email'    => $u['email'] ?? '',
-        // keep nested object too, for consistency elsewhere:
-        'user'     => [
-            'id'    => (int)($u['id'] ?? 0),
-            'email' => $u['email'] ?? '',
-            'name'  => $u['name'] ?? '',
-        ],
-    ];
+    // Adjust to your schema. Common patterns:
+    //   users(email, remember_token)
+    //   users(email, remember_token_hash)  -> then verify with password_verify
+    $stmt = $pdo->prepare('SELECT email, remember_token FROM users WHERE remember_token = ? LIMIT 1');
+    $stmt->execute([$token]);
+    $row = $stmt->fetch();
 
-    echo json_encode($payload);
+    if ($row && isset($row['email'])) {
+      // Rebuild the session
+      $_SESSION['email'] = $row['email'];
+      reply(true, ['loggedIn' => true, 'email' => $row['email']]);
+    }
+  } catch (Throwable $e) {
+    // In production you might hide this; for aptitude debugging it's useful.
+    echo json_encode(['ok' => false, 'loggedIn' => false, 'error' => $e->getMessage()]);
+    http_response_code(200);
     exit;
+  }
 }
 
-// Not logged in
-echo json_encode(['loggedIn' => false]);
+// 3) No session and no valid token -> not logged in
+reply(true, ['loggedIn' => false]);

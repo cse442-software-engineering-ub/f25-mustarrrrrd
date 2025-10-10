@@ -1,49 +1,68 @@
 <?php
 declare(strict_types=1);
+
+// Hard no-cache (helps on university proxies)
 header('Content-Type: application/json');
-header('Cache-Control: no-store, no-cache, must-revalidate'); // <- kill caches
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
+header('Expires: 0');
 
 require_once __DIR__ . '/db.php';
-if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
 
-function jreply(int $code, array $payload) {
+function out(int $code, array $payload): void {
   http_response_code($code);
   echo json_encode($payload);
   exit;
 }
 
-function canonical_course_id(PDO $pdo, $key): int {
-  if ($key === null || $key === '') throw new Exception('Missing course_id');
-  if (ctype_digit((string)$key)) return (int)$key;
-  $q = $pdo->prepare('SELECT id FROM courses WHERE code = ? LIMIT 1');
-  $q->execute([(string)$key]);
-  $id = $q->fetchColumn();
-  if (!$id) throw new Exception('Unknown course code: '.(string)$key);
-  return (int)$id;
+if (session_status() !== PHP_SESSION_ACTIVE) {
+  session_set_cookie_params([
+    'lifetime' => 0,
+    'path'     => '/',   // share across /app or /auto_oh and /api
+    'domain'   => '',
+    'secure'   => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+    'httponly' => true,
+    'samesite' => 'Lax',
+  ]);
+  session_start();
 }
 
 try {
   $pdo = pdo();
 
-  // accept JSON / form / query; fall back to session email
-  $in        = read_json();
-  $courseKey = $in['course_id'] ?? $_POST['course_id'] ?? $_GET['course_id'] ?? null;
-  $email     = $in['user_email'] ?? $in['email'] ?? $_POST['user_email'] ?? $_GET['user_email'] ?? ($_SESSION['email'] ?? null);
-  if (!$email) throw new Exception('Missing user_email');
+  // Accept body JSON or form/query; fallback to session email
+  $in        = json_decode(file_get_contents('php://input'), true) ?: [];
+  $courseKey = $in['course_id']  ?? $_POST['course_id']  ?? $_GET['course_id']  ?? null;
+  $email     = $in['user_email'] ?? $_POST['user_email'] ?? $_GET['user_email'] ?? ($_SESSION['email'] ?? null);
 
-  $courseId = canonical_course_id($pdo, $courseKey);
+  if (!$courseKey) out(400, ['ok'=>false, 'error'=>'Missing course_id']);
+  if (!$email)     out(400, ['ok'=>false, 'error'=>'Missing user_email']);
 
-  $upd = $pdo->prepare('UPDATE queue_entries
-                          SET left_at = NOW()
-                        WHERE course_id = ? AND user_email = ? AND left_at IS NULL');
-  $upd->execute([$courseId, $email]);
+  // Normalize course id (accepts numeric id or code)
+  $cid = null;
+  if (ctype_digit((string)$courseKey)) {
+    $cid = (int)$courseKey;
+  } else {
+    $q = $pdo->prepare('SELECT id FROM courses WHERE code = ? LIMIT 1');
+    $q->execute([trim((string)$courseKey)]);
+    $cid = (int)$q->fetchColumn();
+    if (!$cid) out(400, ['ok'=>false, 'error'=>'Unknown course']);
+  }
 
-  // Log how many rows changed to catch mismatches
-  error_log("QUEUE_LEAVE rows=" . $upd->rowCount() . " course_id=$courseId email=$email");
+  // Mark the active row as left (only if it’s currently active)
+  $upd = $pdo->prepare(
+    'UPDATE queue_entries
+        SET left_at = IF(left_at IS NULL, NOW(), left_at)
+      WHERE course_id = ? AND user_email = ? AND left_at IS NULL'
+  );
+  $upd->execute([$cid, $email]);
 
-  jreply(200, ['ok'=>true]);
+  // Return fresh totals so caller can update immediately if needed
+  $tot = $pdo->prepare('SELECT COUNT(*) FROM queue_entries WHERE course_id = ? AND left_at IS NULL');
+  $tot->execute([$cid]);
+  $total = (int)$tot->fetchColumn();
+
+  out(200, ['ok'=>true, 'updated'=>$upd->rowCount(), 'total'=>$total]);
 } catch (Throwable $e) {
-  error_log("QUEUE_LEAVE exception: ".$e->getMessage());
-  jreply(500, ['ok'=>false, 'error'=>$e->getMessage()]);
+  out(500, ['ok'=>false, 'error'=>$e->getMessage()]);
 }

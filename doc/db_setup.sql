@@ -52,14 +52,19 @@ CREATE TABLE favorites (
     FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
--- Drives live queue + positions + student notes
-CREATE TABLE IF NOT EXISTS `queue_entries` (
-  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `course_id` VARCHAR(32)  NOT NULL,      -- matches courses.code you pass from UI (e.g., "CSE116")
-  `user_email` VARCHAR(191) NOT NULL,     -- matches users.email
-  `notes` TEXT NULL,
-  `joined_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_course` (`course_id`),
-  UNIQUE KEY `uq_course_user` (`course_id`, `user_email`) -- one active spot per student per course
+-- 1) table (server stores numeric courses.id)
+CREATE TABLE IF NOT EXISTS queue_entries (
+  id         INT NOT NULL AUTO_INCREMENT,
+  course_id  INT NOT NULL,             -- references courses.id
+  user_email VARCHAR(191) NOT NULL,
+  notes      VARCHAR(191) NULL,
+  joined_at  DATETIME NOT NULL,
+  left_at    DATETIME NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_course_user (course_id, user_email),  -- one row per (course,user)
+  KEY idx_queue_active (course_id, left_at, joined_at),
+  KEY idx_queue_user   (course_id, user_email, left_at),
+  CONSTRAINT fk_queue_course
+    FOREIGN KEY (course_id) REFERENCES courses(id)
+    ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

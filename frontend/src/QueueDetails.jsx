@@ -7,12 +7,9 @@ export default function QueueDetails() {
   const navigate = useNavigate();
   const { courseId } = useParams();
 
-  // -------- Robust API root (works for /f25-mustarrrrrd/app/ → /f25-mustarrrrrd/api/) --------
-  const API_ROOT = (() => {
-    const base = import.meta.env.BASE_URL || "/";
-    // e.g. "/f25-mustarrrrrd/app/" -> "/f25-mustarrrrrd/api/"
-    return base.replace(/app\/?$/, "api/");
-  })();
+  // -------- Robust API root (works on Local: /app -> /api, Aptitude: /auto_oh/ -> /api) --------
+  const ABS_BASE = new URL(import.meta.env.BASE_URL || "/", window.location.origin);
+  const API_ROOT = new URL("../api/", ABS_BASE).pathname; // e.g., /.../api/
 
   // Session / boot gate
   const [email, setEmail] = useState(null);
@@ -55,41 +52,57 @@ export default function QueueDetails() {
     async function bootstrap() {
       try {
         // 1) Check session. Only redirect if we are SURE user is not logged in.
-        const sres = await fetch(`${API_ROOT}check_session.php`, {
+        const sres = await fetch(`${API_ROOT}check_session.php?t=${Date.now()}`, {
           method: "GET",
           credentials: "include",
+          cache: "no-store",
+          headers: { Accept: "application/json" },
         });
 
-        let sdata = null;
-        try { sdata = await sres.json(); } catch (_) { /* ignore */ }
+        if (!sres.ok) {
+          setBooted(true);
+          return;
+        }
 
-        if (sres.ok && sdata?.loggedIn && sdata?.email) {
+        let sdata = null;
+        try {
+          sdata = await sres.json();
+        } catch {
+          setBooted(true);
+          return;
+        }
+
+        if (sdata?.loggedIn && sdata?.email) {
           if (cancelled) return;
           setEmail(sdata.email);
-        } else if (sres.ok && sdata && sdata.loggedIn === false) {
-          // Explicitly told "not logged in" -> go to login
+        } else if (sdata && sdata.loggedIn === false) {
           navigate("/");
           return;
         } else {
-          // Network or parse error: don't bounce. Let user stay here.
-          // We won't navigate away; page will remain but no polling will start.
           setBooted(true);
           return;
         }
 
         // 2) Attempt to join queue (idempotent server-side)
         try {
-          await fetch(`${API_ROOT}queue_join.php`, {
+          const jres = await fetch(`${API_ROOT}queue_join.php`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
             credentials: "include",
+            cache: "no-store",
             body: JSON.stringify({
-              course_id: course.id,      // IMPORTANT: the server expects course_id/email keys
+              course_id: course.id, // can be code or id; server normalizes
               user_email: sdata.email,
               notes,
             }),
           });
-        } catch (_) { /* ignore */ }
+          // Optional: ignore body if not ok; we'll poll for state next.
+          if (!jres.ok) {
+            // no-op; polling will still show current status
+          }
+        } catch {
+          /* ignore */
+        }
 
         // 3) Prime status and start polling
         await pollOnce();
@@ -105,12 +118,13 @@ export default function QueueDetails() {
           `${API_ROOT}queue_status.php?course_id=${encodeURIComponent(course.id)}&t=${Date.now()}`,
           {
             credentials: "include",
-            cache: "no-store",                 // <- force a fresh response
-            headers: { "Accept": "application/json" },
+            cache: "no-store",
+            headers: { Accept: "application/json" },
           }
         );
-        
-        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return;
+
+        const data = await res.json().catch(() => null);
         if (!data) return;
 
         if (typeof data.total === "number") setTotalInQueue(data.total);
@@ -142,8 +156,9 @@ export default function QueueDetails() {
     if (email) {
       fetch(`${API_ROOT}queue_save_notes.php`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
         credentials: "include",
+        cache: "no-store",
         body: JSON.stringify({
           course_id: course.id,
           user_email: email,
@@ -154,15 +169,20 @@ export default function QueueDetails() {
     alert("Notes saved.");
   }
 
-  function leaveQueue() {
+  async function leaveQueue() {
     if (pollTimer.current) clearInterval(pollTimer.current);
     if (email) {
-      fetch(`${API_ROOT}queue_leave.php`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ course_id: course.id, user_email: email }),
-      }).catch(() => {});
+      try {
+        await fetch(`${API_ROOT}queue_leave.php`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          credentials: "include",
+          cache: "no-store",
+          body: JSON.stringify({ course_id: course.id, user_email: email }),
+        });
+      } catch {
+        /* ignore */
+      }
     }
     navigate("/dashboard");
   }
@@ -218,7 +238,7 @@ export default function QueueDetails() {
           style={{
             background: "#fff",
             color: "#111827",
-            border: "1px solid #e5e7eb", // ✅ fixed quoting
+            border: "1px solid #e5e7eb",
             borderRadius: 10,
             padding: "10px 14px",
             cursor: "pointer",
@@ -300,7 +320,7 @@ export default function QueueDetails() {
           >
             <div>
               <div style={{ fontSize: 40, fontWeight: 800, color: "#111827", lineHeight: 1 }}>
-                {course.yourPosition}
+                {course.yourPosition ?? "-"}
               </div>
               <div style={{ color: "#6b7280" }}>Your Position</div>
             </div>
