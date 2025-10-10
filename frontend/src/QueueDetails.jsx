@@ -7,19 +7,23 @@ export default function QueueDetails() {
   const navigate = useNavigate();
   const { courseId } = useParams();
 
-  // ----- API base (absolute path derived from Vite base) -----
-  const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
-  const API_ROOT = new URL("../api/", ABS_BASE).pathname;
+  // -------- Robust API root (works for /f25-mustarrrrrd/app/ → /f25-mustarrrrrd/api/) --------
+  const API_ROOT = (() => {
+    const base = import.meta.env.BASE_URL || "/";
+    // e.g. "/f25-mustarrrrrd/app/" -> "/f25-mustarrrrrd/api/"
+    return base.replace(/app\/?$/, "api/");
+  })();
 
-  // session user email (from check_session.php)
+  // Session / boot gate
   const [email, setEmail] = useState(null);
+  const [booted, setBooted] = useState(false); // render only after we check
 
-  // live queue numbers from server
+  // Live queue numbers (server-driven)
   const [yourPosition, setYourPosition] = useState(1);
   const [totalInQueue, setTotalInQueue] = useState(0);
   const [status, setStatus] = useState("Active");
 
-  // course “model” (visuals unchanged)
+  // Course model (visuals unchanged)
   const course = useMemo(
     () =>
       ({
@@ -34,127 +38,107 @@ export default function QueueDetails() {
     [courseId, totalInQueue, yourPosition, status]
   );
 
-  // notes persisted per course (keeps your existing UX)
+  // Notes (local persistence)
   const storageKey = `queue_notes_${course.id}`;
   const [notes, setNotes] = useState("");
-
   useEffect(() => {
     const existing = localStorage.getItem(storageKey);
     if (existing !== null) setNotes(existing);
   }, [storageKey]);
 
-  // ----- polling + auto-join lifecycle (logic only; UI unchanged) -----
+  // Join + polling lifecycle (with safe session gate)
   const pollTimer = useRef(null);
-  const triedAutoJoinRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function checkSession() {
-      const sres = await fetch(`${API_ROOT}check_session.php`, {
-        method: "GET",
-        credentials: "include",
-      });
-      const sdata = await sres.json().catch(() => ({}));
-      if (!sdata?.loggedIn || !sdata?.email) {
-        navigate("/"); // not logged in -> go to login
-        return null;
-      }
-      if (cancelled) return null;
-      setEmail(sdata.email);
-      return sdata.email;
-    }
-
-    async function joinOnce(userEmail, initialNotes) {
+    async function bootstrap() {
       try {
-        await fetch(`${API_ROOT}queue_join.php`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        // 1) Check session. Only redirect if we are SURE user is not logged in.
+        const sres = await fetch(`${API_ROOT}check_session.php`, {
+          method: "GET",
           credentials: "include",
-          body: JSON.stringify({
-            course_id: course.id,
-            user_email: userEmail,
-            notes: initialNotes ?? "",
-          }),
         });
-      } catch {
-        // ignore; we'll try polling and possibly auto-join again on 404
+
+        let sdata = null;
+        try { sdata = await sres.json(); } catch (_) { /* ignore */ }
+
+        if (sres.ok && sdata?.loggedIn && sdata?.email) {
+          if (cancelled) return;
+          setEmail(sdata.email);
+        } else if (sres.ok && sdata && sdata.loggedIn === false) {
+          // Explicitly told "not logged in" -> go to login
+          navigate("/");
+          return;
+        } else {
+          // Network or parse error: don't bounce. Let user stay here.
+          // We won't navigate away; page will remain but no polling will start.
+          setBooted(true);
+          return;
+        }
+
+        // 2) Attempt to join queue (idempotent server-side)
+        try {
+          await fetch(`${API_ROOT}queue_join.php`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+              course_id: course.id,      // IMPORTANT: the server expects course_id/email keys
+              user_email: sdata.email,
+              notes,
+            }),
+          });
+        } catch (_) { /* ignore */ }
+
+        // 3) Prime status and start polling
+        await pollOnce();
+        pollTimer.current = setInterval(pollOnce, 3000);
+      } finally {
+        if (!cancelled) setBooted(true);
       }
     }
 
     async function pollOnce() {
       try {
         const res = await fetch(
-          `${API_ROOT}queue_status.php?course_id=${encodeURIComponent(course.id)}`,
-          { credentials: "include" }
+          `${API_ROOT}queue_status.php?course_id=${encodeURIComponent(course.id)}&t=${Date.now()}`,
+          {
+            credentials: "include",
+            cache: "no-store",                 // <- force a fresh response
+            headers: { "Accept": "application/json" },
+          }
         );
+        
+        const data = await res.json().catch(() => ({}));
+        if (!data) return;
 
-        if (res.status === 200) {
-          const data = await res.json().catch(() => ({}));
-          if (typeof data.total === "number") setTotalInQueue(data.total);
-          if (typeof data.position === "number") setYourPosition(data.position);
-          if (typeof data.status === "string") setStatus(data.status);
+        if (typeof data.total === "number") setTotalInQueue(data.total);
+        if (typeof data.position === "number") setYourPosition(data.position);
+        if (typeof data.status === "string") setStatus(data.status);
 
-          // hydrate notes from server once (don’t clobber active edits)
-          if (typeof data.notes === "string") {
-            const currentLocal = localStorage.getItem(storageKey) ?? "";
-            if ((notes ?? "") === currentLocal) {
-              setNotes(data.notes);
-              localStorage.setItem(storageKey, data.notes);
-            }
+        if (typeof data.notes === "string") {
+          const currentLocal = localStorage.getItem(storageKey) ?? "";
+          if ((notes ?? "") === currentLocal) {
+            setNotes(data.notes);
+            localStorage.setItem(storageKey, data.notes);
           }
-          return;
         }
-
-        if (res.status === 404) {
-          // not in queue yet -> try one more auto-join, then keep polling
-          if (!triedAutoJoinRef.current && email) {
-            triedAutoJoinRef.current = true;
-            await joinOnce(email, notes);
-          }
-          return;
-        }
-
-        if (res.status === 410) {
-          // queue closed/ended -> back to dashboard
-          navigate("/dashboard");
-          return;
-        }
-
-        // other statuses: ignore and next tick will retry
       } catch {
-        // transient network/server issues -> ignore
+        // ignore transient errors
       }
-    }
-
-    async function bootstrap() {
-      const userEmail = await checkSession();
-      if (!userEmail || cancelled) return;
-
-      // initial join (idempotent on the server)
-      await joinOnce(userEmail, notes);
-
-      // first read
-      await pollOnce();
-
-      // start polling
-      pollTimer.current = setInterval(pollOnce, 3000);
     }
 
     bootstrap();
 
     return () => {
-      cancelled = true;
       if (pollTimer.current) clearInterval(pollTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [API_ROOT, course.id, navigate]); // re-bootstrap if course changes
+  }, [API_ROOT, course.id, navigate]);
 
   function saveNotes() {
-    // Save locally (keep existing UX)
     localStorage.setItem(storageKey, notes);
-
-    // Also persist to server (best-effort; UI unchanged)
     if (email) {
       fetch(`${API_ROOT}queue_save_notes.php`, {
         method: "POST",
@@ -188,10 +172,14 @@ export default function QueueDetails() {
       ? Math.min(100, Math.round((course.yourPosition / course.totalInQueue) * 100))
       : 0;
 
+  // ---- Gate rendering until we've done the session check once
+  if (!booted) {
+    return null; // render nothing briefly instead of flashing login/dashboard
+  }
+
   return (
     <div
       style={{
-        // FULL-BLEED: fill entire viewport, no black borders
         position: "fixed",
         inset: 0,
         overflow: "auto",
@@ -230,13 +218,13 @@ export default function QueueDetails() {
           style={{
             background: "#fff",
             color: "#111827",
-            border: "1px solid #e5e7eb",
+            border: "1px solid #e5e7eb", // ✅ fixed quoting
             borderRadius: 10,
             padding: "10px 14px",
             cursor: "pointer",
             fontSize: "0.95rem",
             fontWeight: 600,
-            marginRight: 56, // nudged left from dark-mode button area
+            marginRight: 56,
           }}
           onMouseOver={(e) => (e.currentTarget.style.background = "#f9fafb")}
           onMouseOut={(e) => (e.currentTarget.style.background = "#fff")}

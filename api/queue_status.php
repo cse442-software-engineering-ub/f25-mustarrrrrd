@@ -1,54 +1,51 @@
 <?php
-// /api/queue_status.php
+declare(strict_types=1);
 header('Content-Type: application/json');
+
 require_once __DIR__ . '/db.php';
-function fail($c,$m,$h=400){ http_response_code($h); echo json_encode(['ok'=>false,'code'=>$c,'message'=>$m]); exit; }
+if (session_status() !== PHP_SESSION_ACTIVE) { @session_start(); }
+
+function jreply(int $code, array $payload) {
+  http_response_code($code);
+  echo json_encode($payload);
+  exit;
+}
+
+function canonical_course_id(PDO $pdo, $key): int {
+  if ($key === null || $key === '') throw new Exception('Missing course_id');
+  if (ctype_digit((string)$key)) return (int)$key;
+  $q = $pdo->prepare('SELECT id FROM courses WHERE code = ? LIMIT 1');
+  $q->execute([ (string)$key ]);
+  $id = $q->fetchColumn();
+  if (!$id) throw new Exception("Unknown course code: " . (string)$key);
+  return (int)$id;
+}
 
 try {
-  // GET or POST both fine
-  $b = array_merge($_GET, read_json());
-  $course = clamp191($b['course_id'] ?? '');
-  $email  = clamp191($b['user_email'] ?? '');
-
-  if ($course === '') fail('missing', 'course_id required');
-
   $pdo = pdo();
 
-  $total = (int)$pdo->query("SELECT COUNT(*) FROM queue_entries WHERE course_id=".$pdo->quote($course))->fetchColumn();
+  $courseKey = $_GET['course_id'] ?? $_POST['course_id'] ?? null;
+  $courseId = canonical_course_id($pdo, $courseKey);
 
-  $position = null; $ahead = null; $behind = null;
+  $userEmail = $_SESSION['email'] ?? ($_GET['user_email'] ?? $_POST['user_email'] ?? null);
 
-  if ($email !== '') {
-    $me = $pdo->prepare('SELECT joined_at FROM queue_entries WHERE course_id=? AND user_email=?');
-    $me->execute([$course, $email]);
-    if ($row = $me->fetch()) {
-      $joined_at = $row['joined_at'];
-      $aheadStmt = $pdo->prepare('SELECT COUNT(*) FROM queue_entries WHERE course_id=? AND joined_at < ?');
-      $aheadStmt->execute([$course, $joined_at]);
-      $ahead = (int)$aheadStmt->fetchColumn();
-      $position = $ahead + 1;
-      $behind = max(0, $total - $position);
+  $tot = $pdo->prepare('SELECT COUNT(*) FROM queue_entries WHERE course_id = ? AND left_at IS NULL');
+  $tot->execute([$courseId]);
+  $total = (int)$tot->fetchColumn();
+
+  $position = null;
+  if ($userEmail) {
+    $joinedQ = $pdo->prepare('SELECT joined_at FROM queue_entries WHERE course_id = ? AND user_email = ? AND left_at IS NULL ORDER BY joined_at ASC LIMIT 1');
+    $joinedQ->execute([$courseId, $userEmail]);
+    if ($joinedAt = $joinedQ->fetchColumn()) {
+      $posQ = $pdo->prepare('SELECT COUNT(*) FROM queue_entries WHERE course_id = ? AND left_at IS NULL AND joined_at <= ?');
+      $posQ->execute([$courseId, $joinedAt]);
+      $position = (int)$posQ->fetchColumn();
     }
   }
 
-  // Optional: list for professor view
-  $list = [];
-  if (!empty($b['include_list'])) {
-    $listStmt = $pdo->prepare(
-      'SELECT qe.user_email, qe.notes, qe.joined_at, u.name
-       FROM queue_entries qe
-       LEFT JOIN users u ON u.email = qe.user_email
-       WHERE qe.course_id=?
-       ORDER BY qe.joined_at ASC'
-    );
-    $listStmt->execute([$course]);
-    $list = $listStmt->fetchAll();
-  }
-
-  echo json_encode(['ok'=>true,'course_id'=>$course,
-    'total'=>$total,'position'=>$position,'ahead'=>$ahead,'behind'=>$behind,'list'=>$list
-  ]);
-
+  jreply(200, ['ok'=>true, 'total'=>$total, 'position'=>$position, 'status'=>'Active']);
 } catch (Throwable $e) {
-  fail('server','Unexpected error',500);
+  error_log("QUEUE_STATUS exception: ".$e->getMessage());
+  jreply(500, ['ok'=>false, 'error'=>$e->getMessage()]);
 }

@@ -1,12 +1,51 @@
 // src/CourseCardDashboard.jsx
 import { Star, Clock, MapPin, Users } from "lucide-react";
-import { useNavigate } from "react-router-dom"; // ✅ added
+import { useNavigate } from "react-router-dom";
 
 export function CourseCardDashboard({ course, onRemoveFavorite }) {
   const navigate = useNavigate();
 
-  const handleJoinQueue = () => {
-    navigate(`/queue/${course.code}`, { state: { course } });
+  // Build absolute API root that works in subfolders
+  const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
+  const API_ROOT = new URL("../api/", ABS_BASE).pathname;
+
+  const handleJoinQueue = async () => {
+    try {
+      // 1) Make sure we know who is logged in (email comes from server session)
+      const sres = await fetch(`${API_ROOT}check_session.php`, {
+        method: "GET",
+        credentials: "include",
+      });
+      const sdata = await sres.json().catch(() => ({}));
+      if (!sdata?.loggedIn || !sdata?.email) {
+        // Not logged in -> go to login
+        navigate("/");
+        return;
+      }
+
+      // 2) Normalize course_id the API expects (string is fine: DB column is VARCHAR)
+      const cid = String(course.id ?? course.code ?? "");
+
+      // 3) Join queue (idempotent on server)
+      await fetch(`${API_ROOT}queue_join.php`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          course_id: cid,
+          user_email: sdata.email,
+          notes: "", // optional initial notes
+        }),
+      });
+
+      // 4) Navigate to the queue details page for this course
+      const slug = encodeURIComponent(course.code ?? course.id ?? cid);
+      navigate(`/queue/${slug}`);
+    } catch {
+      // On any unexpected error, still try to navigate so the user sees the page
+      const slug = encodeURIComponent(course.code ?? course.id ?? "");
+      navigate(`/queue/${slug}`);
+    }
   };
 
   const handleRemoveFavorite = (e) => {
@@ -73,9 +112,7 @@ export function CourseCardDashboard({ course, onRemoveFavorite }) {
       </div>
 
       {/* Status Badge */}
-      <div style={{
-        marginBottom: '0.75rem'
-      }}>
+      <div style={{ marginBottom: '0.75rem' }}>
         <span style={{
           padding: '0.25rem 0.5rem',
           background: course.status === 'available' ? '#10b981' : '#3b82f6',
@@ -149,7 +186,7 @@ export function CourseCardDashboard({ course, onRemoveFavorite }) {
           }}
           onMouseOver={(e) => e.currentTarget.style.background = '#1f2937'}
           onMouseOut={(e) => e.currentTarget.style.background = '#111'}
-          onClick={handleJoinQueue} // ✅ added — only behavior change
+          onClick={handleJoinQueue}
         >
           Join Queue
         </button>
