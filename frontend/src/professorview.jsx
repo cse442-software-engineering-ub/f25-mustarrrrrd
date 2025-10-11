@@ -7,7 +7,8 @@ export default function ProfessorView() {
   const [loading, setLoading] = useState(false);
 
   // ✅ Use correct API root for XAMPP
-  const API_ROOT = "/f25-mustarrrrrd/api/";
+ const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
+ const API_ROOT = new URL("../api/", ABS_BASE).pathname;
 
   // --- Fetch professor’s assigned courses ---
   useEffect(() => {
