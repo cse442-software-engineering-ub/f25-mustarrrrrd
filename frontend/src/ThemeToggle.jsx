@@ -39,6 +39,7 @@ export default function ThemeToggle() {
     <button
       onClick={toggleTheme}
       style={{
+        display: "none", // Hidden but functionality preserved
         position: "fixed",
         top: "10px",
         right: "10px",
