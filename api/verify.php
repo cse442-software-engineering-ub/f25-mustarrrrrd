@@ -37,8 +37,8 @@ $stmt = $pdo->prepare('SELECT id, name, email, password_hash, role FROM users WH
 $stmt->execute([$email]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// NOTE: you said password_hash column stores plaintext for now
-if (!$user || $user['password_hash'] !== $password) {
+// Verify the password using password_verify()
+if (!$user || !password_verify($password, $user['password_hash'])) {
   echo json_encode(['match'=>false,'message'=>'Invalid email or password']);
   exit;
 }

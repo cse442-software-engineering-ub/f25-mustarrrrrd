@@ -68,3 +68,14 @@ CREATE TABLE IF NOT EXISTS queue_entries (
     FOREIGN KEY (course_id) REFERENCES courses(id)
     ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE users
+  ADD COLUMN preferred_name VARCHAR(100) NULL AFTER name,
+  ADD COLUMN pronouns VARCHAR(50)  NULL AFTER preferred_name,
+  ADD COLUMN academic_year ENUM('Freshman','Sophomore','Junior','Senior') 
+   NULL AFTER pronouns,
+  ADD COLUMN major VARCHAR(100)  NULL AFTER academic_year,
+  ADD COLUMN disabilities TEXT NULL AFTER major,
+  ADD COLUMN title VARCHAR(100)  NULL AFTER disabilities,
+  ADD COLUMN title_display_order TINYINT UNSIGNED NOT NULL DEFAULT 0 AFTER title,
+  ADD COLUMN session_token VARCHAR(64)  NULL AFTER password_hash;

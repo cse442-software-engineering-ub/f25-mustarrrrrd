@@ -44,12 +44,12 @@ try {
     fail('email_taken', 'Email already in use.', 409);
   }
 
-  // As requested: store plaintext in password_hash for now
+  // Hash the password using bcrypt
   $name  = clamp191($first . ' ' . $last);
-  $plain = $pass1;
+  $hashed_password = password_hash($pass1, PASSWORD_DEFAULT);
 
   $ins = $pdo->prepare('INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)');
-  $ins->execute([$name, $email, $plain, $role]);
+  $ins->execute([$name, $email, $hashed_password, $role]);
 
   // Auto-login + remember-me (optional; enabled here)
   session_start();

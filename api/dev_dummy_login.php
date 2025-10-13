@@ -14,8 +14,8 @@ if (!in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1'], true)) {
 $dummy = [
   'name'  => 'Demo Student',
   'email' => 'demo.student@buffalo.edu',
-  // per your request, passwords are not hashed yet:
-  'password_hash' => 'password',
+  // Hash the password 'password' using bcrypt
+  'password_hash' => password_hash('password', PASSWORD_DEFAULT),
   'role'  => 'student',
   'preferred_name' => 'Demo',
   'pronouns' => 'they/them',
