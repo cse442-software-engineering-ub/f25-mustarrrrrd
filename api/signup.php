@@ -29,10 +29,10 @@ try {
     fail('password_mismatch', 'Passwords do not match.');
   }
 
-  // Map frontend "professor" to DB enum "instructor"
-  if ($role === 'professor') $role = 'instructor';
-  if (!in_array($role, ['student','ta','instructor'], true)) {
-    fail('invalid_role', 'Role must be student, ta, or instructor.');
+  // Keep "professor" as-is for DB compatibility
+  // Note: aptitude server uses 'professor', not 'instructor'
+  if (!in_array($role, ['student','ta','professor'], true)) {
+    fail('invalid_role', 'Role must be student, ta, or professor.');
   }
 
   $pdo = pdo();
@@ -71,7 +71,7 @@ try {
       'id' => $user_id,
       'name' => $name,
       'email' => $email,
-      'role' => ($role === 'instructor' ? 'professor' : $role),
+      'role' => $role, // already 'professor' from frontend
       'created_at' => date('c'),
     ]
   ]);

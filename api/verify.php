@@ -56,12 +56,10 @@ issue_persistent_login($pdo, (int)$user['id']);
 
 session_write_close();
 
-// Map DB role "instructor" -> "professor" for the client
-$response_role = ($user['role'] === 'instructor') ? 'professor' : $user['role'];
-
+// Role is already 'professor' in aptitude DB, no mapping needed
 echo json_encode([
   'match'   => true,
   'message' => 'Login successful',
   'name'    => $user['name'],
-  'role'    => $response_role,
+  'role'    => $user['role'],
 ]);

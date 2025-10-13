@@ -110,7 +110,7 @@ try {
       'academic_year' => $row['academic_year'],
       'major' => $row['major'],
       'disabilities' => $row['disabilities'],
-      'role' => ($row['role'] === 'instructor' ? 'professor' : $row['role']),
+      'role' => $row['role'], // already 'professor' in DB
     ],
   ]);
 } catch (Throwable $e) {

@@ -34,7 +34,7 @@ export default function SignUp() {
         email: form.email,
         password: form.password,
         confirmPassword: form.confirmPassword,
-        role: form.role, // server maps "professor" -> "instructor"
+        role: form.role, // 'professor' is stored as-is in DB
       }),
     });
     let data = {};
