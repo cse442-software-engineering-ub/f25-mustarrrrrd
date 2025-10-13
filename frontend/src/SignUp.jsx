@@ -1,6 +1,8 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function SignUp() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -32,7 +34,7 @@ export default function SignUp() {
         email: form.email,
         password: form.password,
         confirmPassword: form.confirmPassword,
-        role: form.role, // server maps "professor" -> "instructor"
+        role: form.role, // 'professor' is stored as-is in DB
       }),
     });
     let data = {};
@@ -71,8 +73,8 @@ export default function SignUp() {
       } else {
         alert("Account created successfully!");
         console.log("Created user:", data.user);
-        // optional: go back to login (hash routing)
-        // window.location.hash = "#/";
+        // Redirect to dashboard after successful signup
+        navigate("/dashboard");
       }
     } catch (err) {
       console.error(err);
