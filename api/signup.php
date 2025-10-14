@@ -29,10 +29,10 @@ try {
     fail('password_mismatch', 'Passwords do not match.');
   }
 
-  // Map frontend "professor" to DB enum "instructor"
-  if ($role === 'professor') $role = 'instructor';
-  if (!in_array($role, ['student','ta','instructor'], true)) {
-    fail('invalid_role', 'Role must be student, ta, or instructor.');
+  // Keep "professor" as-is for DB compatibility
+  // Note: aptitude server uses 'professor', not 'instructor'
+  if (!in_array($role, ['student','ta','professor'], true)) {
+    fail('invalid_role', 'Role must be student, ta, or professor.');
   }
 
   $pdo = pdo();
@@ -44,12 +44,12 @@ try {
     fail('email_taken', 'Email already in use.', 409);
   }
 
-  // As requested: store plaintext in password_hash for now
+  // Hash the password using bcrypt
   $name  = clamp191($first . ' ' . $last);
-  $plain = $pass1;
+  $hashed_password = password_hash($pass1, PASSWORD_DEFAULT);
 
   $ins = $pdo->prepare('INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)');
-  $ins->execute([$name, $email, $plain, $role]);
+  $ins->execute([$name, $email, $hashed_password, $role]);
 
   // Auto-login + remember-me (optional; enabled here)
   session_start();
@@ -71,7 +71,7 @@ try {
       'id' => $user_id,
       'name' => $name,
       'email' => $email,
-      'role' => ($role === 'instructor' ? 'professor' : $role),
+      'role' => $role, // already 'professor' from frontend
       'created_at' => date('c'),
     ]
   ]);

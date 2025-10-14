@@ -37,8 +37,8 @@ $stmt = $pdo->prepare('SELECT id, name, email, password_hash, role FROM users WH
 $stmt->execute([$email]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-// NOTE: you said password_hash column stores plaintext for now
-if (!$user || $user['password_hash'] !== $password) {
+// Verify the password using password_verify()
+if (!$user || !password_verify($password, $user['password_hash'])) {
   echo json_encode(['match'=>false,'message'=>'Invalid email or password']);
   exit;
 }
@@ -54,12 +54,12 @@ $_SESSION['role']    = $user['role'];
 // Issue persistent remember-me cookie (server hashes; DB stores hash)
 issue_persistent_login($pdo, (int)$user['id']);
 
-// Map DB role "instructor" -> "professor" for the client
-$response_role = ($user['role'] === 'instructor') ? 'professor' : $user['role'];
+session_write_close();
 
+// Role is already 'professor' in aptitude DB, no mapping needed
 echo json_encode([
   'match'   => true,
   'message' => 'Login successful',
   'name'    => $user['name'],
-  'role'    => $response_role,
+  'role'    => $user['role'],
 ]);

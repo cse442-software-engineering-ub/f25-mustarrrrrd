@@ -36,6 +36,6 @@ echo json_encode([
     'disabilities' => $u['disabilities'],
     'title' => $u['title'],
     'title_display_order' => $u['title_display_order'],
-    'role' => ($u['role'] === 'instructor' ? 'professor' : $u['role']),
+    'role' => $u['role'], // already 'professor' in DB
   ],
 ]);
