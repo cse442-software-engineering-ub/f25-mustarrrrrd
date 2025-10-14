@@ -1,14 +1,21 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { Menu } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function ProfessorView() {
   const [courses, setCourses] = useState([]);
   const [activeCourse, setActiveCourse] = useState(null);
   const [queue, setQueue] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const btnRef = useRef(null);
+  const menuRef = useRef(null);
+  const navigate = useNavigate();
 
   // ✅ Use correct API root for XAMPP
- const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
- const API_ROOT = new URL("../api/", ABS_BASE).pathname;
+  const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
+  const API_ROOT = new URL("../api/", ABS_BASE).pathname;
 
   // --- Fetch professor’s assigned courses ---
   useEffect(() => {
@@ -16,7 +23,7 @@ export default function ProfessorView() {
       try {
         const res = await fetch(`${API_ROOT}professor_courses.php`, {
           method: "GET",
-          credentials: "include", // include session cookie
+          credentials: "include",
           headers: { Accept: "application/json" },
         });
 
@@ -52,7 +59,7 @@ export default function ProfessorView() {
           `${API_ROOT}queue_list.php?course_id=${encodeURIComponent(activeCourse)}`,
           {
             method: "GET",
-            credentials: "include", // keep professor session
+            credentials: "include",
             headers: { Accept: "application/json" },
           }
         );
@@ -66,7 +73,6 @@ export default function ProfessorView() {
         const data = await res.json().catch(() => ({}));
         if (data.ok && Array.isArray(data.queue)) {
           setQueue(data.queue);
-          console.log("Fetched queue:", data.queue);
         } else {
           setQueue([]);
         }
@@ -82,6 +88,39 @@ export default function ProfessorView() {
     const interval = setInterval(fetchQueue, 5000);
     return () => clearInterval(interval);
   }, [activeCourse]);
+
+  // --- Handle sign out ---
+  async function handleSignOut() {
+    try {
+      await fetch(`${API_ROOT}logout.php`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {}
+    document.cookie = "PHPSESSID=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+    navigate("/");
+  }
+
+  // --- Close menu when clicking outside or pressing Esc ---
+  useEffect(() => {
+    function onDocClick(e) {
+      if (!menuOpen) return;
+      const b = btnRef.current;
+      const m = menuRef.current;
+      if (b && b.contains(e.target)) return;
+      if (m && m.contains(e.target)) return;
+      setMenuOpen(false);
+    }
+    function onKey(e) {
+      if (e.key === "Escape") setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
 
   return (
     <div
@@ -103,7 +142,13 @@ export default function ProfessorView() {
         style={{
           background: "white",
           borderBottom: "1px solid #e5e7eb",
-          padding: "1rem 1.5rem",
+          padding: "0.75rem 1rem",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
         }}
       >
         <div style={{ display: "flex", flexDirection: "column" }}>
@@ -120,6 +165,64 @@ export default function ProfessorView() {
           <p style={{ fontSize: "0.9rem", color: "#555", margin: 0 }}>
             Professor Mikida • Computer Science & Engineering
           </p>
+        </div>
+
+        {/* Hamburger Menu */}
+        <div style={{ position: "relative" }}>
+          <button
+            ref={btnRef}
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              border: "1px solid #e5e7eb",
+              background: "#fff",
+              cursor: "pointer",
+            }}
+            title="Menu"
+          >
+            <Menu size={20} />
+          </button>
+
+          {menuOpen && (
+            <div
+              ref={menuRef}
+              role="menu"
+              style={{
+                position: "absolute",
+                right: 0,
+                marginTop: 8,
+                width: 160,
+                background: "#fff",
+                border: "1px solid #e5e7eb",
+                borderRadius: 10,
+                boxShadow: "0 8px 20px rgba(0,0,0,0.08)",
+                overflow: "hidden",
+              }}
+            >
+              <button
+                onClick={handleSignOut}
+                style={{
+                  width: "100%",
+                  textAlign: "left",
+                  padding: "10px 12px",
+                  background: "transparent",
+                  border: 0,
+                  cursor: "pointer",
+                  fontSize: 14,
+                  color: "#b3261e",
+                }}
+              >
+                Sign out
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
