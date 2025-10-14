@@ -1,5 +1,5 @@
 // src/ProfilePage.jsx
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
@@ -14,8 +14,6 @@ export default function ProfilePage() {
   const [draft, setDraft] = useState(null);
   const [editing, setEditing] = useState(false);
   const [msg, setMsg] = useState("");
-  const [localAvatarURL, setLocalAvatarURL] = useState(null);
-  const fileRef = useRef(null);
 
   // Load profile via cookie session
   useEffect(() => {
@@ -27,8 +25,6 @@ export default function ProfilePage() {
         if (data?.ok) { setProfile(data.profile); setDraft(data.profile); }
       } finally { setLoading(false); }
     })();
-    return () => { if (localAvatarURL) URL.revokeObjectURL(localAvatarURL); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Display name (no titles)
@@ -37,7 +33,7 @@ export default function ProfilePage() {
     return profile.preferred_name || profile.name || "";
   }, [profile]);
 
-  // Dirty check (exclude local avatar)
+  // Dirty check
   const isDirty = useMemo(() => {
     if (!profile || !draft) return false;
     const keys = ["name","preferred_name","pronouns","academic_year","major","disabilities"];
@@ -70,69 +66,6 @@ export default function ProfilePage() {
     try { await fetch(`${API_ROOT}logout.php`, { method: "POST", credentials: "include" }); } catch {}
     window.location.href = new URL("", ABS_BASE).pathname; // back to login
   }
-
-  // ===== Avatar upload / delete =====
-  function chooseAvatar() { fileRef.current?.click(); }
-
-  async function onPick(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Optional local preview while uploading
-    const url = URL.createObjectURL(file);
-    if (localAvatarURL) URL.revokeObjectURL(localAvatarURL);
-    setLocalAvatarURL(url);
-
-    const fd = new FormData();
-    fd.append("avatar", file);
-
-    try {
-      const res = await fetch(`${API_ROOT}profile_upload_avatar.php`, {
-        method: "POST",
-        credentials: "include",
-        body: fd, // let browser set multipart boundary
-      });
-      const data = await res.json();
-      if (data?.ok) {
-        // Prefer server image; clear temp preview
-        URL.revokeObjectURL(url);
-        setLocalAvatarURL(null);
-        setProfile(p => ({ ...p, avatar_url: data.avatar_url, avatar_filename: data.filename }));
-        setDraft(d => d ? ({ ...d, avatar_url: data.avatar_url, avatar_filename: data.filename }) : d);
-        setMsg("Avatar updated.");
-        setTimeout(()=>setMsg(""), 2000);
-      } else {
-        setMsg(data?.message || "Avatar upload failed.");
-      }
-    } catch {
-      setMsg("Server error during upload.");
-    } finally {
-      if (fileRef.current) fileRef.current.value = ""; // allow re-pick same file
-    }
-  }
-
-  async function removeAvatar() {
-    try {
-      const res = await fetch(`${API_ROOT}profile_delete_avatar.php`, {
-        method: "POST",
-        credentials: "include",
-      });
-      const data = await res.json();
-      if (data?.ok) {
-        if (localAvatarURL) URL.revokeObjectURL(localAvatarURL);
-        setLocalAvatarURL(null);
-        setProfile(p => ({ ...p, avatar_url: null, avatar_filename: null }));
-        setDraft(d => d ? ({ ...d, avatar_url: null, avatar_filename: null }) : d);
-        setMsg("Avatar removed.");
-        setTimeout(()=>setMsg(""), 1500);
-      } else {
-        setMsg(data?.message || "Remove failed.");
-      }
-    } catch {
-      setMsg("Server error during remove.");
-    }
-  }
-  // ===== end avatar handlers =====
 
   if (loading) return <div style={{color:"#fff",padding:24,background:"#000",minHeight:"100vh"}}>Loading…</div>;
 
@@ -253,7 +186,8 @@ export default function ProfilePage() {
       <div style={topBar}>
         <div style={{ ...container, display:"flex", alignItems:"center", justifyContent:"space-between", gap:16 }}>
           <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-            <Link to="/" style={{ color:"#8ab4ff", fontSize:16, whiteSpace:"nowrap" }}>← Back</Link>
+            {/* Back now goes to /dashboard */}
+            <Link to="/dashboard" style={{ color:"#8ab4ff", fontSize:16, whiteSpace:"nowrap" }}>← Back</Link>
             <h1 style={{ margin:0, fontSize:22, whiteSpace:"nowrap" }}>Profile</h1>
           </div>
           {!editing ? (
@@ -296,16 +230,9 @@ export default function ProfilePage() {
                 width:120, height:120, borderRadius:"50%", background:"#222",
                 overflow:"hidden", display:"grid", placeItems:"center", fontWeight:800, fontSize:34, flex:"0 0 auto"
               }}>
-                {(localAvatarURL || profile.avatar_url) ? (
-                  <img
-                    src={localAvatarURL || profile.avatar_url}
-                    alt="Avatar"
-                    style={{ width:"100%", height:"100%", objectFit:"cover" }}
-                  />
-                ) : (
-                  (profile.preferred_name || profile.name || "?")
-                    .split(" ").slice(0,2).map(p=>p[0]?.toUpperCase()).join("") || "?"
-                )}
+                {/* Initials only (no upload/preview) */}
+                {(profile.preferred_name || profile.name || "?")
+                  .split(" ").slice(0,2).map(p=>p[0]?.toUpperCase()).join("") || "?"}
               </div>
               <div style={{ minWidth: 200, flex:"1 1 auto" }}>
                 <div style={{ fontSize:28, lineHeight:1.2, wordBreak:"break-word" }}>{displayName}</div>
@@ -314,26 +241,6 @@ export default function ProfilePage() {
                 )}
               </div>
             </div>
-
-            {/* Avatar controls */}
-            {editing && (
-              <>
-                <div style={{ display:"flex", gap:10, marginBottom:10, flexWrap:"wrap" }}>
-                  <button onClick={chooseAvatar} style={{ background:"#2a2a2a", border:"1px solid #444", color:"#fff", padding:"8px 12px", borderRadius:10, fontSize:14 }}>
-                    Choose Image
-                  </button>
-                  {(localAvatarURL || profile.avatar_url) && (
-                    <button onClick={removeAvatar} style={{ background:"transparent", border:"1px solid #444", color:"#fff", padding:"8px 12px", borderRadius:10, fontSize:14 }}>
-                      Remove
-                    </button>
-                  )}
-                </div>
-                <input ref={fileRef} type="file" accept="image/*" style={{ display:"none" }} onChange={onPick}/>
-                <div style={{ color:"#777", fontSize:12, marginBottom:10 }}>
-                  Images are stored on the server under a random name.
-                </div>
-              </>
-            )}
 
             <div style={{ display:"grid", gap:10, fontSize:16 }}>
               {profile.pronouns && <div style={{ color:"#bbb" }}>Pronouns: <span style={{ color:"#fff" }}>{profile.pronouns}</span></div>}
@@ -426,7 +333,7 @@ export default function ProfilePage() {
                     <textarea
                       rows={6}
                       value={draft?.disabilities || ""}
-                      onChange={e=>setDraft(d => ({...d, disabilities: e.target.value}))}
+                      onChange={e=> setDraft(d => ({...d, disabilities: e.target.value}))}
                       style={{ ...inputBase, resize:"vertical" }}
                     />
                   </label>
@@ -437,7 +344,7 @@ export default function ProfilePage() {
               )}
             </section>
 
-            {/* SIGN OUT AT THE VERY BOTTOM */}
+            {/* SIGN OUT */}
             <div style={{ display:"flex", justifyContent:"flex-end", width:"100%" }}>
               <button
                 onClick={signOut}
