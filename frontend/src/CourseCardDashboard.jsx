@@ -1,9 +1,9 @@
 // frontend/src/CourseCardDashboard.jsx
-import { Star, Clock, MapPin, Users } from "lucide-react";
+import { Star, Clock, MapPin, Users, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-export function CourseCardDashboard({ course, onRemoveFavorite }) {
+export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFavorited }) {
   const navigate = useNavigate();
 
   // Build absolute API root that works in subfolders (local and Aptitude)
@@ -73,9 +73,14 @@ export function CourseCardDashboard({ course, onRemoveFavorite }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [API_ROOT, course.id, course.code]);
 
-  const handleRemoveFavorite = (e) => {
+  const handleToggleFavorite = (e) => {
     e.stopPropagation();
-    if (onRemoveFavorite) onRemoveFavorite(course.id);
+    if (onToggleFavorite) onToggleFavorite(course.id, isFavorited);
+  };
+
+  const handleUnenroll = (e) => {
+    e.stopPropagation();
+    if (onUnenroll) onUnenroll(course.id);
   };
 
   // Join or view depending on state
@@ -188,8 +193,8 @@ export function CourseCardDashboard({ course, onRemoveFavorite }) {
           </p>
         </div>
         <button
-          onClick={handleRemoveFavorite}
-          title="Remove from favorites"
+          onClick={handleUnenroll}
+          title="Remove from courses"
           style={{
             padding: "0.25rem",
             background: "transparent",
@@ -200,10 +205,17 @@ export function CourseCardDashboard({ course, onRemoveFavorite }) {
             alignItems: "center",
             justifyContent: "center",
           }}
-          onMouseOver={(e) => (e.currentTarget.style.background = "#f3f4f6")}
-          onMouseOut={(e) => (e.currentTarget.style.background = "transparent")}
+          onMouseOver={(e) => {
+            e.currentTarget.style.background = "#fee2e2";
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.background = "transparent";
+          }}
         >
-          <Star size={20} color="#eab308" fill="#eab308" />
+          <X
+            size={20}
+            color="#dc2626"
+          />
         </button>
       </div>
 
@@ -274,14 +286,46 @@ export function CourseCardDashboard({ course, onRemoveFavorite }) {
         </p>
       </div>
 
-      {/* Action */}
+      {/* Actions */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "flex-end",
+          justifyContent: "space-between",
         }}
       >
+        {/* Favorite Button */}
+        <button
+          onClick={handleToggleFavorite}
+          title={isFavorited ? "Remove from favorites" : "Add to favorites"}
+          style={{
+            padding: "0.5rem",
+            background: "transparent",
+            border: "1px solid #e5e7eb",
+            borderRadius: "0.5rem",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "all 0.15s",
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.background = "#f9fafb";
+            e.currentTarget.style.borderColor = isFavorited ? "#eab308" : "#9ca3af";
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.borderColor = "#e5e7eb";
+          }}
+        >
+          <Star
+            size={18}
+            color={isFavorited ? "#eab308" : "#9ca3af"}
+            fill={isFavorited ? "#eab308" : "none"}
+          />
+        </button>
+
+        {/* Primary Action Button */}
         <button
           style={primaryStyle}
           onMouseOver={(e) => {
