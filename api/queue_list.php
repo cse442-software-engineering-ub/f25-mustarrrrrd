@@ -16,6 +16,7 @@ try {
   $sql = '
     SELECT 
       qe.user_email,
+      qe.attendance,
       u.name AS display_name,
       qe.notes,
       qe.joined_at,
