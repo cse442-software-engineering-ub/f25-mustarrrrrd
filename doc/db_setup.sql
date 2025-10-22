@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS queue_entries (
   id         INT NOT NULL AUTO_INCREMENT,
   course_id  INT NOT NULL,             -- references courses.id
   user_email VARCHAR(191) NOT NULL,
+    attendance ENUM('present','absent') NULL,
   notes      VARCHAR(191) NULL,
   joined_at  DATETIME NOT NULL,
   left_at    DATETIME NULL,
