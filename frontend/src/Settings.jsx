@@ -152,7 +152,6 @@ export default function Settings() {
                   overflow: "hidden",
                 }}
               >
-                <MenuItem label="Courses" onClick={() => go("/mycourses")} />
                 <MenuItem label="Profile" onClick={() => go("/profile")} />
                 <MenuItem label="Settings" onClick={() => go("/settings")} />
                 <div style={{ height: 1, background: "#f1f5f9", margin: "4px 0" }} />
