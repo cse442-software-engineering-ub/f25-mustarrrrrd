@@ -45,7 +45,7 @@ $in = read_json();
 if (!is_array($in)) fail('Bad JSON');
 
 // Only allow these columns to be edited
-$allowed = ['name','preferred_name','pronouns','academic_year','major','disabilities'];
+$allowed = ['name','preferred_name','pronouns','academic_year','major'];
 
 // Track present keys exactly as sent by client (so we don’t overwrite fields you didn’t touch)
 $present = [];
@@ -66,14 +66,11 @@ $params = [':id' => (int)$u['id']];
 foreach ($allowed as $k) {
   if (!isset($present[$k])) continue;
 
-  // clamp short fields (except disabilities which can be long text)
+  // clamp short fields 
   $val = $in[$k];
-  if ($k !== 'disabilities') {
-    if ($val !== null) $val = clamp191((string)$val);
-  } else {
-    if ($val !== null) $val = (string)$val;
-  }
-
+  
+  if ($val !== null) $val = (string)$val;
+  
   $sets[] = "$k = :$k";
   $params[":$k"] = $val;
 }
@@ -94,7 +91,7 @@ try {
   $rows = $stmt->rowCount();
 
   // Re-fetch updated profile
-  $get = $pdo->prepare('SELECT name, preferred_name, email, pronouns, academic_year, major, disabilities, role FROM users WHERE id = ? LIMIT 1');
+  $get = $pdo->prepare('SELECT name, preferred_name, email, pronouns, academic_year, major, role FROM users WHERE id = ? LIMIT 1');
   $get->execute([(int)$u['id']]);
   $row = $get->fetch();
   if (!$row) fail('Profile not found after update', 404);
@@ -109,7 +106,6 @@ try {
       'pronouns' => $row['pronouns'],
       'academic_year' => $row['academic_year'],
       'major' => $row['major'],
-      'disabilities' => $row['disabilities'],
       'role' => $row['role'], // already 'professor' in DB
     ],
   ]);

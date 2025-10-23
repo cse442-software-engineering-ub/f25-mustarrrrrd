@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
 const API_ROOT = new URL("../api/", ABS_BASE).pathname;
 
-const YEARS = ["Freshman","Sophomore","Junior","Senior","Graduate Student","PhD Student","Faculty"];
+const YEARS = ["Freshman","Sophomore","Junior","Senior","Masters Student","PhD Student","Faculty"];
 const PRONOUNS = ["he/him","she/her","they/them","he/they","she/they","ze/zir","prefer not to say"];
 
 export default function ProfilePage() {
@@ -27,28 +27,33 @@ export default function ProfilePage() {
     })();
   }, []);
 
-  // Display name (no titles)
+  // Display name — PreferredName + LastName
   const displayName = useMemo(() => {
     if (!profile) return "";
-    return profile.preferred_name || profile.name || "";
+    const nameParts = (profile.name || "").trim().split(/\s+/);
+    const lastName = nameParts.slice(1).join(" ");
+    if (profile.preferred_name) {
+      return `${profile.preferred_name} ${lastName}`.trim();
+    }
+    return profile.name || "";
   }, [profile]);
 
   // Dirty check
   const isDirty = useMemo(() => {
     if (!profile || !draft) return false;
-    const keys = ["name","preferred_name","pronouns","academic_year","major","disabilities"];
+    const keys = ["name","preferred_name","pronouns","academic_year","major"];
     return keys.some(k => (draft[k] || "") !== (profile[k] || ""));
   }, [profile, draft]);
 
   async function save() {
     setMsg("");
     try {
-      const { name, preferred_name, pronouns, academic_year, major, disabilities } = draft;
+      const { name, preferred_name, pronouns, academic_year, major } = draft;
       const res = await fetch(`${API_ROOT}profile_update.php`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, preferred_name, pronouns, academic_year, major, disabilities }),
+        body: JSON.stringify({ name, preferred_name, pronouns, academic_year, major }),
       });
       const data = await res.json();
       if (data?.ok) {
@@ -64,7 +69,7 @@ export default function ProfilePage() {
 
   async function signOut() {
     try { await fetch(`${API_ROOT}logout.php`, { method: "POST", credentials: "include" }); } catch {}
-    window.location.href = new URL("", ABS_BASE).pathname; // back to login
+    window.location.href = new URL("", ABS_BASE).pathname;
   }
 
   if (loading) return <div style={{color:"#fff",padding:24,background:"#000",minHeight:"100vh"}}>Loading…</div>;
@@ -84,11 +89,10 @@ export default function ProfilePage() {
     return [parts[0] || "", parts.slice(1).join(" ") || ""];
   })();
 
-  /** === Layout: fixed header, extra top whitespace, no h-scroll, wider cards === */
+  /** === Layout constants === */
   const HEADER_H = 64;
   const TOP_SPACER = 160;
-  const EDIT_BONUS = 293;
-  const effectiveTopPad = HEADER_H + TOP_SPACER + (editing ? EDIT_BONUS : 0);
+  const effectiveTopPad = HEADER_H + TOP_SPACER;
 
   const page = {
     minHeight:"100vh",
@@ -106,7 +110,7 @@ export default function ProfilePage() {
     right:0,
     top:0,
     height:HEADER_H,
-    zIndex: 3000,
+    zIndex:3000,
     display:"flex",
     alignItems:"center",
     borderBottom:"1px solid #222",
@@ -182,41 +186,65 @@ export default function ProfilePage() {
 
   return (
     <div style={page}>
-      {/* Fixed header — the ONLY place for Edit/Cancel/Save */}
+      {/* Fixed header */}
       <div style={topBar}>
         <div style={{ ...container, display:"flex", alignItems:"center", justifyContent:"space-between", gap:16 }}>
           <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-            {/* Back now goes to /dashboard */}
-            <Link to="/dashboard" style={{ color:"#8ab4ff", fontSize:16, whiteSpace:"nowrap" }}>← Back</Link>
+            {/* Back Button */}
+            <Link
+              to="/dashboard"
+              style={{
+                display:"flex", alignItems:"center", justifyContent:"center",
+                background:"#111", color:"#fff", border:"1px solid #222",
+                padding:"8px 12px", borderRadius:10, textDecoration:"none",
+                transition:"background 0.2s, border-color 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#1a1a1a";
+                e.currentTarget.style.borderColor = "#333";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "#111";
+                e.currentTarget.style.borderColor = "#222";
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                <path fillRule="evenodd" d="M15 8a.75.75 0 0 1-.75.75H3.56l3.47 3.47a.75.75 0 1 1-1.06 1.06l-4.75-4.75a.75.75 0 0 1 0-1.06l4.75-4.75a.75.75 0 1 1 1.06 1.06L3.56 7.25h10.69A.75.75 0 0 1 15 8z"/>
+              </svg>
+            </Link>
             <h1 style={{ margin:0, fontSize:22, whiteSpace:"nowrap" }}>Profile</h1>
           </div>
-          {!editing ? (
-            <button
-              onClick={startEditing}
-              style={{ background:"#1f6feb", border:0, color:"#fff", padding:"10px 16px", borderRadius:12, fontSize:15, fontWeight:700 }}
-            >
-              Edit Profile
-            </button>
-          ) : (
-            <div style={{ display:"flex", gap:10 }}>
+
+          <div style={{ minHeight:42, display:"flex", alignItems:"center", gap:10 }}>
+            {!editing ? (
               <button
-                onClick={()=>{ setDraft(profile); setEditing(false); setMsg(""); }}
-                style={{ background:"transparent", border:"1px solid #333", color:"#fff", padding:"10px 16px", borderRadius:12, fontSize:15 }}
+                onClick={startEditing}
+                style={{ background:"#1f6feb", border:0, color:"#fff", padding:"10px 16px", borderRadius:12, fontSize:15, fontWeight:700 }}
               >
-                Cancel
+                Edit Profile
               </button>
-              <button
-                onClick={save}
-                disabled={!isDirty}
-                style={{
-                  background:"#1f6feb", border:0, color:"#fff", padding:"10px 16px", borderRadius:12, fontSize:15, fontWeight:700,
-                  opacity:isDirty?1:0.6, cursor:isDirty?"pointer":"not-allowed"
-                }}
-              >
-                Save
-              </button>
-            </div>
-          )}
+            ) : (
+              <>
+                <button
+                  onClick={()=>{ setDraft(profile); setEditing(false); setMsg(""); }}
+                  style={{ background:"transparent", border:"1px solid #333", color:"#fff", padding:"10px 16px", borderRadius:12, fontSize:15 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={save}
+                  disabled={!isDirty}
+                  style={{
+                    background:"#1f6feb", border:0, color:"#fff", padding:"10px 16px",
+                    borderRadius:12, fontSize:15, fontWeight:700,
+                    opacity:isDirty?1:0.6, cursor:isDirty?"pointer":"not-allowed"
+                  }}
+                >
+                  Save
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -230,15 +258,15 @@ export default function ProfilePage() {
                 width:120, height:120, borderRadius:"50%", background:"#222",
                 overflow:"hidden", display:"grid", placeItems:"center", fontWeight:800, fontSize:34, flex:"0 0 auto"
               }}>
-                {/* Initials only (no upload/preview) */}
                 {(profile.preferred_name || profile.name || "?")
                   .split(" ").slice(0,2).map(p=>p[0]?.toUpperCase()).join("") || "?"}
               </div>
-              <div style={{ minWidth: 200, flex:"1 1 auto" }}>
+              <div style={{ minWidth:200, flex:"1 1 auto" }}>
                 <div style={{ fontSize:28, lineHeight:1.2, wordBreak:"break-word" }}>{displayName}</div>
-                {profile.preferred_name && profile.preferred_name !== profile.name && (
-                  <div style={{ fontSize:13, color:"#aaa" }}>Full name: {profile.name}</div>
-                )}
+                {/* ALWAYS show the original full name for clarity (if available) */}
+                {profile.name ? (
+                  <div style={{ fontSize:13, color:"#aaa" }}></div>
+                ) : null}
               </div>
             </div>
 
@@ -257,7 +285,7 @@ export default function ProfilePage() {
               <div style={sectionHeader}><h3 style={{ margin:0, fontSize:20 }}>Identity</h3></div>
               {!editing ? (
                 <div style={{ ...sectionBody, ...twoCol }}>
-                  <Labeled label="Name" value={profile.name} />
+                  <Labeled label="Name" value={displayName} />
                   <Labeled label="Preferred Name" value={profile.preferred_name || "—"} />
                   <Labeled label="Pronouns" value={profile.pronouns || "—"} />
                 </div>
@@ -309,37 +337,6 @@ export default function ProfilePage() {
                     </select>
                   </label>
                   {field("Major", draft?.major || "", v => setDraft(d => ({...d, major: v})))}
-                </div>
-              )}
-            </section>
-
-            {/* ACCESSIBILITY */}
-            <section style={card}>
-              <div style={sectionHeader}><h3 style={{ margin:0, fontSize:20 }}>Accessibility & Accommodations</h3></div>
-              {!editing ? (
-                <div style={sectionBody}>
-                  <div style={{ color:"#aaa", fontSize:12, textTransform:"uppercase", letterSpacing:0.4 }}>Disability Accommodations</div>
-                  <div style={{ whiteSpace:"pre-wrap", marginTop:8, fontSize:16 }}>
-                    {profile.disabilities || "No accommodations specified"}
-                  </div>
-                  <div style={{ color:"#777", fontSize:12, marginTop:10 }}>
-                    This information is private and only visible to you.
-                  </div>
-                </div>
-              ) : (
-                <div style={sectionBody}>
-                  <label style={{ display:"grid", gap:8 }}>
-                    <span style={{ fontSize:12, color:"#aaa", textTransform:"uppercase", letterSpacing:0.4 }}>Disability Accommodations</span>
-                    <textarea
-                      rows={6}
-                      value={draft?.disabilities || ""}
-                      onChange={e=> setDraft(d => ({...d, disabilities: e.target.value}))}
-                      style={{ ...inputBase, resize:"vertical" }}
-                    />
-                  </label>
-                  <div style={{ color:"#777", fontSize:12, marginTop:10 }}>
-                    This information is private and only visible to you.
-                  </div>
                 </div>
               )}
             </section>
