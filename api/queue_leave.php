@@ -51,9 +51,9 @@ try {
 
   // Mark the active row as left (only if it’s currently active)
   $upd = $pdo->prepare(
-    'UPDATE queue_entries
-        SET left_at = IF(left_at IS NULL, NOW(), left_at)
-      WHERE course_id = ? AND user_email = ? AND left_at IS NULL'
+    "UPDATE queue_entries
+        SET left_at = IF(left_at IS NULL, NOW(), left_at), notes = ''
+      WHERE course_id = ? AND user_email = ? AND left_at IS NULL"
   );
   $upd->execute([$cid, $email]);
 
