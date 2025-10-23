@@ -373,20 +373,29 @@ export default function ProfessorView() {
                     {entry.notes || "(no note provided)"}
                   </p>
 
+                  {/* Present / Absent controls for the student who is up next */}
                   {isNext && (
                     <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
                       <button
                         onClick={async () => {
                           try {
-                            const res = await fetch(`${API_ROOT}queue_attendance.php`, {
-                              method: "POST",
-                              credentials: "include",
-                              headers: { "Content-Type": "application/json", Accept: "application/json" },
-                              body: JSON.stringify({ course_id: activeCourse, user_email: entry.user_email, status: "present" }),
-                            });
+                            const res = await fetch(
+                              `${API_ROOT}queue_attendance.php`,
+                              {
+                                method: "POST",
+                                credentials: "include",
+                                headers: { "Content-Type": "application/json", Accept: "application/json" },
+                                body: JSON.stringify({
+                                  course_id: activeCourse,
+                                  user_email: entry.user_email,
+                                  status: "present",
+                                }),
+                              }
+                            );
                             if (!res.ok) throw new Error("request failed");
                             const data = await res.json().catch(() => ({}));
                             if (data.ok) {
+                              // reflect change locally
                               setQueue((q) => {
                                 const copy = q.slice();
                                 copy[0] = { ...copy[0], attendance: "present" };
@@ -413,12 +422,19 @@ export default function ProfessorView() {
                       <button
                         onClick={async () => {
                           try {
-                            const res = await fetch(`${API_ROOT}queue_attendance.php`, {
-                              method: "POST",
-                              credentials: "include",
-                              headers: { "Content-Type": "application/json", Accept: "application/json" },
-                              body: JSON.stringify({ course_id: activeCourse, user_email: entry.user_email, status: "absent" }),
-                            });
+                            const res = await fetch(
+                              `${API_ROOT}queue_attendance.php`,
+                              {
+                                method: "POST",
+                                credentials: "include",
+                                headers: { "Content-Type": "application/json", Accept: "application/json" },
+                                body: JSON.stringify({
+                                  course_id: activeCourse,
+                                  user_email: entry.user_email,
+                                  status: "absent",
+                                }),
+                              }
+                            );
                             if (!res.ok) throw new Error("request failed");
                             const data = await res.json().catch(() => ({}));
                             if (data.ok) {

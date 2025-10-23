@@ -24,15 +24,12 @@ try {
 
   $course_id = canonical_course_id($pdo, $courseKey);
 
-  // Ensure attendance column exists (backwards compatible: try to add if missing)
+  // Ensure attendance column exists (backwards compatible: add if missing)
   try {
     $pdo->query('SELECT attendance FROM queue_entries LIMIT 1');
   } catch (Throwable $e) {
-    try {
-      $pdo->exec("ALTER TABLE queue_entries ADD COLUMN attendance ENUM('present','absent') NULL");
-    } catch (Throwable $_) {
-      // ignore
-    }
+    // Try to add the column
+    $pdo->exec("ALTER TABLE queue_entries ADD COLUMN attendance ENUM('present','absent') NULL");
   }
 
   $upd = $pdo->prepare('UPDATE queue_entries SET attendance = ? WHERE course_id = ? AND user_email = ? AND left_at IS NULL');
