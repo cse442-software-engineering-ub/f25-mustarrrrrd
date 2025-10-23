@@ -76,7 +76,6 @@ ALTER TABLE users
   ADD COLUMN academic_year ENUM('Freshman','Sophomore','Junior','Senior') 
    NULL AFTER pronouns,
   ADD COLUMN major VARCHAR(100)  NULL AFTER academic_year,
-  ADD COLUMN disabilities TEXT NULL AFTER major,
-  ADD COLUMN title VARCHAR(100)  NULL AFTER disabilities,
+  ADD COLUMN title VARCHAR(100)  NULL AFTER major,
   ADD COLUMN title_display_order TINYINT UNSIGNED NOT NULL DEFAULT 0 AFTER title,
   ADD COLUMN session_token VARCHAR(64)  NULL AFTER password_hash;
