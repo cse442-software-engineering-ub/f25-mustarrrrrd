@@ -38,6 +38,7 @@ export default function QueueDetails() {
   // Notes (local persistence)
   const storageKey = `queue_notes_${course.id}`;
   const [notes, setNotes] = useState("");
+  const [saved, setSaved] = useState(false);
   useEffect(() => {
     const existing = localStorage.getItem(storageKey);
     if (existing !== null) setNotes(existing);
@@ -151,22 +152,30 @@ export default function QueueDetails() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [API_ROOT, course.id, navigate]);
 
-  function saveNotes() {
+  async function saveNotes() {
+    // persist locally immediately
     localStorage.setItem(storageKey, notes);
+    // optimistic saved UI
+    setSaved(true);
+
     if (email) {
-      fetch(`${API_ROOT}queue_save_notes.php`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        credentials: "include",
-        cache: "no-store",
-        body: JSON.stringify({
-          course_id: course.id,
-          user_email: email,
-          notes,
-        }),
-      }).catch(() => {});
+      try {
+        await fetch(`${API_ROOT}queue_save_notes.php`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          credentials: "include",
+          cache: "no-store",
+          body: JSON.stringify({
+            course_id: course.id,
+            user_email: email,
+            notes,
+          }),
+        });
+      } catch {
+        // ignore network errors; still keep saved state locally
+      }
     }
-    alert("Notes saved.");
+    // don't show blocking alerts; show inline saved indicator instead
   }
 
   async function leaveQueue() {
@@ -184,6 +193,12 @@ export default function QueueDetails() {
         /* ignore */
       }
     }
+    // Clear local notes when leaving so rejoining does not restore old notes
+    try {
+      localStorage.removeItem(storageKey);
+    } catch {}
+    setNotes("");
+    setSaved(false);
     navigate("/dashboard");
   }
 
@@ -407,23 +422,53 @@ export default function QueueDetails() {
             Your Notes
           </h2>
 
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="E.g., Questions about assignment 3, need help with recursion, debugging issues…"
-            style={{
-              width: "100%",
-              minHeight: 140,
-              resize: "vertical",
-              borderRadius: 10,
-              border: "1px solid #e5e7eb",
-              padding: 12,
-              fontSize: "1rem",
-              color: "#111827",
-              outline: "none",
-              boxSizing: "border-box",
-            }}
-          />
+          <div style={{ position: "relative" }}>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              onFocus={() => setSaved(false)}
+              placeholder={
+                notes && notes.length > 0 ? undefined : "Notes for your instructor"
+              }
+              readOnly={saved}
+              style={{
+                width: "100%",
+                minHeight: 140,
+                resize: "vertical",
+                borderRadius: 10,
+                border: "1px solid #e5e7eb",
+                padding: 12,
+                fontSize: "1rem",
+                color: "#111827",
+                outline: "none",
+                boxSizing: "border-box",
+                background: saved ? "#f3f4f6" : "#fff",
+                opacity: saved ? 0.9 : 1,
+              }}
+            />
+
+            {saved && (
+              <div
+                style={{
+                  position: "absolute",
+                  right: 12,
+                  top: 12,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  background: "#dcfce7",
+                  color: "#166534",
+                  padding: "6px 8px",
+                  borderRadius: 999,
+                  fontWeight: 600,
+                  fontSize: "0.9rem",
+                  border: "1px solid #bbf7d0",
+                }}
+              >
+                ✓ Notes saved
+              </div>
+            )}
+          </div>
 
           <div style={{ marginTop: 12, display: "flex", gap: 12 }}>
             <button

@@ -326,52 +326,129 @@ export default function ProfessorView() {
               <p style={{ color: "#666" }}>No students currently in queue.</p>
             )}
 
-            {queue.map((entry, idx) => (
-              <div
-                key={idx}
-                style={{
-                  background: "#f9fafb",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: "0.5rem",
-                  padding: "0.75rem",
-                  marginBottom: "0.75rem",
-                }}
-              >
+            {queue.map((entry, idx) => {
+              const isNext = idx === 0;
+              return (
                 <div
+                  key={idx}
                   style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    marginBottom: "0.5rem",
+                    background: "#f9fafb",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "0.5rem",
+                    padding: "0.75rem",
+                    marginBottom: "0.75rem",
                   }}
                 >
-                  <p style={{ fontWeight: "600", margin: 0 }}>
-                    {entry.user_email}
-                  </p>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginBottom: "0.5rem",
+                    }}
+                  >
+                    <p style={{ fontWeight: "600", margin: 0 }}>
+                      {entry.user_email}
+                    </p>
+                    <p
+                      style={{
+                        fontSize: "0.8rem",
+                        color: "#777",
+                        margin: 0,
+                      }}
+                    >
+                      Joined:{" "}
+                      {new Date(entry.joined_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
                   <p
                     style={{
-                      fontSize: "0.8rem",
-                      color: "#777",
+                      fontSize: "0.85rem",
+                      color: "#444",
                       margin: 0,
                     }}
                   >
-                    Joined:{" "}
-                    {new Date(entry.joined_at).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                    {entry.notes || "(no note provided)"}
                   </p>
+
+                  {isNext && (
+                    <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(`${API_ROOT}queue_attendance.php`, {
+                              method: "POST",
+                              credentials: "include",
+                              headers: { "Content-Type": "application/json", Accept: "application/json" },
+                              body: JSON.stringify({ course_id: activeCourse, user_email: entry.user_email, status: "present" }),
+                            });
+                            if (!res.ok) throw new Error("request failed");
+                            const data = await res.json().catch(() => ({}));
+                            if (data.ok) {
+                              setQueue((q) => {
+                                const copy = q.slice();
+                                copy[0] = { ...copy[0], attendance: "present" };
+                                return copy;
+                              });
+                            }
+                          } catch (err) {
+                            console.error("Failed to mark present:", err);
+                          }
+                        }}
+                        style={{
+                          background: entry.attendance === "present" ? "#166534" : "#bbf7d0",
+                          color: entry.attendance === "present" ? "#fff" : "#164e2e",
+                          border: "none",
+                          padding: "0.5rem 0.75rem",
+                          borderRadius: 8,
+                          cursor: "pointer",
+                          fontWeight: 600,
+                        }}
+                      >
+                        Present
+                      </button>
+
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(`${API_ROOT}queue_attendance.php`, {
+                              method: "POST",
+                              credentials: "include",
+                              headers: { "Content-Type": "application/json", Accept: "application/json" },
+                              body: JSON.stringify({ course_id: activeCourse, user_email: entry.user_email, status: "absent" }),
+                            });
+                            if (!res.ok) throw new Error("request failed");
+                            const data = await res.json().catch(() => ({}));
+                            if (data.ok) {
+                              setQueue((q) => {
+                                const copy = q.slice();
+                                copy[0] = { ...copy[0], attendance: "absent" };
+                                return copy;
+                              });
+                            }
+                          } catch (err) {
+                            console.error("Failed to mark absent:", err);
+                          }
+                        }}
+                        style={{
+                          background: entry.attendance === "absent" ? "#7f1d1d" : "#fecaca",
+                          color: entry.attendance === "absent" ? "#fff" : "#7f1d1d",
+                          border: "none",
+                          padding: "0.5rem 0.75rem",
+                          borderRadius: 8,
+                          cursor: "pointer",
+                          fontWeight: 600,
+                        }}
+                      >
+                        Absent
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <p
-                  style={{
-                    fontSize: "0.85rem",
-                    color: "#444",
-                    margin: 0,
-                  }}
-                >
-                  {entry.notes || "(no note provided)"}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

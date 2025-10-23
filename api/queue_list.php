@@ -12,10 +12,11 @@ try {
   // Accept numeric ID or course code
   $course_id = canonical_course_id($pdo, $_GET['course_id'] ?? '');
 
-  // Active queue entries, oldest first, with user name
+  // Active queue entries, oldest first, with user name (include attendance)
   $sql = '
     SELECT 
       qe.user_email,
+      qe.attendance,
       u.name AS display_name,
       qe.notes,
       qe.joined_at,
