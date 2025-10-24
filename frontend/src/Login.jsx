@@ -1,10 +1,9 @@
 // src/Login.jsx
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const MAX = 191;
 
-// Cookie helpers
 const setCookie = (name, value, days) => {
   const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();
   document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires};path=/`;
@@ -19,7 +18,6 @@ const deleteCookie = (name) => {
   document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
 };
 
-// Build absolute base from Vite base (ends with /), safe in subfolders
 const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
 const API_ROOT = new URL("../api/", ABS_BASE).pathname;
 
@@ -35,7 +33,6 @@ export default function Login() {
   const clamp = (s) => (s || "").slice(0, MAX);
 
   useEffect(() => {
-    // Check if user has an active session
     const checkSession = async () => {
       try {
         const res = await fetch(`${API_ROOT}check_session.php`, {
@@ -45,20 +42,14 @@ export default function Login() {
         const data = await res.json();
 
         if (data?.loggedIn) {
-          // User is already logged in, redirect based on role
-          if (data?.role === "student") {
-            navigate("/dashboard");
-          } else if (data?.role === "professor") {
-            navigate("/professorview");
-          }
+          if (data?.role === "student") navigate("/dashboard");
+          else if (data?.role === "professor") navigate("/professorview");
           return;
         }
       } catch (err) {
-        // If session check fails, continue with normal login flow
         console.error("Session check failed:", err);
       }
 
-      // If not logged in, check for saved email
       const savedEmail = getCookie("userEmail");
       if (savedEmail) {
         setEmail(savedEmail);
@@ -94,12 +85,8 @@ export default function Login() {
         setMessage(`Welcome ${data?.name ?? ""}`.trim());
         setPassword("");
 
-        // Redirect based on role
-        if (data?.role === "student") {
-          navigate("/dashboard");
-        } else if (data?.role === "professor") {
-          navigate("/professorview");
-        }
+        if (data?.role === "student") navigate("/dashboard");
+        else if (data?.role === "professor") navigate("/professorview");
       } else {
         setMessage(data?.message || "No match");
       }
@@ -107,20 +94,6 @@ export default function Login() {
       setMessage("server error");
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function handleLogout() {
-    setMessage("");
-    try {
-      await fetch(`${API_ROOT}logout.php`, { method: "POST", credentials: "include" });
-      deleteCookie("userEmail");
-      setEmail("");
-      setPassword("");
-      setRememberMe(false);
-      setMessage("You have been logged out.");
-    } catch {
-      setMessage("Logout failed (server error).");
     }
   }
 
@@ -156,8 +129,15 @@ export default function Login() {
           boxShadow: "0 12px 32px rgba(0,0,0,0.45)",
         }}
       >
-        {/* Header row (title only now) */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+        {/* Header */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 24,
+          }}
+        >
           <h1 style={{ fontSize: "2rem", fontWeight: "bold", margin: 0 }}>CSE442 Login</h1>
         </div>
 
@@ -222,22 +202,51 @@ export default function Login() {
           Remember Me
         </label>
 
-        <button onClick={handleLogin} disabled={loading} style={{ opacity: loading ? 0.7 : 1 }}>
-          {loading ? "Logging in..." : "Log in"}
-        </button>
-
-        <button onClick={handleLogout} style={{ marginLeft: 10 }}>
-          Sign Out
+        {/* Buttons */}
+        <button
+          onClick={handleLogin}
+          disabled={loading}
+          style={{
+            padding: "12px 24px",
+            borderRadius: 6,
+            border: "none",
+            fontSize: "1rem",
+            fontWeight: 600,
+            color: "#fff",
+            background: loading
+              ? "linear-gradient(90deg, #444, #666)"
+              : "linear-gradient(90deg, #007bff, #00c3ff)",
+            cursor: loading ? "not-allowed" : "pointer",
+            transition: "all 0.2s ease-in-out",
+            opacity: loading ? 0.7 : 1,
+          }}
+        >
+          {loading ? "Logging in..." : "Log In"}
         </button>
 
         {message && <p style={{ marginTop: 16 }}>{message}</p>}
 
-        <p style={{ marginTop: 24 }}>
-          Don’t have an account?{" "}
-          <Link to="/signup" style={{ color: "#4da6ff" }}>
+        {/* Signup */}
+        <div style={{ marginTop: 24 }}>
+          <p style={{ marginBottom: 8 }}>Don’t have an account?</p>
+          <button
+            onClick={() => navigate("/signup")}
+            style={{
+              padding: "10px 20px",
+              borderRadius: 6,
+              border: "1px solid #007bff",
+              background: "transparent",
+              color: "#4da6ff",
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "all 0.2s ease-in-out",
+            }}
+            onMouseEnter={(e) => (e.target.style.background = "#007bff33")}
+            onMouseLeave={(e) => (e.target.style.background = "transparent")}
+          >
             Sign up here
-          </Link>
-        </p>
+          </button>
+        </div>
       </div>
     </div>
   );
