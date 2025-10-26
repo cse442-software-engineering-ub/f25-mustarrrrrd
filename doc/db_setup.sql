@@ -79,3 +79,10 @@ ALTER TABLE users
   ADD COLUMN title VARCHAR(100)  NULL AFTER major,
   ADD COLUMN title_display_order TINYINT UNSIGNED NOT NULL DEFAULT 0 AFTER title,
   ADD COLUMN session_token VARCHAR(64)  NULL AFTER password_hash;
+
+-- If you want to enable session-specific queues (recommended for per-session join/view), run the following migration:
+-- ALTER TABLE queue_entries ADD COLUMN session_id INT NULL AFTER course_id;
+-- ALTER TABLE queue_entries ADD KEY idx_session (session_id, left_at, joined_at);
+-- ALTER TABLE queue_entries ADD CONSTRAINT fk_queue_session FOREIGN KEY (session_id) REFERENCES office_hours_sessions(id) ON DELETE SET NULL;
+
+-- Note: after adding the column, the APIs will accept and use `session_id` when provided. Without this column, session-specific behavior will fail.

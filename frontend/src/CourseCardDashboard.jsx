@@ -87,45 +87,12 @@ export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFa
   const handlePrimary = async () => {
     const cid = String(course.id ?? course.code ?? "");
     const slug = encodeURIComponent(course.code ?? course.id ?? cid);
-
-    // If already in queue -> go straight to details
-    if (inQueue) {
-      navigate(`/queue/${slug}`);
-      return;
-    }
-
-    // Otherwise try to ensure session, join, then go to details
-    try {
-      const sres = await fetch(`${API_ROOT}check_session.php?t=${Date.now()}`, {
-        method: "GET",
-        credentials: "include",
-        cache: "no-store",
-        headers: { Accept: "application/json" },
-      });
-      const sdata = await sres.json().catch(() => ({}));
-      if (!sdata?.loggedIn || !sdata?.email) {
-        navigate("/");
-        return;
-      }
-
-      await fetch(`${API_ROOT}queue_join.php`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        credentials: "include",
-        cache: "no-store",
-        body: JSON.stringify({
-          course_id: cid,       // server can resolve code or numeric id
-          user_email: sdata.email,
-          notes: "",
-        }),
-      }).catch(() => {});
-    } finally {
-      navigate(`/queue/${slug}`);
-    }
+    // Always navigate to sessions view for this course
+    navigate(`/sessions/${slug}`);
   };
 
   // Basic green vs default button styles
-  const primaryLabel = inQueue ? "View Queue" : "Join Queue";
+  const primaryLabel = "View Sessions";
   const primaryStyle = inQueue
     ? {
         padding: "0.5rem 1rem",

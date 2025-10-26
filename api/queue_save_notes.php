@@ -16,18 +16,31 @@ try {
   $body      = json_decode(file_get_contents('php://input'), true) ?: [];
   $courseKey = $body['course_id'] ?? $body['course_code'] ?? null;
   $notes     = isset($body['notes']) ? clamp191((string)$body['notes']) : '';
+  $sessionId = isset($body['session_id']) && ctype_digit((string)$body['session_id']) ? (int)$body['session_id'] : null;
 
-  if (!$courseKey) { http_response_code(400); echo json_encode(['ok'=>false,'error'=>'missing_course_id']); exit; }
+  if (!$courseKey && !$sessionId) { http_response_code(400); echo json_encode(['ok'=>false,'error'=>'missing_course_id_or_session_id']); exit; }
 
-  $course_id = canonical_course_id($pdo, $courseKey);
+  $course_id = null;
+  if ($courseKey) {
+    $course_id = canonical_course_id($pdo, $courseKey);
+  }
 
-  // Update notes for the currently active queue row for this user
-  $upd = $pdo->prepare('
-    UPDATE queue_entries
-       SET notes = ?
-     WHERE course_id = ? AND user_email = ? AND left_at IS NULL
-  ');
-  $upd->execute([$notes, $course_id, $u['email'] ?? '']);
+  // Update notes for the currently active queue row for this user (optionally session-specific)
+  if ($sessionId) {
+    $upd = $pdo->prepare(
+      'UPDATE queue_entries
+         SET notes = ?
+       WHERE session_id = ? AND user_email = ? AND left_at IS NULL'
+    );
+    $upd->execute([$notes, $sessionId, $u['email'] ?? '']);
+  } else {
+    $upd = $pdo->prepare(
+      'UPDATE queue_entries
+         SET notes = ?
+       WHERE course_id = ? AND user_email = ? AND left_at IS NULL'
+    );
+    $upd->execute([$notes, $course_id, $u['email'] ?? '']);
+  }
 
   echo json_encode(['ok'=>true, 'updated'=>$upd->rowCount()]);
 } catch (Throwable $e) {

@@ -8,6 +8,8 @@ import ThemeToggle from "./ThemeToggle";
 import ProfessorView from "./professorview";
 import ProfilePage from "./ProfilePage";
 import QueueDetails from "./QueueDetails"; 
+import StudentSessions from './StudentSessions';
+import SessionQueue from './SessionQueue';
 import Settings from "./Settings.jsx";
 
 export default function App() {
@@ -24,6 +26,8 @@ export default function App() {
           <Route path="/professorview" element={<ProfessorView />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/queue/:courseId" element={<QueueDetails />} />
+          <Route path="/sessions/:courseId" element={<StudentSessions />} />
+          <Route path="/session/:sessionId" element={<SessionQueue />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </HashRouter>
