@@ -34,32 +34,49 @@ try {
   $in        = json_decode(file_get_contents('php://input'), true) ?: [];
   $courseKey = $in['course_id']  ?? $_POST['course_id']  ?? $_GET['course_id']  ?? null;
   $email     = $in['user_email'] ?? $_POST['user_email'] ?? $_GET['user_email'] ?? ($_SESSION['email'] ?? null);
+  $sessionId = isset($in['session_id']) ? (ctype_digit((string)$in['session_id']) ? (int)$in['session_id'] : null) : (isset($_POST['session_id']) && ctype_digit((string)$_POST['session_id']) ? (int)$_POST['session_id'] : (isset($_GET['session_id']) && ctype_digit((string)$_GET['session_id']) ? (int)$_GET['session_id'] : null));
 
-  if (!$courseKey) out(400, ['ok'=>false, 'error'=>'Missing course_id']);
+  if (!$courseKey && !$sessionId) out(400, ['ok'=>false, 'error'=>'Missing course_id_or_session_id']);
   if (!$email)     out(400, ['ok'=>false, 'error'=>'Missing user_email']);
 
-  // Normalize course id (accepts numeric id or code)
+  // Normalize course id (accepts numeric id or code) only when provided
   $cid = null;
-  if (ctype_digit((string)$courseKey)) {
-    $cid = (int)$courseKey;
-  } else {
-    $q = $pdo->prepare('SELECT id FROM courses WHERE code = ? LIMIT 1');
-    $q->execute([trim((string)$courseKey)]);
-    $cid = (int)$q->fetchColumn();
-    if (!$cid) out(400, ['ok'=>false, 'error'=>'Unknown course']);
+  if ($courseKey) {
+    if (ctype_digit((string)$courseKey)) {
+      $cid = (int)$courseKey;
+    } else {
+      $q = $pdo->prepare('SELECT id FROM courses WHERE code = ? LIMIT 1');
+      $q->execute([trim((string)$courseKey)]);
+      $cid = (int)$q->fetchColumn();
+      if (!$cid) out(400, ['ok'=>false, 'error'=>'Unknown course']);
+    }
   }
 
   // Mark the active row as left (only if it’s currently active)
-  $upd = $pdo->prepare(
-    "UPDATE queue_entries
-        SET left_at = IF(left_at IS NULL, NOW(), left_at), notes = ''
-      WHERE course_id = ? AND user_email = ? AND left_at IS NULL"
-  );
-  $upd->execute([$cid, $email]);
+  if ($sessionId) {
+    $upd = $pdo->prepare(
+      "UPDATE queue_entries
+          SET left_at = IF(left_at IS NULL, NOW(), left_at), notes = ''
+        WHERE session_id = ? AND user_email = ? AND left_at IS NULL"
+    );
+    $upd->execute([$sessionId, $email]);
+  } else {
+    $upd = $pdo->prepare(
+      "UPDATE queue_entries
+          SET left_at = IF(left_at IS NULL, NOW(), left_at), notes = ''
+        WHERE course_id = ? AND user_email = ? AND left_at IS NULL"
+    );
+    $upd->execute([$cid, $email]);
+  }
 
   // Return fresh totals so caller can update immediately if needed
-  $tot = $pdo->prepare('SELECT COUNT(*) FROM queue_entries WHERE course_id = ? AND left_at IS NULL');
-  $tot->execute([$cid]);
+  if ($sessionId) {
+    $tot = $pdo->prepare('SELECT COUNT(*) FROM queue_entries WHERE session_id = ? AND left_at IS NULL');
+    $tot->execute([$sessionId]);
+  } else {
+    $tot = $pdo->prepare('SELECT COUNT(*) FROM queue_entries WHERE course_id = ? AND left_at IS NULL');
+    $tot->execute([$cid]);
+  }
   $total = (int)$tot->fetchColumn();
 
   out(200, ['ok'=>true, 'updated'=>$upd->rowCount(), 'total'=>$total]);
