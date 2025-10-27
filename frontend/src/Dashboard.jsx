@@ -59,8 +59,45 @@ export function Dashboard() {
           studentsInQueue: 0,
           status: "upcoming",
           is_favorited: favoriteIds.has(course.id),
+          // Pass through active session data if it exists
+          activeSession: course.activeSession || null,
         }));
-        setAllCourses(formattedCourses);
+
+        // For courses with active sessions, check if user is in queue
+        const coursesWithQueueStatus = await Promise.all(
+          formattedCourses.map(async (course) => {
+            if (course.activeSession && course.activeSession.id) {
+              try {
+                const queueRes = await fetch(
+                  `${API_ROOT}queue_status.php?session_id=${course.activeSession.id}`,
+                  {
+                    method: "GET",
+                    credentials: "include",
+                  }
+                );
+                const queueData = await queueRes.json();
+
+                if (queueData.ok && queueData.position) {
+                  // User is in queue, add position info
+                  return {
+                    ...course,
+                    activeSession: {
+                      ...course.activeSession,
+                      inQueue: true,
+                      position: queueData.position,
+                      total: queueData.total,
+                    },
+                  };
+                }
+              } catch (err) {
+                console.error("Error fetching queue status:", err);
+              }
+            }
+            return course;
+          })
+        );
+
+        setAllCourses(coursesWithQueueStatus);
       }
     } catch (err) {
       console.error("Error fetching courses:", err);
