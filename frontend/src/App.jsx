@@ -8,32 +8,37 @@ import ThemeToggle from "./ThemeToggle";
 import ProfessorView from "./professorview";
 import ProfilePage from "./ProfilePage";
 import QueueDetails from "./QueueDetails"; 
-import StudentSessions from './StudentSessions';
-import SessionQueue from './SessionQueue';
 import Settings from "./Settings.jsx";
+// 1. Import the new ProtectedRoute component
+import { ProtectedRoute } from './ProtectedRoute'; 
+import { AuthProvider } from './AuthContext';
 
 export default function App() {
   return (
     <>
       <ThemeToggle />
-      <HashRouter>
-        <Routes>
-          <Route path="/" element={<Login />} />
-          <Route path="/signup" element={<SignUp />} />
-          <Route path="/mycourses" element={<MyCourses />} />
-          <Route path="/profcourses" element={<ProfCourses />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/professorview" element={<ProfessorView />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/queue/:courseId" element={<QueueDetails />} />
-          <Route path="/sessions/:courseId" element={<StudentSessions />} />
-          <Route path="/session/:sessionId" element={<SessionQueue />} />
-          <Route path="/settings" element={<Settings />} />
-        </Routes>
-      </HashRouter>
+      <AuthProvider>
+        <HashRouter>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<Login />} />
+            <Route path="/signup" element={<SignUp />} />
+
+            {/* Protected Routes */}
+            <Route path="/mycourses" element={<ProtectedRoute><MyCourses /></ProtectedRoute>} />
+            <Route path="/profcourses" element={<ProtectedRoute><ProfCourses /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/professorview" element={<ProtectedRoute><ProfessorView /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+            <Route path="/queue/:courseId" element={<ProtectedRoute><QueueDetails /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+          </Routes>
+        </HashRouter>
+      </AuthProvider>
     </>
   );
 }
+
 
 export function ProfessorDashboard() {
   return (
