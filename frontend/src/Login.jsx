@@ -164,7 +164,6 @@ export default function Login() {
               boxSizing: "border-box",
             }}
           />
-          <small>{email.length}/{MAX}</small>
         </label>
 
         {/* Password */}
@@ -189,7 +188,6 @@ export default function Login() {
               boxSizing: "border-box",
             }}
           />
-          <small>{password.length}/{MAX}</small>
         </label>
 
         <label style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
