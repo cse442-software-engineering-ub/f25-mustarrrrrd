@@ -33,7 +33,7 @@ export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFa
       if (!course.activeSession.inQueue) {
         try {
           // Join the queue first
-          await fetch(`${API_ROOT}queue_join.php`, {
+          const res = await fetch(`${API_ROOT}queue_join.php`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -42,6 +42,13 @@ export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFa
               session_id: course.activeSession.id
             })
           });
+          const data = await res.json();
+
+          // Check if there's an error (e.g., already reserved another session)
+          if (!data.ok && data.error === 'already_reserved') {
+            alert(data.message || 'You already have a reservation for another session in this course.');
+            return;
+          }
         } catch (e) {
           console.error("Error joining queue:", e);
         }

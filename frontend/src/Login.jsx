@@ -138,7 +138,7 @@ export default function Login() {
             marginBottom: 24,
           }}
         >
-          <h1 style={{ fontSize: "2rem", fontWeight: "bold", margin: 0 }}>CSE442 Login</h1>
+          <h1 style={{ fontSize: "2rem", fontWeight: "bold", margin: 0 }}>Auto Office Hours</h1>
         </div>
 
         {/* Email */}
@@ -164,7 +164,6 @@ export default function Login() {
               boxSizing: "border-box",
             }}
           />
-          <small>{email.length}/{MAX}</small>
         </label>
 
         {/* Password */}
@@ -189,7 +188,6 @@ export default function Login() {
               boxSizing: "border-box",
             }}
           />
-          <small>{password.length}/{MAX}</small>
         </label>
 
         <label style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
