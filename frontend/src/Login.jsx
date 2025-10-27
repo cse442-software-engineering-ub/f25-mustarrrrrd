@@ -138,7 +138,7 @@ export default function Login() {
             marginBottom: 24,
           }}
         >
-          <h1 style={{ fontSize: "2rem", fontWeight: "bold", margin: 0 }}>CSE442 Login</h1>
+          <h1 style={{ fontSize: "2rem", fontWeight: "bold", margin: 0 }}>Auto Office Hours</h1>
         </div>
 
         {/* Email */}

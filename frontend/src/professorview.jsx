@@ -20,7 +20,26 @@ export default function ProfessorView() {
   const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
   const API_ROOT = new URL("../api/", ABS_BASE).pathname;
 
-  // --- Fetch professor’s assigned courses ---
+  // Parse 12-hour time format "3:00 PM" to 24-hour { hours, minutes }
+  function parse12HourTime(timeStr) {
+    if (!timeStr) return { hours: 0, minutes: 0 };
+    const parts = timeStr.trim().split(' '); // ["3:00", "PM"]
+    if (parts.length !== 2) return { hours: 0, minutes: 0 };
+
+    const [timePart, period] = parts;
+    const [h, m] = timePart.split(':').map(nt => parseInt(nt, 10) || 0);
+
+    let hours = h;
+    if (period === 'PM' && hours !== 12) {
+      hours += 12;
+    } else if (period === 'AM' && hours === 12) {
+      hours = 0;
+    }
+
+    return { hours, minutes: m };
+  }
+
+  // --- Fetch professor's assigned courses ---
   useEffect(() => {
     async function fetchCourses() {
       try {
@@ -135,9 +154,9 @@ export default function ProfessorView() {
       const now = new Date();
       const today = days[now.getDay()];
       if(s.day_of_week !== today) return false;
-      // s.start_time like HH:MM
-      const [sh, sm] = (s.start_time||'00:00').split(':').map(Number);
-      const [eh, em] = (s.end_time||'00:00').split(':').map(Number);
+      // s.start_time like "3:00 PM"
+      const { hours: sh, minutes: sm } = parse12HourTime(s.start_time);
+      const { hours: eh, minutes: em } = parse12HourTime(s.end_time);
       const nowMinutes = now.getHours()*60 + now.getMinutes();
       const startMinutes = sh*60 + sm;
       const endMinutes = eh*60 + em;

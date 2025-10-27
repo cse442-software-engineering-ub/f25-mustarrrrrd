@@ -10,7 +10,7 @@ try {
   $id = isset($_GET['session_id']) && ctype_digit((string)$_GET['session_id']) ? (int)$_GET['session_id'] : null;
   if (!$id) { http_response_code(400); echo json_encode(['ok'=>false,'error'=>'missing_session_id']); exit; }
 
-  $sql = 'SELECT id, course_id, day_of_week, DATE_FORMAT(start_time, "%H:%i") AS start_time, DATE_FORMAT(end_time, "%H:%i") AS end_time, location, instructor_id, created_at FROM office_hours_sessions WHERE id = ? LIMIT 1';
+  $sql = 'SELECT id, course_id, day_of_week, DATE_FORMAT(start_time, "%h:%i %p") AS start_time, DATE_FORMAT(end_time, "%h:%i %p") AS end_time, location, instructor_id, created_at FROM office_hours_sessions WHERE id = ? LIMIT 1';
   $stmt = $pdo->prepare($sql);
   $stmt->execute([$id]);
   $row = $stmt->fetch(PDO::FETCH_ASSOC);

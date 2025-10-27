@@ -13,7 +13,7 @@ try {
   $course_id = canonical_course_id($pdo, $courseKey);
 
   $sql = '
-    SELECT id, day_of_week, DATE_FORMAT(start_time, "%H:%i") AS start_time, DATE_FORMAT(end_time, "%H:%i") AS end_time, location, instructor_id, created_at
+    SELECT id, day_of_week, DATE_FORMAT(start_time, "%h:%i %p") AS start_time, DATE_FORMAT(end_time, "%h:%i %p") AS end_time, location, instructor_id, created_at
     FROM office_hours_sessions
     WHERE course_id = ?
     ORDER BY FIELD(day_of_week, "Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"), start_time ASC
