@@ -33,6 +33,14 @@ export default function Login() {
   const clamp = (s) => (s || "").slice(0, MAX);
 
   useEffect(() => {
+  // disable scrolling while on login page
+  document.body.style.overflow = "hidden";
+  return () => {
+    document.body.style.overflow = "auto";
+  };
+  }, []);
+  
+  useEffect(() => {
     const checkSession = async () => {
       try {
         const res = await fetch(`${API_ROOT}check_session.php`, {
