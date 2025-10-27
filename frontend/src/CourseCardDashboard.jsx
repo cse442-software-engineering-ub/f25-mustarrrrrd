@@ -1,77 +1,13 @@
 // frontend/src/CourseCardDashboard.jsx
-import { Star, Clock, MapPin, Users, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Star, Users, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+
+// Build absolute base from Vite base (ends with /), safe in subfolders
+const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
+const API_ROOT = new URL("../api/", ABS_BASE).pathname;
 
 export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFavorited }) {
   const navigate = useNavigate();
-
-  // Build absolute API root that works in subfolders (local and Aptitude)
-  const ABS_BASE = new URL(import.meta.env.BASE_URL || "/", window.location.origin);
-  const API_ROOT = new URL("../api/", ABS_BASE).pathname;
-
-  // Session email (resolved once)
-  const [email, setEmail] = useState(null);
-
-  // Live queue state for this course
-  const [totalInQueue, setTotalInQueue] = useState(
-    typeof course.studentsInQueue === "number" ? course.studentsInQueue : 0
-  );
-  const [inQueue, setInQueue] = useState(false); // true if this user is queued
-  const [position, setPosition] = useState(null); // optional: your position
-
-  const pollTimer = useRef(null);
-
-  // Resolve session and start polling this course’s status
-  useEffect(() => {
-    let cancelled = false;
-
-    async function getSession() {
-      try {
-        const res = await fetch(`${API_ROOT}check_session.php?t=${Date.now()}`, {
-          credentials: "include",
-          cache: "no-store",
-          headers: { Accept: "application/json" },
-        });
-        if (!res.ok) return;
-        const data = await res.json().catch(() => null);
-        if (!data || !data.loggedIn) return;
-        if (!cancelled) setEmail(data.email);
-      } catch {
-        /* ignore */
-      }
-    }
-
-    async function poll() {
-      try {
-        const cid = String(course.id ?? course.code ?? "");
-        const res = await fetch(
-          `${API_ROOT}queue_status.php?course_id=${encodeURIComponent(cid)}&t=${Date.now()}`,
-          { credentials: "include", cache: "no-store", headers: { Accept: "application/json" } }
-        );
-        if (!res.ok) return;
-        const data = await res.json().catch(() => null);
-        if (!data) return;
-        if (typeof data.total === "number") setTotalInQueue(data.total);
-        // If server sees your session, it returns position (number) when you’re in the queue.
-        setInQueue(typeof data.position === "number" && data.position >= 1);
-        setPosition(typeof data.position === "number" ? data.position : null);
-      } catch {
-        /* ignore */
-      }
-    }
-
-    (async () => {
-      await getSession();
-      await poll();
-      pollTimer.current = setInterval(poll, 5000);
-    })();
-
-    return () => {
-      if (pollTimer.current) clearInterval(pollTimer.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [API_ROOT, course.id, course.code]);
 
   const handleToggleFavorite = (e) => {
     e.stopPropagation();
@@ -83,81 +19,121 @@ export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFa
     if (onUnenroll) onUnenroll(course.id);
   };
 
-  // Join or view depending on state
+  // Navigate to sessions view
   const handlePrimary = async () => {
     const cid = String(course.id ?? course.code ?? "");
     const slug = encodeURIComponent(course.code ?? course.id ?? cid);
-
-    // If already in queue -> go straight to details
-    if (inQueue) {
-      navigate(`/queue/${slug}`);
-      return;
-    }
-
-    // Otherwise try to ensure session, join, then go to details
-    try {
-      const sres = await fetch(`${API_ROOT}check_session.php?t=${Date.now()}`, {
-        method: "GET",
-        credentials: "include",
-        cache: "no-store",
-        headers: { Accept: "application/json" },
-      });
-      const sdata = await sres.json().catch(() => ({}));
-      if (!sdata?.loggedIn || !sdata?.email) {
-        navigate("/");
-        return;
-      }
-
-      await fetch(`${API_ROOT}queue_join.php`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        credentials: "include",
-        cache: "no-store",
-        body: JSON.stringify({
-          course_id: cid,       // server can resolve code or numeric id
-          user_email: sdata.email,
-          notes: "",
-        }),
-      }).catch(() => {});
-    } finally {
-      navigate(`/queue/${slug}`);
-    }
+    navigate(`/sessions/${slug}`);
   };
 
-  // Basic green vs default button styles
-  const primaryLabel = inQueue ? "View Queue" : "Join Queue";
-  const primaryStyle = inQueue
-    ? {
-        padding: "0.5rem 1rem",
-        background: "#10b981",
-        color: "white",
-        border: "none",
-        borderRadius: "0.5rem",
-        fontSize: "0.875rem",
-        cursor: "pointer",
-        fontWeight: 600,
+  // Join active session
+  const handleJoinSession = async () => {
+    if (course.activeSession && course.activeSession.id) {
+      // Only join the queue if not already in it
+      if (!course.activeSession.inQueue) {
+        try {
+          // Join the queue first
+          const res = await fetch(`${API_ROOT}queue_join.php`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({
+              course_id: course.id,
+              session_id: course.activeSession.id
+            })
+          });
+          const data = await res.json();
+
+          // Check if there's an error (e.g., already reserved another session)
+          if (!data.ok && data.error === 'already_reserved') {
+            alert(data.message || 'You already have a reservation for another session in this course.');
+            return;
+          }
+        } catch (e) {
+          console.error("Error joining queue:", e);
+        }
       }
-    : {
-        padding: "0.5rem 1rem",
-        background: "#111",
-        color: "white",
-        border: "none",
-        borderRadius: "0.5rem",
-        fontSize: "0.875rem",
-        cursor: "pointer",
-        fontWeight: 600,
-      };
+      // Navigate to the session queue page
+      navigate(`/session/${course.activeSession.id}`);
+    }
+  };
 
   return (
     <div
       style={{
         background: "white",
-        border: "1px solid #e5e7eb",
+        border: course.activeSession
+          ? "2px solid #10b981"
+          : "1px solid #e5e7eb",
         borderRadius: "0.5rem",
         padding: "1rem",
-        boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+        boxShadow: course.activeSession
+          ? "0 4px 12px rgba(16, 185, 129, 0.15)"
+          : "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+        position: "relative",
       }}
     >
+      {/* Active Session Banner */}
+      {course.activeSession && (
+        <div
+          style={{
+            background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+            color: "white",
+            padding: "0.75rem",
+            borderRadius: "0.375rem",
+            marginBottom: "0.75rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span
+              style={{
+                width: "8px",
+                height: "8px",
+                background: "#fff",
+                borderRadius: "50%",
+                boxShadow: "0 0 0 2px rgba(255, 255, 255, 0.3)",
+              }}
+            />
+            <div>
+              <div style={{ fontWeight: 600, fontSize: "0.875rem" }}>
+                {course.activeSession.inQueue ? "You're in Queue" : "Session Active Now"}
+              </div>
+              <div style={{ fontSize: "0.75rem", opacity: 0.9 }}>
+                {course.activeSession.inQueue ? (
+                  <>Position: {course.activeSession.position} of {course.activeSession.total} • Ends at {course.activeSession.endTime}</>
+                ) : (
+                  <>Ends at {course.activeSession.endTime}</>
+                )}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={handleJoinSession}
+            style={{
+              background: "white",
+              color: "#059669",
+              border: "none",
+              borderRadius: "0.375rem",
+              padding: "0.5rem 1rem",
+              fontSize: "0.875rem",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = "#f0fdf4";
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = "white";
+            }}
+          >
+            {course.activeSession.inQueue ? "View Queue" : "Join"}
+          </button>
+        </div>
+      )}
+
       {/* Course Header */}
       <div
         style={{
@@ -219,73 +195,6 @@ export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFa
         </button>
       </div>
 
-      {/* Status Badge */}
-      <div style={{ marginBottom: "0.75rem" }}>
-        <span
-          style={{
-            padding: "0.25rem 0.5rem",
-            background: course.status === "available" ? "#10b981" : "#3b82f6",
-            color: "white",
-            borderRadius: "0.25rem",
-            fontSize: "0.75rem",
-            fontWeight: 600,
-          }}
-        >
-          {course.status === "available" ? "Available Now" : "Upcoming"}
-        </span>
-      </div>
-
-      {/* Course Details */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "0.5rem",
-          marginBottom: "1rem",
-        }}
-      >
-        <p
-          style={{
-            fontSize: "0.875rem",
-            color: "#6b7280",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            margin: 0,
-          }}
-        >
-          <Clock size={16} />
-          {course.time}
-        </p>
-        <p
-          style={{
-            fontSize: "0.875rem",
-            color: "#6b7280",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            margin: 0,
-          }}
-        >
-          <MapPin size={16} />
-          {course.location}
-        </p>
-        <p
-          style={{
-            fontSize: "0.875rem",
-            color: "#6b7280",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            margin: 0,
-          }}
-        >
-          <Users size={16} />
-          {totalInQueue} {totalInQueue === 1 ? "student" : "students"} in queue
-          {inQueue && typeof position === "number" ? ` • your position ${position}` : ""}
-        </p>
-      </div>
-
       {/* Actions */}
       <div
         style={{
@@ -327,16 +236,25 @@ export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFa
 
         {/* Primary Action Button */}
         <button
-          style={primaryStyle}
+          style={{
+            padding: "0.5rem 1rem",
+            background: "#111",
+            color: "white",
+            border: "none",
+            borderRadius: "0.5rem",
+            fontSize: "0.875rem",
+            cursor: "pointer",
+            fontWeight: 600,
+          }}
           onMouseOver={(e) => {
-            e.currentTarget.style.background = inQueue ? "#059669" : "#1f2937";
+            e.currentTarget.style.background = "#1f2937";
           }}
           onMouseOut={(e) => {
-            e.currentTarget.style.background = inQueue ? "#10b981" : "#111";
+            e.currentTarget.style.background = "#111";
           }}
           onClick={handlePrimary}
         >
-          {primaryLabel}
+          View Sessions
         </button>
       </div>
     </div>

@@ -1,8 +1,9 @@
 // src/Dashboard.jsx
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Star, Menu, Search, Plus, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Star, Menu, Search, Plus, Calendar } from "lucide-react";
 import { CourseCardDashboard } from "./CourseCardDashboard";
+import { ReservedSessionCard } from "./ReservedSessionCard";
 
 // Build absolute base from Vite base (ends with /), safe in subfolders
 const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
@@ -13,6 +14,7 @@ export function Dashboard() {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [allCourses, setAllCourses] = useState([]); // All enrolled courses
+  const [reservedSessions, setReservedSessions] = useState([]); // Reserved sessions
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState([]);
@@ -22,9 +24,10 @@ export function Dashboard() {
   const menuRef = useRef(null);
   const searchRef = useRef(null);
 
-  // Fetch enrolled courses on mount
+  // Fetch enrolled courses and reserved sessions on mount
   useEffect(() => {
     fetchEnrolledCourses();
+    fetchReservedSessions();
   }, []);
 
   async function fetchEnrolledCourses() {
@@ -59,13 +62,82 @@ export function Dashboard() {
           studentsInQueue: 0,
           status: "upcoming",
           is_favorited: favoriteIds.has(course.id),
+          // Pass through active session data if it exists
+          activeSession: course.activeSession || null,
         }));
-        setAllCourses(formattedCourses);
+
+        // For courses with active sessions, check if user is in queue
+        const coursesWithQueueStatus = await Promise.all(
+          formattedCourses.map(async (course) => {
+            if (course.activeSession && course.activeSession.id) {
+              try {
+                const queueRes = await fetch(
+                  `${API_ROOT}queue_status.php?session_id=${course.activeSession.id}`,
+                  {
+                    method: "GET",
+                    credentials: "include",
+                  }
+                );
+                const queueData = await queueRes.json();
+
+                if (queueData.ok && queueData.position) {
+                  // User is in queue, add position info
+                  return {
+                    ...course,
+                    activeSession: {
+                      ...course.activeSession,
+                      inQueue: true,
+                      position: queueData.position,
+                      total: queueData.total,
+                    },
+                  };
+                }
+              } catch (err) {
+                console.error("Error fetching queue status:", err);
+              }
+            }
+            return course;
+          })
+        );
+
+        setAllCourses(coursesWithQueueStatus);
       }
     } catch (err) {
       console.error("Error fetching courses:", err);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchReservedSessions() {
+    try {
+      const res = await fetch(`${API_ROOT}my_reserved_sessions.php`, {
+        method: "GET",
+        credentials: "include",
+      });
+      const data = await res.json();
+
+      if (data.ok && data.sessions) {
+        setReservedSessions(data.sessions);
+      }
+    } catch (err) {
+      console.error("Error fetching reserved sessions:", err);
+    }
+  }
+
+  async function cancelReservation(sessionId) {
+    try {
+      await fetch(`${API_ROOT}queue_leave.php`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId }),
+      });
+
+      // Remove from local state
+      setReservedSessions(reservedSessions.filter(s => s.sessionId !== sessionId));
+    } catch (err) {
+      console.error("Error canceling reservation:", err);
     }
   }
 
@@ -180,24 +252,10 @@ export function Dashboard() {
           body: JSON.stringify({ course_id: courseId }),
         });
 
-        // Find the course from search results
-        const enrolledCourse = searchResults.find(c => c.id === courseId);
-        if (enrolledCourse) {
-          const formattedCourse = {
-            id: enrolledCourse.id,
-            code: enrolledCourse.code,
-            name: enrolledCourse.title,
-            professor: enrolledCourse.professor || "Professor",
-            time: enrolledCourse.lecture_times,
-            location: enrolledCourse.room,
-            studentsInQueue: 0,
-            status: "upcoming",
-            is_favorited: true,
-          };
-
-          // Add to top of the list
-          setAllCourses([formattedCourse, ...allCourses]);
-        }
+        // Refetch all courses to get active session data and queue status
+        await fetchEnrolledCourses();
+        // Also refetch reserved sessions in case this course has reserved sessions
+        await fetchReservedSessions();
 
         // Clear search
         setSearchTerm("");
@@ -261,10 +319,6 @@ export function Dashboard() {
   // Separate courses into favorites and enrolled
   const favoriteCourses = allCourses.filter(c => c.is_favorited);
   const enrolledCourses = allCourses.filter(c => !c.is_favorited);
-
-  // Calculate course counts for favorites
-  const availableCount = favoriteCourses.filter(c => c.status === 'available').length;
-  const upcomingCount = favoriteCourses.filter(c => c.status === 'upcoming').length;
 
   return (
     <div
@@ -488,6 +542,54 @@ export function Dashboard() {
           </div>
         </div>
 
+        {/* My Upcoming Sessions Section */}
+        <div style={{ marginBottom: "3rem" }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            marginBottom: '1rem'
+          }}>
+            <Calendar size={20} color="#3b82f6" />
+            <h2
+              style={{
+                fontSize: "1.125rem",
+                fontWeight: 600,
+                margin: 0,
+                color: "#111",
+              }}
+            >
+              My Upcoming Sessions
+            </h2>
+          </div>
+
+          {/* Reserved Sessions Cards or Empty State */}
+          {loading ? (
+            <p style={{ textAlign: 'center', color: '#6b7280' }}>Loading sessions...</p>
+          ) : reservedSessions.length === 0 ? (
+            <p style={{ textAlign: 'center', color: '#6b7280', fontSize: '0.875rem', lineHeight: '1.5' }}>
+              Reserved office hour sessions will appear here. To reserve a session, click "View Sessions" for your course below, and reserve any session that is within 24 hours of your current time.
+            </p>
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                gap: "1rem",
+                overflowX: "auto",
+                paddingBottom: "0.5rem",
+              }}
+            >
+              {reservedSessions.map((session) => (
+                <ReservedSessionCard
+                  key={session.sessionId}
+                  session={session}
+                  onCancel={cancelReservation}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Favorites Section */}
         <div style={{ marginBottom: "3rem" }}>
           <div style={{
@@ -507,38 +609,6 @@ export function Dashboard() {
             >
               Favorites
             </h2>
-          </div>
-
-          {/* Course Tags */}
-          <div style={{
-            display: 'flex',
-            gap: '0.5rem',
-            marginBottom: '1.5rem'
-          }}>
-            <button style={{
-              padding: '0.375rem 0.75rem',
-              background: '#10b981',
-              color: 'white',
-              border: 'none',
-              borderRadius: '0.375rem',
-              fontSize: '0.875rem',
-              cursor: 'pointer',
-              fontWeight: '500'
-            }}>
-              Available ({availableCount})
-            </button>
-            <button style={{
-              padding: '0.375rem 0.75rem',
-              background: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '0.375rem',
-              fontSize: '0.875rem',
-              cursor: 'pointer',
-              fontWeight: '500'
-            }}>
-              Upcoming ({upcomingCount})
-            </button>
           </div>
 
           {/* Favorites Course Cards Grid */}

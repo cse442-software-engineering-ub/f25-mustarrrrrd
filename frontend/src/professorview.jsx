@@ -6,8 +6,11 @@ export default function ProfessorView() {
   const [courses, setCourses] = useState([]);
   const [activeCourse, setActiveCourse] = useState(null);
   const [queue, setQueue] = useState([]);
+  const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showScheduleForm, setShowScheduleForm] = useState(false);
+  const [newSession, setNewSession] = useState({ day_of_week: 'Monday', start_time: '12:00', end_time: '13:00', location: '' });
 
   const btnRef = useRef(null);
   const menuRef = useRef(null);
@@ -17,7 +20,26 @@ export default function ProfessorView() {
   const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
   const API_ROOT = new URL("../api/", ABS_BASE).pathname;
 
-  // --- Fetch professor’s assigned courses ---
+  // Parse 12-hour time format "3:00 PM" to 24-hour { hours, minutes }
+  function parse12HourTime(timeStr) {
+    if (!timeStr) return { hours: 0, minutes: 0 };
+    const parts = timeStr.trim().split(' '); // ["3:00", "PM"]
+    if (parts.length !== 2) return { hours: 0, minutes: 0 };
+
+    const [timePart, period] = parts;
+    const [h, m] = timePart.split(':').map(nt => parseInt(nt, 10) || 0);
+
+    let hours = h;
+    if (period === 'PM' && hours !== 12) {
+      hours += 12;
+    } else if (period === 'AM' && hours === 12) {
+      hours = 0;
+    }
+
+    return { hours, minutes: m };
+  }
+
+  // --- Fetch professor's assigned courses ---
   useEffect(() => {
     async function fetchCourses() {
       try {
@@ -86,8 +108,77 @@ export default function ProfessorView() {
 
     fetchQueue();
     const interval = setInterval(fetchQueue, 5000);
+    // fetch sessions too
+    fetchSessions();
+    const sInterval = setInterval(fetchSessions, 60000);
     return () => clearInterval(interval);
   }, [activeCourse]);
+
+  async function fetchSessions(){
+    try{
+      const res = await fetch(`${API_ROOT}office_hours_sessions_list.php?course_id=${encodeURIComponent(activeCourse)}`, { credentials: 'include', headers:{Accept:'application/json'} });
+      if(!res.ok){ console.error('Failed to load sessions', res.status); return; }
+      const data = await res.json().catch(()=>null);
+      if(!(data && data.ok && Array.isArray(data.sessions))){ console.error('Invalid sessions response', data); return; }
+
+      // normalize and sort sessions: Monday..Sunday then start_time ascending
+      const dayOrder = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+      const dayIdx = (d)=> Math.max(0, dayOrder.indexOf(d));
+
+      const sorted = data.sessions.slice().sort((a,b)=>{
+        const da = dayIdx(a.day_of_week);
+        const db = dayIdx(b.day_of_week);
+        if(da !== db) return da - db;
+        // compare start_time strings 'HH:MM'
+        if((a.start_time||'') < (b.start_time||'')) return -1;
+        if((a.start_time||'') > (b.start_time||'')) return 1;
+        return 0;
+      });
+
+      // avoid flicker: only update state when data actually changed
+      try{
+        const prev = JSON.stringify(sessions || []);
+        const next = JSON.stringify(sorted || []);
+        if(prev !== next){
+          setSessions(sorted);
+        }
+      }catch(e){
+        setSessions(sorted);
+      }
+    }catch(err){ console.error('Error fetching sessions',err); }
+  }
+
+  function isSessionActive(s){
+    try{
+      const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+      const now = new Date();
+      const today = days[now.getDay()];
+      if(s.day_of_week !== today) return false;
+      // s.start_time like "3:00 PM"
+      const { hours: sh, minutes: sm } = parse12HourTime(s.start_time);
+      const { hours: eh, minutes: em } = parse12HourTime(s.end_time);
+      const nowMinutes = now.getHours()*60 + now.getMinutes();
+      const startMinutes = sh*60 + sm;
+      const endMinutes = eh*60 + em;
+      return nowMinutes >= startMinutes && nowMinutes <= endMinutes;
+    }catch(e){ return false; }
+  }
+
+  async function createSession(){
+    try{
+      const res = await fetch(`${API_ROOT}create_office_hours_session.php`,{
+        method: 'POST', credentials:'include', headers:{'Content-Type':'application/json', Accept:'application/json'},
+        body: JSON.stringify({ course_id: activeCourse, ...newSession })
+      });
+      if(!res.ok) throw new Error('create failed');
+      const data = await res.json().catch(()=>null);
+      if(data && data.ok){
+        setShowScheduleForm(false);
+        // refresh sessions
+        fetchSessions();
+      }
+    }catch(err){ console.error('Failed to create session', err); }
+  }
 
   // --- Handle sign out ---
   async function handleSignOut() {
@@ -308,25 +399,86 @@ export default function ProfessorView() {
                   "Course Queue"
                 }
               </h2>
-              <span
-                style={{
-                  fontSize: "0.7rem",
-                  background: "#dcfce7",
-                  color: "#166534",
-                  padding: "0.25rem 0.5rem",
-                  borderRadius: "0.25rem",
-                }}
-              >
-                Active Now
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button
+                  onClick={() => setShowScheduleForm((v) => !v)}
+                  style={{
+                    background: '#eef2ff',
+                    color: '#3730a3',
+                    border: '1px solid #e0e7ff',
+                    borderRadius: 8,
+                    padding: '6px 10px',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  Schedule session
+                </button>
+              </div>
             </div>
 
             {loading && <p style={{ color: "#666" }}>Loading queue...</p>}
+            {/* Sessions list for this course */}
+            {sessions.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                {sessions.map((s) => {
+                  const active = isSessionActive(s);
+                  return (
+                    <div key={s.id} onClick={() => window.location.hash = `#/session/${s.id}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f9fafb', border: '1px solid #e5e7eb', padding: 10, borderRadius: 8, marginBottom: 8, cursor: 'pointer' }}>
+                      <div>
+                        <div style={{ fontWeight: 700 }}>{s.day_of_week} • {s.start_time}–{s.end_time}</div>
+                        <div style={{ fontSize: '0.9rem', color: '#555' }}>{s.location || '(no location)'}</div>
+                      </div>
+                      <div>
+                        {active ? (
+                          <span style={{ fontSize: '0.75rem', background: '#dcfce7', color: '#166534', padding: '4px 8px', borderRadius: 6, fontWeight: 600 }}>Active Now</span>
+                        ) : (
+                          <span style={{ fontSize: '0.75rem', background: '#e0f2fe', color: '#0369a1', padding: '4px 8px', borderRadius: 6, fontWeight: 600 }}>Upcoming</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Schedule form */}
+            {showScheduleForm && (
+              <div style={{ background: '#fff', border: '1px solid #e5e7eb', padding: 12, borderRadius: 8, marginBottom: 12 }}>
+                {/* compact, consistent input styles */}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                  {(() => {
+                    const common = { padding: 8, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff' };
+                    return (
+                      <>
+                        <select value={newSession.day_of_week} onChange={(e)=>setNewSession(s=>({...s, day_of_week: e.target.value}))} style={{ ...common }}>
+                          <option>Monday</option>
+                          <option>Tuesday</option>
+                          <option>Wednesday</option>
+                          <option>Thursday</option>
+                          <option>Friday</option>
+                          <option>Saturday</option>
+                          <option>Sunday</option>
+                        </select>
+                        <input type="time" value={newSession.start_time} onChange={(e)=>setNewSession(s=>({...s, start_time: e.target.value}))} style={{ ...common, width: 120 }} />
+                        <input type="time" value={newSession.end_time} onChange={(e)=>setNewSession(s=>({...s, end_time: e.target.value}))} style={{ ...common, width: 120 }} />
+                        <input placeholder="Location" value={newSession.location} onChange={(e)=>setNewSession(s=>({...s, location: e.target.value}))} style={{ ...common, flex: 1 }} />
+                      </>
+                    );
+                  })()}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={createSession} style={{ background: '#111827', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Save</button>
+                  <button onClick={()=>setShowScheduleForm(false)} style={{ background: '#fff', color: '#111827', border: '1px solid #e5e7eb', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Cancel</button>
+                </div>
+              </div>
+            )}
             {!loading && queue.length === 0 && (
               <p style={{ color: "#666" }}>No students currently in queue.</p>
             )}
 
-            {queue.map((entry, idx) => {
+            {sessions.length === 0 && queue.map((entry, idx) => {
               const isNext = idx === 0;
               return (
                 <div
