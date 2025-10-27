@@ -54,8 +54,8 @@ CREATE TABLE favorites (
 
 -- 1) table (server stores numeric courses.id)
 CREATE TABLE IF NOT EXISTS queue_entries (
-  id         INT NOT NULL AUTO_INCREMENT,
-  course_id  INT NOT NULL,             -- references courses.id
+  id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  course_id  INT UNSIGNED NOT NULL,    -- references courses.id
   user_email VARCHAR(191) NOT NULL,
     attendance ENUM('present','absent') NULL,
   notes      VARCHAR(191) NULL,
@@ -80,13 +80,6 @@ ALTER TABLE users
   ADD COLUMN title_display_order TINYINT UNSIGNED NOT NULL DEFAULT 0 AFTER title,
   ADD COLUMN session_token VARCHAR(64)  NULL AFTER password_hash;
 
--- If you want to enable session-specific queues (recommended for per-session join/view), run the following migration:
-ALTER TABLE queue_entries ADD COLUMN session_id INT NULL AFTER course_id;
-ALTER TABLE queue_entries ADD KEY idx_session (session_id, left_at, joined_at);
-ALTER TABLE queue_entries ADD CONSTRAINT fk_queue_session FOREIGN KEY (session_id) REFERENCES office_hours_sessions(id) ON DELETE SET NULL;
-
--- Note: after adding the column, the APIs will accept and use `session_id` when provided. Without this column, session-specific behavior will fail.
-
 -- Office Hours Sessions Table
 CREATE TABLE `office_hours_sessions` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -95,7 +88,7 @@ CREATE TABLE `office_hours_sessions` (
     `start_time` TIME NOT NULL,
     `end_time` TIME NOT NULL,
     `location` VARCHAR(100) NOT NULL,
-    `instructor_id` INT UNSIGNED NOT NULL, 
+    `instructor_id` INT UNSIGNED NOT NULL,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     KEY `course_id` (`course_id`),
@@ -110,3 +103,13 @@ CREATE TABLE `office_hours_sessions` (
         REFERENCES `users` (`id`)
         ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Migration: Add attendance column to queue_entries (if not already present)
+ALTER TABLE queue_entries ADD COLUMN attendance ENUM('present','absent') NULL AFTER user_email;
+
+-- If you want to enable session-specific queues (recommended for per-session join/view), run the following migration:
+ALTER TABLE queue_entries ADD COLUMN session_id INT UNSIGNED NULL AFTER course_id;
+ALTER TABLE queue_entries ADD KEY idx_session (session_id, left_at, joined_at);
+ALTER TABLE queue_entries ADD CONSTRAINT fk_queue_session FOREIGN KEY (session_id) REFERENCES office_hours_sessions(id) ON DELETE SET NULL;
+
+-- Note: after adding the columns, the APIs will accept and use `session_id` and `attendance` when provided. Without these columns, behavior will fail.
