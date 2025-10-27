@@ -6,6 +6,7 @@ export default function StudentSessions(){
   const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);
   const [inQueueMap, setInQueueMap] = useState({}); // sessionId -> boolean
+  const [reservedSessionId, setReservedSessionId] = useState(null); // tracks which session is reserved (not active)
   const [loading, setLoading] = useState(true);
 
   const ABS_BASE = new URL(import.meta.env.BASE_URL || '/', window.location.origin);
@@ -85,8 +86,16 @@ export default function StudentSessions(){
         const results = await Promise.all(checks);
         if (!mounted) return;
         const map = {};
-        for (const r of results) map[r.id] = Boolean(r.inQueue);
+        let reserved = null;
+        for (const r of results) {
+          map[r.id] = Boolean(r.inQueue);
+          // Track which session is reserved (in queue)
+          if (r.inQueue) {
+            reserved = r.id;
+          }
+        }
         setInQueueMap(map);
+        setReservedSessionId(reserved);
       }catch(e){ console.error('Failed to check queue status for sessions', e); }
     }
 
@@ -97,13 +106,23 @@ export default function StudentSessions(){
   // Join but stay on list (from button) or navigate to session (from card click)
   const joinSession = async (sessionId, stayOnList = true) => {
     try{
-      await fetch(`${API_ROOT}queue_join.php`,{
+      const res = await fetch(`${API_ROOT}queue_join.php`,{
         method:'POST', credentials:'include', headers:{'Content-Type':'application/json', Accept:'application/json'},
         body: JSON.stringify({ course_id: courseId, session_id: sessionId })
       });
-    }catch(e){ /* ignore */ }
+      const data = await res.json();
+
+      // Check if there's an error (e.g., already reserved another session)
+      if (!data.ok && data.error === 'already_reserved') {
+        alert(data.message || 'You already have a reservation for another session in this course.');
+        return;
+      }
+    }catch(e){
+      console.error('Failed to join session', e);
+    }
     if (stayOnList) {
       setInQueueMap(prev => ({ ...prev, [sessionId]: true }));
+      setReservedSessionId(sessionId);
     } else {
       navigate(`/session/${sessionId}`);
     }
@@ -117,6 +136,10 @@ export default function StudentSessions(){
       });
     }catch(e){ /* ignore */ }
     setInQueueMap(prev => ({ ...prev, [sessionId]: false }));
+    // Clear reserved session if this was it
+    if (reservedSessionId === sessionId) {
+      setReservedSessionId(null);
+    }
   };
 
   // Use light dashboard background and wider layout similar to QueueDetails
@@ -151,6 +174,14 @@ export default function StudentSessions(){
                   <button onClick={(e)=>{ e.stopPropagation(); leaveSession(s.id); }} style={{ background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', padding: '8px 12px', borderRadius: 10, fontWeight: 600 }} onMouseOver={(e)=>e.currentTarget.style.background='#fecaca'} onMouseOut={(e)=>e.currentTarget.style.background='#fee2e2'}>Leave Queue</button>
                 ) : (
                   (() => {
+                    // Check if another session is already reserved
+                    const anotherReserved = reservedSessionId && reservedSessionId !== s.id;
+                    if (anotherReserved) {
+                      return (
+                        <button disabled title='You already have a reservation for another session in this course. Please cancel it first.' style={{ background: '#f3f4f6', color: '#9ca3af', border: '1px solid #e5e7eb', padding: '8px 12px', borderRadius: 10, fontWeight: 600, cursor: 'not-allowed' }}>Join</button>
+                      );
+                    }
+
                     const allowed = joinAllowedWithin24h(s);
                     if (!allowed) {
                       return (
