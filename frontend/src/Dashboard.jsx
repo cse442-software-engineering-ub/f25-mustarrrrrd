@@ -1,8 +1,9 @@
 // src/Dashboard.jsx
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Star, Menu, Search, Plus } from "lucide-react";
+import { Star, Menu, Search, Plus, Calendar } from "lucide-react";
 import { CourseCardDashboard } from "./CourseCardDashboard";
+import { ReservedSessionCard } from "./ReservedSessionCard";
 
 // Build absolute base from Vite base (ends with /), safe in subfolders
 const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
@@ -13,6 +14,7 @@ export function Dashboard() {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [allCourses, setAllCourses] = useState([]); // All enrolled courses
+  const [reservedSessions, setReservedSessions] = useState([]); // Reserved sessions
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState([]);
@@ -22,9 +24,10 @@ export function Dashboard() {
   const menuRef = useRef(null);
   const searchRef = useRef(null);
 
-  // Fetch enrolled courses on mount
+  // Fetch enrolled courses and reserved sessions on mount
   useEffect(() => {
     fetchEnrolledCourses();
+    fetchReservedSessions();
   }, []);
 
   async function fetchEnrolledCourses() {
@@ -103,6 +106,38 @@ export function Dashboard() {
       console.error("Error fetching courses:", err);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchReservedSessions() {
+    try {
+      const res = await fetch(`${API_ROOT}my_reserved_sessions.php`, {
+        method: "GET",
+        credentials: "include",
+      });
+      const data = await res.json();
+
+      if (data.ok && data.sessions) {
+        setReservedSessions(data.sessions);
+      }
+    } catch (err) {
+      console.error("Error fetching reserved sessions:", err);
+    }
+  }
+
+  async function cancelReservation(sessionId) {
+    try {
+      await fetch(`${API_ROOT}queue_leave.php`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId }),
+      });
+
+      // Remove from local state
+      setReservedSessions(reservedSessions.filter(s => s.sessionId !== sessionId));
+    } catch (err) {
+      console.error("Error canceling reservation:", err);
     }
   }
 
@@ -219,6 +254,8 @@ export function Dashboard() {
 
         // Refetch all courses to get active session data and queue status
         await fetchEnrolledCourses();
+        // Also refetch reserved sessions in case this course has reserved sessions
+        await fetchReservedSessions();
 
         // Clear search
         setSearchTerm("");
@@ -503,6 +540,54 @@ export function Dashboard() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* My Upcoming Sessions Section */}
+        <div style={{ marginBottom: "3rem" }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            marginBottom: '1rem'
+          }}>
+            <Calendar size={20} color="#3b82f6" />
+            <h2
+              style={{
+                fontSize: "1.125rem",
+                fontWeight: 600,
+                margin: 0,
+                color: "#111",
+              }}
+            >
+              My Upcoming Sessions
+            </h2>
+          </div>
+
+          {/* Reserved Sessions Cards or Empty State */}
+          {loading ? (
+            <p style={{ textAlign: 'center', color: '#6b7280' }}>Loading sessions...</p>
+          ) : reservedSessions.length === 0 ? (
+            <p style={{ textAlign: 'center', color: '#6b7280', fontSize: '0.875rem', lineHeight: '1.5' }}>
+              Reserved office hour sessions will appear here. To reserve a session, click "View Sessions" for your course below, and reserve any session that is within 24 hours of your current time.
+            </p>
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                gap: "1rem",
+                overflowX: "auto",
+                paddingBottom: "0.5rem",
+              }}
+            >
+              {reservedSessions.map((session) => (
+                <ReservedSessionCard
+                  key={session.sessionId}
+                  session={session}
+                  onCancel={cancelReservation}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Favorites Section */}
