@@ -217,24 +217,8 @@ export function Dashboard() {
           body: JSON.stringify({ course_id: courseId }),
         });
 
-        // Find the course from search results
-        const enrolledCourse = searchResults.find(c => c.id === courseId);
-        if (enrolledCourse) {
-          const formattedCourse = {
-            id: enrolledCourse.id,
-            code: enrolledCourse.code,
-            name: enrolledCourse.title,
-            professor: enrolledCourse.professor || "Professor",
-            time: enrolledCourse.lecture_times,
-            location: enrolledCourse.room,
-            studentsInQueue: 0,
-            status: "upcoming",
-            is_favorited: true,
-          };
-
-          // Add to top of the list
-          setAllCourses([formattedCourse, ...allCourses]);
-        }
+        // Refetch all courses to get active session data and queue status
+        await fetchEnrolledCourses();
 
         // Clear search
         setSearchTerm("");
