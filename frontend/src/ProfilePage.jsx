@@ -14,6 +14,14 @@ export default function ProfilePage() {
   const [draft, setDraft] = useState(null);
   const [editing, setEditing] = useState(false);
   const [msg, setMsg] = useState("");
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  // Responsive detection
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Load profile via cookie session
   useEffect(() => {
@@ -90,9 +98,7 @@ export default function ProfilePage() {
   })();
 
   /** === Layout constants === */
-  const HEADER_H = 64;
-  const TOP_SPACER = 160;
-  const effectiveTopPad = HEADER_H + TOP_SPACER;
+  const HEADER_H = isMobile ? 96 : 64;
 
   const page = {
     minHeight:"100vh",
@@ -101,7 +107,6 @@ export default function ProfilePage() {
     color:"#fff",
     fontFamily:"system-ui, sans-serif",
     overflowX:"hidden",
-    scrollPaddingTop: effectiveTopPad,
   };
 
   const topBar = {
@@ -122,20 +127,20 @@ export default function ProfilePage() {
     width:"100%",
     maxWidth:"1600px",
     margin:"0 auto",
-    padding:"0 24px",
+    padding:isMobile ? "0 16px" : "0 24px",
     boxSizing:"border-box",
   };
 
   const contentWrap = {
     ...container,
-    paddingTop: effectiveTopPad,
+    paddingTop: isMobile ? (editing ? 825 : 500) : 160,
     paddingBottom: 64,
   };
 
   const grid = {
     display:"grid",
-    gridTemplateColumns:"minmax(340px, 460px) 1fr",
-    gap:32,
+    gridTemplateColumns: isMobile ? "1fr" : "minmax(340px, 460px) 1fr",
+    gap: isMobile ? 24 : 32,
     alignItems:"start",
     width:"100%",
   };
@@ -165,7 +170,7 @@ export default function ProfilePage() {
 
   const twoCol = {
     display:"grid",
-    gridTemplateColumns:"minmax(300px,1fr) minmax(300px,1fr)",
+    gridTemplateColumns: isMobile ? "1fr" : "minmax(300px,1fr) minmax(300px,1fr)",
     gap:20,
     alignItems:"start",
   };
@@ -179,9 +184,6 @@ export default function ProfilePage() {
 
   function startEditing() {
     setEditing(true);
-    requestAnimationFrame(() => {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    });
   }
 
   return (
@@ -190,22 +192,12 @@ export default function ProfilePage() {
       <div style={topBar}>
         <div style={{ ...container, display:"flex", alignItems:"center", justifyContent:"space-between", gap:16 }}>
           <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-            {/* Back Button */}
             <Link
               to="/dashboard"
               style={{
                 display:"flex", alignItems:"center", justifyContent:"center",
                 background:"#111", color:"#fff", border:"1px solid #222",
                 padding:"8px 12px", borderRadius:10, textDecoration:"none",
-                transition:"background 0.2s, border-color 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#1a1a1a";
-                e.currentTarget.style.borderColor = "#333";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#111";
-                e.currentTarget.style.borderColor = "#222";
               }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
@@ -215,11 +207,11 @@ export default function ProfilePage() {
             <h1 style={{ margin:0, fontSize:22, whiteSpace:"nowrap" }}>Profile</h1>
           </div>
 
-          <div style={{ minHeight:42, display:"flex", alignItems:"center", gap:10 }}>
+          <div style={{ minHeight:42, display:"flex", alignItems:"center", gap:10, flexWrap: isMobile ? "wrap" : "nowrap" }}>
             {!editing ? (
               <button
                 onClick={startEditing}
-                style={{ background:"#1f6feb", border:0, color:"#fff", padding:"10px 16px", borderRadius:12, fontSize:15, fontWeight:700 }}
+                style={{ background:"#1f6feb", border:0, color:"#fff", padding:"10px 16px", borderRadius:12, fontSize:15, fontWeight:700, width: isMobile ? "100%" : "auto" }}
               >
                 Edit Profile
               </button>
@@ -227,7 +219,7 @@ export default function ProfilePage() {
               <>
                 <button
                   onClick={()=>{ setDraft(profile); setEditing(false); setMsg(""); }}
-                  style={{ background:"transparent", border:"1px solid #333", color:"#fff", padding:"10px 16px", borderRadius:12, fontSize:15 }}
+                  style={{ background:"transparent", border:"1px solid #333", color:"#fff", padding:"10px 16px", borderRadius:12, fontSize:15, width: isMobile ? "100%" : "auto" }}
                 >
                   Cancel
                 </button>
@@ -237,7 +229,8 @@ export default function ProfilePage() {
                   style={{
                     background:"#1f6feb", border:0, color:"#fff", padding:"10px 16px",
                     borderRadius:12, fontSize:15, fontWeight:700,
-                    opacity:isDirty?1:0.6, cursor:isDirty?"pointer":"not-allowed"
+                    opacity:isDirty?1:0.6, cursor:isDirty?"pointer":"not-allowed",
+                    width: isMobile ? "100%" : "auto"
                   }}
                 >
                   Save
@@ -252,25 +245,21 @@ export default function ProfilePage() {
       <div style={contentWrap}>
         <div style={grid}>
           {/* LEFT: SUMMARY */}
-          <aside style={{ ...card, padding:24 }}>
-            <div style={{ display:"flex", gap:18, alignItems:"center", marginBottom:16, flexWrap:"wrap" }}>
+          <aside style={{ ...card, padding:isMobile ? 20 : 24 }}>
+            <div style={{ display:"flex", flexDirection:isMobile ? "column" : "row", gap:18, alignItems:isMobile ? "center" : "center", marginBottom:16 }}>
               <div style={{
                 width:120, height:120, borderRadius:"50%", background:"#222",
-                overflow:"hidden", display:"grid", placeItems:"center", fontWeight:800, fontSize:34, flex:"0 0 auto"
+                overflow:"hidden", display:"grid", placeItems:"center", fontWeight:800, fontSize:34,
               }}>
                 {(profile.preferred_name || profile.name || "?")
                   .split(" ").slice(0,2).map(p=>p[0]?.toUpperCase()).join("") || "?"}
               </div>
-              <div style={{ minWidth:200, flex:"1 1 auto" }}>
-                <div style={{ fontSize:28, lineHeight:1.2, wordBreak:"break-word" }}>{displayName}</div>
-                {/* ALWAYS show the original full name for clarity (if available) */}
-                {profile.name ? (
-                  <div style={{ fontSize:13, color:"#aaa" }}></div>
-                ) : null}
+              <div style={{ textAlign:isMobile?"center":"left" }}>
+                <div style={{ fontSize:28, lineHeight:1.2 }}>{displayName}</div>
               </div>
             </div>
 
-            <div style={{ display:"grid", gap:10, fontSize:16 }}>
+            <div style={{ display:"grid", gap:10, fontSize:16, textAlign:isMobile?"center":"left" }}>
               {profile.pronouns && <div style={{ color:"#bbb" }}>Pronouns: <span style={{ color:"#fff" }}>{profile.pronouns}</span></div>}
               <div style={{ color:"#bbb" }}>Year: <span style={{ color:"#fff" }}>{profile.academic_year || "—"}</span></div>
               <div style={{ color:"#bbb" }}>Major: <span style={{ color:"#fff" }}>{profile.major || "—"}</span></div>
@@ -342,10 +331,10 @@ export default function ProfilePage() {
             </section>
 
             {/* SIGN OUT */}
-            <div style={{ display:"flex", justifyContent:"flex-end", width:"100%" }}>
+            <div style={{ display:"flex", justifyContent:isMobile?"center":"flex-end", width:"100%" }}>
               <button
                 onClick={signOut}
-                style={{ background:"#b3261e", border:0, color:"#fff", padding:"12px 16px", borderRadius:10, fontSize:16 }}
+                style={{ background:"#b3261e", border:0, color:"#fff", padding:"12px 16px", borderRadius:10, fontSize:16, width:isMobile?"100%":"auto" }}
               >
                 Sign Out
               </button>
