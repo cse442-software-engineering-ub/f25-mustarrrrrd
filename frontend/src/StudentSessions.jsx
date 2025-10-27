@@ -12,6 +12,25 @@ export default function StudentSessions(){
   const ABS_BASE = new URL(import.meta.env.BASE_URL || '/', window.location.origin);
   const API_ROOT = new URL('../api/', ABS_BASE).pathname;
 
+  // Parse 12-hour time format "3:00 PM" to 24-hour { hours, minutes }
+  function parse12HourTime(timeStr) {
+    if (!timeStr) return { hours: 0, minutes: 0 };
+    const parts = timeStr.trim().split(' '); // ["3:00", "PM"]
+    if (parts.length !== 2) return { hours: 0, minutes: 0 };
+
+    const [timePart, period] = parts;
+    const [h, m] = timePart.split(':').map(nt => parseInt(nt, 10) || 0);
+
+    let hours = h;
+    if (period === 'PM' && hours !== 12) {
+      hours += 12;
+    } else if (period === 'AM' && hours === 12) {
+      hours = 0;
+    }
+
+    return { hours, minutes: m };
+  }
+
   function nextStartDateForSession(s) {
     if (!s || !s.day_of_week || !s.start_time) return null;
     const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -21,7 +40,7 @@ export default function StudentSessions(){
     const today = now.getDay();
     let daysUntil = (target - today + 7) % 7;
     // Build date for the next occurrence (could be today)
-    const [h, m] = (s.start_time || '00:00').split(':').map(nt => parseInt(nt,10) || 0);
+    const { hours: h, minutes: m } = parse12HourTime(s.start_time);
     const d = new Date(now);
     d.setDate(now.getDate() + daysUntil);
     d.setHours(h, m, 0, 0);
@@ -37,7 +56,7 @@ export default function StudentSessions(){
     // compute end time for this occurrence (if provided)
     let endThis = null;
     if (s.end_time) {
-      const [eh, em] = (s.end_time || '00:00').split(':').map(nt => parseInt(nt,10) || 0);
+      const { hours: eh, minutes: em } = parse12HourTime(s.end_time);
       endThis = new Date(startThis);
       endThis.setHours(eh, em, 0, 0);
     }
