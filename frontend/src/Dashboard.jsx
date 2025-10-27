@@ -1,7 +1,7 @@
 // src/Dashboard.jsx
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Star, Menu, Search, Plus, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Star, Menu, Search, Plus } from "lucide-react";
 import { CourseCardDashboard } from "./CourseCardDashboard";
 
 // Build absolute base from Vite base (ends with /), safe in subfolders
@@ -262,10 +262,6 @@ export function Dashboard() {
   const favoriteCourses = allCourses.filter(c => c.is_favorited);
   const enrolledCourses = allCourses.filter(c => !c.is_favorited);
 
-  // Calculate course counts for favorites
-  const availableCount = favoriteCourses.filter(c => c.status === 'available').length;
-  const upcomingCount = favoriteCourses.filter(c => c.status === 'upcoming').length;
-
   return (
     <div
       style={{
@@ -507,38 +503,6 @@ export function Dashboard() {
             >
               Favorites
             </h2>
-          </div>
-
-          {/* Course Tags */}
-          <div style={{
-            display: 'flex',
-            gap: '0.5rem',
-            marginBottom: '1.5rem'
-          }}>
-            <button style={{
-              padding: '0.375rem 0.75rem',
-              background: '#10b981',
-              color: 'white',
-              border: 'none',
-              borderRadius: '0.375rem',
-              fontSize: '0.875rem',
-              cursor: 'pointer',
-              fontWeight: '500'
-            }}>
-              Available ({availableCount})
-            </button>
-            <button style={{
-              padding: '0.375rem 0.75rem',
-              background: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '0.375rem',
-              fontSize: '0.875rem',
-              cursor: 'pointer',
-              fontWeight: '500'
-            }}>
-              Upcoming ({upcomingCount})
-            </button>
           </div>
 
           {/* Favorites Course Cards Grid */}
