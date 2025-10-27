@@ -16,6 +16,28 @@ try {
   if (!$email) throw new Exception('Missing user_email');
   $courseId = canonical_course_id($pdo, $courseKey);
 
+  // Check if user already has a reservation for a DIFFERENT session in the same course
+  if ($sessionId) {
+    $existingReservation = $pdo->prepare(
+      'SELECT session_id FROM queue_entries
+       WHERE course_id=? AND user_email=? AND left_at IS NULL AND session_id IS NOT NULL
+       LIMIT 1'
+    );
+    $existingReservation->execute([$courseId, $email]);
+    $existingSessionId = $existingReservation->fetchColumn();
+
+    // If they have a reservation for a different session in this course, reject
+    if ($existingSessionId && $existingSessionId != $sessionId) {
+      out(400, [
+        'ok' => false,
+        'error' => 'already_reserved',
+        'message' => 'You already have a reservation for another session in this course. Please cancel your existing reservation first.',
+        'existingSessionId' => $existingSessionId
+      ]);
+      exit;
+    }
+  }
+
   // already active? update notes (idempotent)
   if ($sessionId) {
     $chk = $pdo->prepare('SELECT id FROM queue_entries WHERE session_id=? AND user_email=? AND left_at IS NULL LIMIT 1');
