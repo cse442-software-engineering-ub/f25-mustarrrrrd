@@ -11,6 +11,9 @@ export default function ProfessorView() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [newSession, setNewSession] = useState({ day_of_week: 'Monday', start_time: '12:00', end_time: '13:00', location: '' });
+  const [showCreateCourse, setShowCreateCourse] = useState(false);
+  const [newCourse, setNewCourse] = useState({ code: '', title: '' });
+  const [professorName, setProfessorName] = useState('Professor');
 
   const btnRef = useRef(null);
   const menuRef = useRef(null);
@@ -38,6 +41,33 @@ export default function ProfessorView() {
 
     return { hours, minutes: m };
   }
+
+  // --- Fetch professor info from session ---
+  useEffect(() => {
+    async function fetchProfessorInfo() {
+      try {
+        const res = await fetch(`${API_ROOT}check_session.php`, {
+          method: "GET",
+          credentials: "include",
+          headers: { Accept: "application/json" },
+        });
+
+        if (!res.ok) {
+          console.error("Failed to check session:", res.status);
+          return;
+        }
+
+        const data = await res.json().catch(() => ({}));
+        if (data.loggedIn && data.name) {
+          setProfessorName(data.name);
+        }
+      } catch (err) {
+        console.error("Error fetching professor info:", err);
+      }
+    }
+
+    fetchProfessorInfo();
+  }, []);
 
   // --- Fetch professor's assigned courses ---
   useEffect(() => {
@@ -180,6 +210,31 @@ export default function ProfessorView() {
     }catch(err){ console.error('Failed to create session', err); }
   }
 
+  async function createCourse(){
+    try{
+      const res = await fetch(`${API_ROOT}professor_create_course.php`,{
+        method: 'POST', credentials:'include', headers:{'Content-Type':'application/json', Accept:'application/json'},
+        body: JSON.stringify({ code: newCourse.code, title: newCourse.title })
+      });
+      if(!res.ok) throw new Error('create course failed');
+      const data = await res.json().catch(()=>null);
+      if(data && data.ok){
+        // Add the new course to the list
+        const newCourseData = data.course;
+        setCourses(prev => [...prev, newCourseData]);
+        setActiveCourse(newCourseData.code);
+        // Reset form
+        setNewCourse({ code: '', title: '' });
+        setShowCreateCourse(false);
+      } else {
+        alert(data?.error || 'Failed to create course');
+      }
+    }catch(err){
+      console.error('Failed to create course', err);
+      alert('Failed to create course');
+    }
+  }
+
   // --- Handle sign out ---
   async function handleSignOut() {
     try {
@@ -254,7 +309,7 @@ export default function ProfessorView() {
             Instructor Dashboard
           </h1>
           <p style={{ fontSize: "0.9rem", color: "#555", margin: 0 }}>
-            Professor Mikida • Computer Science & Engineering
+            {professorName} • Computer Science & Engineering
           </p>
         </div>
 
@@ -366,7 +421,145 @@ export default function ProfessorView() {
               </button>
             );
           })}
+
+          {/* Create Course Button */}
+          <button
+            onClick={() => setShowCreateCourse(true)}
+            style={{
+              background: "#f0fdf4",
+              color: "#166534",
+              border: "2px dashed #86efac",
+              borderRadius: "0.5rem",
+              padding: "0.75rem 1rem",
+              textAlign: "center",
+              cursor: "pointer",
+              fontWeight: "600",
+              fontSize: "0.9rem",
+              minWidth: "120px",
+            }}
+          >
+            + Create Course
+          </button>
         </div>
+
+        {/* Create Course Form */}
+        {showCreateCourse && (
+          <div
+            style={{
+              background: "white",
+              border: "2px solid #86efac",
+              borderRadius: "0.5rem",
+              padding: "1rem",
+              marginBottom: "1.5rem",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            }}
+          >
+            <h3
+              style={{
+                fontSize: "1rem",
+                fontWeight: "600",
+                marginBottom: "0.75rem",
+                color: "#166534",
+              }}
+            >
+              Create New Course
+            </h3>
+            <div
+              style={{
+                display: "flex",
+                gap: "0.5rem",
+                alignItems: "center",
+                flexWrap: "wrap",
+              }}
+            >
+              <input
+                type="text"
+                placeholder="Course Code (max 6 chars)"
+                value={newCourse.code}
+                onChange={(e) => {
+                  const val = e.target.value.toUpperCase();
+                  if (val.length <= 6) {
+                    setNewCourse((prev) => ({ ...prev, code: val }));
+                  }
+                }}
+                maxLength={6}
+                style={{
+                  padding: "0.5rem",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "0.375rem",
+                  fontSize: "0.9rem",
+                  width: "180px",
+                }}
+              />
+              <input
+                type="text"
+                placeholder="Course Title"
+                value={newCourse.title}
+                onChange={(e) =>
+                  setNewCourse((prev) => ({ ...prev, title: e.target.value }))
+                }
+                style={{
+                  padding: "0.5rem",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "0.375rem",
+                  fontSize: "0.9rem",
+                  flex: 1,
+                  minWidth: "200px",
+                }}
+              />
+              <button
+                onClick={createCourse}
+                disabled={newCourse.code.length !== 6 || newCourse.title.trim() === ''}
+                style={{
+                  background:
+                    newCourse.code.length === 6 && newCourse.title.trim() !== ''
+                      ? "#16a34a"
+                      : "#d1d5db",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "0.375rem",
+                  padding: "0.5rem 1rem",
+                  cursor:
+                    newCourse.code.length === 6 && newCourse.title.trim() !== ''
+                      ? "pointer"
+                      : "not-allowed",
+                  fontWeight: "600",
+                  fontSize: "1.2rem",
+                }}
+                title="Create Course"
+              >
+                +
+              </button>
+              <button
+                onClick={() => {
+                  setShowCreateCourse(false);
+                  setNewCourse({ code: '', title: '' });
+                }}
+                style={{
+                  background: "#fff",
+                  color: "#666",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "0.375rem",
+                  padding: "0.5rem 1rem",
+                  cursor: "pointer",
+                  fontWeight: "600",
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+            <p
+              style={{
+                fontSize: "0.75rem",
+                color: "#666",
+                marginTop: "0.5rem",
+                marginBottom: 0,
+              }}
+            >
+              Course code must be exactly 6 characters. Title is required.
+            </p>
+          </div>
+        )}
 
         {/* Queue View */}
         {activeCourse && (
