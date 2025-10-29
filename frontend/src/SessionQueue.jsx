@@ -181,6 +181,25 @@ export default function SessionQueue(){
     }catch(e){ console.error('Failed to mark attendance:', e); }
   }
 
+  async function removeStudentFromQueue(userEmail) {
+    if (!window.confirm("Remove this student from the queue?")) return;
+    try {
+      const res = await fetch(`${API_ROOT}queue_remove.php`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {'Content-Type':'application/json', Accept:'application/json'},
+        body: JSON.stringify({ session_id: sessionId, user_email: userEmail })
+      });
+      if (!res.ok) throw new Error('remove failed');
+      const d = await res.json().catch(()=>null);
+      if (d && d.ok) {
+        setEntries(prev => prev.filter(e => e.user_email !== userEmail));
+      }
+    } catch (e) {
+      console.error('Failed to remove student:', e);
+    }
+  }
+
   if(!booted) {
     return (
       <div style={pageStyle}>
@@ -249,6 +268,21 @@ export default function SessionQueue(){
                     <div style={{ display: 'flex', gap: 8, width: isMobile ? '100%' : 'auto' }}>
                       <button onClick={()=>markAttendance(e.user_email, 'present')} style={{ background: e.attendance === 'present' ? '#166534' : '#bbf7d0', color: e.attendance === 'present' ? '#fff' : '#164e2e', border: 'none', padding: '0.5rem 0.75rem', borderRadius: 8, cursor: 'pointer', fontWeight: 600, flex: isMobile ? 1 : 'none' }}>Present</button>
                       <button onClick={()=>markAttendance(e.user_email, 'absent')} style={{ background: e.attendance === 'absent' ? '#7f1d1d' : '#fecaca', color: e.attendance === 'absent' ? '#fff' : '#7f1d1d', border: 'none', padding: '0.5rem 0.75rem', borderRadius: 8, cursor: 'pointer', fontWeight: 600, flex: isMobile ? 1 : 'none' }}>Absent</button>
+                      <button
+                        onClick={() => removeStudentFromQueue(e.user_email)}
+                        style={{
+                          background: '#fff',        // neutral gray that fits the app background
+                          color: '#374151',             // dark gray text for contrast
+                          border: '1px solid #d1d5db',  // subtle border to match tone
+                          borderRadius: 8,
+                          padding: '0.5rem 0.75rem',    // same sizing as other buttons
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                        title="Remove from queue"
+                        >
+                        X
+                      </button>
                     </div>
                   )}
                 </div>

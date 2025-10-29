@@ -667,9 +667,9 @@ export default function ProfessorView() {
                 </div>
               </div>
             )}
-            {!loading && queue.length === 0 && (
+            {/* {!loading && queue.length === 0 && (
               <p style={{ color: "#666" }}>No students currently in queue.</p>
-            )}
+            )} */}
 
             {sessions.length === 0 && queue.map((entry, idx) => {
               const isNext = idx === 0;
