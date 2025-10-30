@@ -12,6 +12,8 @@ export default function SessionQueue(){
   const [error, setError] = useState(null);
   const [session, setSession] = useState(null);
   const [isInstructor, setIsInstructor] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editSessionData, setEditSessionData] = useState({ day_of_week: 'Monday', start_time: '12:00', end_time: '13:00', location: '' });
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   const [yourPosition, setYourPosition] = useState(null);
@@ -179,6 +181,25 @@ export default function SessionQueue(){
     }catch(e){ console.error('Failed to mark attendance:', e); }
   }
 
+  async function removeStudentFromQueue(userEmail) {
+    if (!window.confirm("Remove this student from the queue?")) return;
+    try {
+      const res = await fetch(`${API_ROOT}queue_remove.php`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {'Content-Type':'application/json', Accept:'application/json'},
+        body: JSON.stringify({ session_id: sessionId, user_email: userEmail })
+      });
+      if (!res.ok) throw new Error('remove failed');
+      const d = await res.json().catch(()=>null);
+      if (d && d.ok) {
+        setEntries(prev => prev.filter(e => e.user_email !== userEmail));
+      }
+    } catch (e) {
+      console.error('Failed to remove student:', e);
+    }
+  }
+
   if(!booted) {
     return (
       <div style={pageStyle}>
@@ -211,7 +232,14 @@ export default function SessionQueue(){
       <div style={pageStyle}>
         <div style={headerStyle}>
           <h1 style={{ margin: 0, fontSize: isMobile ? 22 : 28, fontWeight: 700, color: '#111827', width: isMobile ? '100%' : 'auto' }}>Session Queue • Professor View</h1>
-          <button onClick={()=>navigate(-1)} style={backBtn} onMouseOver={(e)=>e.currentTarget.style.background='#f9fafb'} onMouseOut={(e)=>e.currentTarget.style.background='#fff'}>Back</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={()=>{
+              // prefill edit form from current session
+              if(session){ setEditSessionData({ day_of_week: session.day_of_week || 'Monday', start_time: session.start_time || '12:00', end_time: session.end_time || '13:00', location: session.location || '' }); }
+              setShowEditForm(true);
+            }} style={{ background: '#fff', color: '#111827', border: '1px solid #e5e7eb', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 600 }} onMouseOver={(e)=>e.currentTarget.style.background='#f9fafb'} onMouseOut={(e)=>e.currentTarget.style.background='#fff'}>Edit Session</button>
+            <button onClick={()=>navigate(-1)} style={backBtn} onMouseOver={(e)=>e.currentTarget.style.background='#f9fafb'} onMouseOut={(e)=>e.currentTarget.style.background='#fff'}>Back</button>
+          </div>
         </div>
 
         <div style={{ maxWidth: '70rem', margin: '0 auto', padding: isMobile ? '1rem' : '1.5rem' }}>
@@ -240,13 +268,80 @@ export default function SessionQueue(){
                     <div style={{ display: 'flex', gap: 8, width: isMobile ? '100%' : 'auto' }}>
                       <button onClick={()=>markAttendance(e.user_email, 'present')} style={{ background: e.attendance === 'present' ? '#166534' : '#bbf7d0', color: e.attendance === 'present' ? '#fff' : '#164e2e', border: 'none', padding: '0.5rem 0.75rem', borderRadius: 8, cursor: 'pointer', fontWeight: 600, flex: isMobile ? 1 : 'none' }}>Present</button>
                       <button onClick={()=>markAttendance(e.user_email, 'absent')} style={{ background: e.attendance === 'absent' ? '#7f1d1d' : '#fecaca', color: e.attendance === 'absent' ? '#fff' : '#7f1d1d', border: 'none', padding: '0.5rem 0.75rem', borderRadius: 8, cursor: 'pointer', fontWeight: 600, flex: isMobile ? 1 : 'none' }}>Absent</button>
+                      <button
+                        onClick={() => removeStudentFromQueue(e.user_email)}
+                        style={{
+                          background: '#fff',        // neutral gray that fits the app background
+                          color: '#374151',             // dark gray text for contrast
+                          border: '1px solid #d1d5db',  // subtle border to match tone
+                          borderRadius: 8,
+                          padding: '0.5rem 0.75rem',    // same sizing as other buttons
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                        title="Remove from queue"
+                        >
+                        X
+                      </button>
                     </div>
                   )}
                 </div>
               </div>
             ))}
           </div>
-        </div>
+          </div>
+
+        {showEditForm && (
+          <div style={{ maxWidth: '70rem', margin: '2rem auto', padding: 12 }}>
+            <div style={{ background: '#fff', border: '1px solid #e5e7eb', padding: 12, borderRadius: 8 }}>
+              <h2 style={{ marginTop: 0, marginBottom: 12 }}>Edit Session</h2>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                <select value={editSessionData.day_of_week} onChange={(e)=>setEditSessionData(s=>({...s, day_of_week: e.target.value}))} style={{ padding:8, borderRadius:8, border:'1px solid #e5e7eb', background:'#fff' }}>
+                  <option>Monday</option>
+                  <option>Tuesday</option>
+                  <option>Wednesday</option>
+                  <option>Thursday</option>
+                  <option>Friday</option>
+                  <option>Saturday</option>
+                  <option>Sunday</option>
+                </select>
+                <input type='time' value={editSessionData.start_time} onChange={(e)=>setEditSessionData(s=>({...s, start_time: e.target.value}))} style={{ padding:8, borderRadius:8, border:'1px solid #e5e7eb', width:120 }} />
+                <input type='time' value={editSessionData.end_time} onChange={(e)=>setEditSessionData(s=>({...s, end_time: e.target.value}))} style={{ padding:8, borderRadius:8, border:'1px solid #e5e7eb', width:120 }} />
+                <input placeholder='Location' value={editSessionData.location} onChange={(e)=>setEditSessionData(s=>({...s, location: e.target.value}))} style={{ padding:8, borderRadius:8, border:'1px solid #e5e7eb', flex:1 }} />
+              </div>
+              <div style={{ display:'flex', gap:8 }}>
+                <button onClick={async ()=>{
+                  try{
+                    const body = { session_id: sessionId, ...editSessionData };
+                    const res = await fetch(`${API_ROOT}update_office_hours_session.php`, { method:'POST', credentials:'include', headers:{'Content-Type':'application/json', Accept:'application/json'}, body: JSON.stringify(body) });
+                    if(!res.ok) throw new Error('update failed');
+                    const d = await res.json().catch(()=>null);
+                    if(d && d.ok){
+                      // refresh session details
+                      const mres = await fetch(`${API_ROOT}office_hours_session_get.php?session_id=${encodeURIComponent(sessionId)}`, { credentials:'include', headers:{Accept:'application/json'} });
+                      if(mres.ok){ const md = await mres.json().catch(()=>null); if(md && md.ok && md.session){ setSession(md.session); } }
+                      setShowEditForm(false);
+                    }
+                  }catch(e){ console.error('Failed to update session', e); }
+                }} style={{ background:'#111827', color:'#fff', border:'none', padding:'8px 12px', borderRadius:8, fontWeight:600 }}>Save</button>
+
+                <button onClick={async ()=>{
+                  if(!window.confirm('Delete this session? This cannot be undone.')) return;
+                  try{
+                    const res = await fetch(`${API_ROOT}delete_office_hours_session.php`, { method:'POST', credentials:'include', headers:{'Content-Type':'application/json', Accept:'application/json'}, body: JSON.stringify({ session_id: sessionId }) });
+                    if(!res.ok) throw new Error('delete failed');
+                    const d = await res.json().catch(()=>null);
+                    if(d && d.ok){
+                      navigate('/professorview');
+                    }
+                  }catch(e){ console.error('Failed to delete session', e); }
+                }} style={{ background:'#fee2e2', color:'#991b1b', border:'1px solid #fecaca', padding:'8px 12px', borderRadius:8, fontWeight:600 }}>Delete</button>
+
+                <button onClick={()=>setShowEditForm(false)} style={{ background:'#fff', color:'#111827', border:'1px solid #e5e7eb', padding:'8px 12px', borderRadius:8, fontWeight:600 }}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

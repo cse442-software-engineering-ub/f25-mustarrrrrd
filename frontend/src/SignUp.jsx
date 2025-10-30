@@ -73,8 +73,12 @@ export default function SignUp() {
       } else {
         alert("Account created successfully!");
         console.log("Created user:", data.user);
-        // Redirect to dashboard after successful signup
-        navigate("/dashboard");
+        // Redirect based on user role
+        if (data?.role === "professor") {
+          navigate("/professorview");
+        } else {
+          navigate("/dashboard");
+        }
       }
     } catch (err) {
       console.error(err);
