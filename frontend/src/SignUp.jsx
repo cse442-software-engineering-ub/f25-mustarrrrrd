@@ -74,7 +74,7 @@ export default function SignUp() {
         alert("Account created successfully!");
         console.log("Created user:", data.user);
         // Redirect based on user role
-        if (data?.role === "professor") {
+        if (data?.user?.role === "professor") {
           navigate("/professorview");
         } else {
           navigate("/dashboard");

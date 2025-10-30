@@ -1,5 +1,5 @@
 // frontend/src/CourseCardDashboard.jsx
-import { Star, Users, X } from "lucide-react";
+import { Star, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 // Build absolute base from Vite base (ends with /), safe in subfolders
@@ -154,19 +154,6 @@ export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFa
           >
             {course.code} - {course.name}
           </h3>
-          <p
-            style={{
-              fontSize: "0.875rem",
-              color: "#6b7280",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.25rem",
-              margin: 0,
-            }}
-          >
-            <Users size={12} />
-            {course.professor}
-          </p>
         </div>
         <button
           onClick={handleUnenroll}
