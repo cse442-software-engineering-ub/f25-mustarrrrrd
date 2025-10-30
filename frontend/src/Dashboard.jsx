@@ -24,6 +24,43 @@ export function Dashboard() {
   const menuRef = useRef(null);
   const searchRef = useRef(null);
 
+  // Check authentication status on mount - redirect if not logged in
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const res = await fetch(`${API_ROOT}check_session.php`, {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          navigate("/");
+          return;
+        }
+
+        const data = await res.json();
+
+        if (!data.loggedIn) {
+          // Not logged in - redirect to login page
+          navigate("/");
+          return;
+        }
+
+        // Check if user is a student (this is the student dashboard)
+        if (data.role === "professor" || data.role === "ta") {
+          // Wrong dashboard - redirect to professor view
+          navigate("/professorview");
+          return;
+        }
+      } catch (err) {
+        console.error("Auth check failed:", err);
+        navigate("/");
+      }
+    }
+
+    checkAuth();
+  }, [navigate]);
+
   // Fetch enrolled courses and reserved sessions on mount
   useEffect(() => {
     fetchEnrolledCourses();
@@ -56,7 +93,6 @@ export function Dashboard() {
           id: course.id,
           code: course.code,
           name: course.title,
-          professor: course.professor || "Professor",
           time: course.lecture_times,
           location: course.room,
           studentsInQueue: 0,
@@ -451,7 +487,7 @@ export function Dashboard() {
               <Search size={20} color="#6b7280" />
               <input
                 type="text"
-                placeholder="Search by course code, title, or professor..."
+                placeholder="Search by course code or title... (e.g., 'CSE 442' or just '442')"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onFocus={() => searchResults.length > 0 && setShowDropdown(true)}
@@ -512,7 +548,7 @@ export function Dashboard() {
                         {course.title}
                       </div>
                       <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: "0.125rem" }}>
-                        {course.professor} • {course.lecture_times}
+                        {course.lecture_times}
                       </div>
                     </div>
                     <button

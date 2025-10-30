@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Menu } from "lucide-react";
+import { Menu, Search, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function ProfessorView() {
@@ -14,6 +14,10 @@ export default function ProfessorView() {
   const [showCreateCourse, setShowCreateCourse] = useState(false);
   const [newCourse, setNewCourse] = useState({ code: '', title: '' });
   const [professorName, setProfessorName] = useState('Professor');
+  const [showJoinCourse, setShowJoinCourse] = useState(false);
+  const [joinSearchTerm, setJoinSearchTerm] = useState('');
+  const [joinSearchResults, setJoinSearchResults] = useState([]);
+  const [joinSearchLoading, setJoinSearchLoading] = useState(false);
 
   const btnRef = useRef(null);
   const menuRef = useRef(null);
@@ -54,20 +58,36 @@ export default function ProfessorView() {
 
         if (!res.ok) {
           console.error("Failed to check session:", res.status);
+          navigate("/");
           return;
         }
 
         const data = await res.json().catch(() => ({}));
+
+        if (!data.loggedIn) {
+          // Not logged in - redirect to login page
+          navigate("/");
+          return;
+        }
+
+        // Check if user is a professor or TA (this is the professor dashboard)
+        if (data.role === "student") {
+          // Wrong dashboard - redirect to student dashboard
+          navigate("/dashboard");
+          return;
+        }
+
         if (data.loggedIn && data.name) {
           setProfessorName(data.name);
         }
       } catch (err) {
         console.error("Error fetching professor info:", err);
+        navigate("/");
       }
     }
 
     fetchProfessorInfo();
-  }, []);
+  }, [navigate]);
 
   // --- Fetch professor's assigned courses ---
   useEffect(() => {
@@ -232,6 +252,93 @@ export default function ProfessorView() {
     }catch(err){
       console.error('Failed to create course', err);
       alert('Failed to create course');
+    }
+  }
+
+  // Search for courses to join (only by code and title)
+  useEffect(() => {
+    if (!joinSearchTerm.trim()) {
+      setJoinSearchResults([]);
+      return;
+    }
+
+    const delayDebounce = setTimeout(() => {
+      performJoinSearch();
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [joinSearchTerm]);
+
+  async function performJoinSearch() {
+    if (!joinSearchTerm.trim()) return;
+
+    setJoinSearchLoading(true);
+    try {
+      const res = await fetch(`${API_ROOT}search_courses.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: joinSearchTerm, filter: 'None' }),
+      });
+
+      const data = await res.json();
+
+      if (data.courses) {
+        // Filter out courses already in the professor's list
+        const enrolledCodes = new Set(courses.map(c => c.code));
+        const filteredResults = data.courses.filter(c => !enrolledCodes.has(c.code));
+        setJoinSearchResults(filteredResults);
+      } else {
+        setJoinSearchResults([]);
+      }
+    } catch (err) {
+      console.error('Error searching courses:', err);
+      setJoinSearchResults([]);
+    } finally {
+      setJoinSearchLoading(false);
+    }
+  }
+
+  async function joinCourse(courseId) {
+    try {
+      const res = await fetch(`${API_ROOT}enroll.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ course_id: courseId, role: 'professor' }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        // Refetch courses to include the newly joined course
+        const coursesRes = await fetch(`${API_ROOT}professor_courses.php`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        });
+
+        if (coursesRes.ok) {
+          const coursesData = await coursesRes.json();
+          if (coursesData.ok && Array.isArray(coursesData.courses)) {
+            setCourses(coursesData.courses);
+            // Set the newly joined course as active
+            const joinedCourse = coursesData.courses.find(c => c.id === courseId);
+            if (joinedCourse) {
+              setActiveCourse(joinedCourse.code);
+            }
+          }
+        }
+
+        // Clear search
+        setJoinSearchTerm('');
+        setJoinSearchResults([]);
+        setShowJoinCourse(false);
+      } else {
+        alert(data?.error || 'Failed to join course');
+      }
+    } catch (err) {
+      console.error('Error joining course:', err);
+      alert('Failed to join course');
     }
   }
 
@@ -440,6 +547,25 @@ export default function ProfessorView() {
           >
             + Create Course
           </button>
+
+          {/* Join Course Button */}
+          <button
+            onClick={() => setShowJoinCourse(true)}
+            style={{
+              background: "#eff6ff",
+              color: "#1e40af",
+              border: "2px dashed #93c5fd",
+              borderRadius: "0.5rem",
+              padding: "0.75rem 1rem",
+              textAlign: "center",
+              cursor: "pointer",
+              fontWeight: "600",
+              fontSize: "0.9rem",
+              minWidth: "120px",
+            }}
+          >
+            + Join Course
+          </button>
         </div>
 
         {/* Create Course Form */}
@@ -557,6 +683,169 @@ export default function ProfessorView() {
               }}
             >
               Course code must be exactly 6 characters. Title is required.
+            </p>
+          </div>
+        )}
+
+        {/* Join Course Form */}
+        {showJoinCourse && (
+          <div
+            style={{
+              background: "white",
+              border: "2px solid #93c5fd",
+              borderRadius: "0.5rem",
+              padding: "1rem",
+              marginBottom: "1.5rem",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            }}
+          >
+            <h3
+              style={{
+                fontSize: "1rem",
+                fontWeight: "600",
+                marginBottom: "0.75rem",
+                color: "#1e40af",
+              }}
+            >
+              Join Existing Course
+            </h3>
+
+            {/* Search Bar */}
+            <div style={{ position: "relative", marginBottom: "0.5rem" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  background: "white",
+                  border: "2px solid #e5e7eb",
+                  borderRadius: "0.5rem",
+                  padding: "0.75rem 1rem",
+                  gap: "0.5rem",
+                }}
+              >
+                <Search size={20} color="#6b7280" />
+                <input
+                  type="text"
+                  placeholder="Search by course code, title... (e.g., 'CSE 442' or just '442')"
+                  value={joinSearchTerm}
+                  onChange={(e) => setJoinSearchTerm(e.target.value)}
+                  style={{
+                    flex: 1,
+                    border: "none",
+                    outline: "none",
+                    fontSize: "0.875rem",
+                    color: "#111",
+                    background: "transparent",
+                  }}
+                />
+                {joinSearchLoading && (
+                  <div style={{ color: "#6b7280", fontSize: "0.875rem" }}>
+                    Searching...
+                  </div>
+                )}
+              </div>
+
+              {/* Search Results Dropdown */}
+              {joinSearchResults.length > 0 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "calc(100% + 0.5rem)",
+                    left: 0,
+                    right: 0,
+                    background: "white",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "0.5rem",
+                    boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+                    maxHeight: "300px",
+                    overflowY: "auto",
+                    zIndex: 50,
+                  }}
+                >
+                  {joinSearchResults.map((course) => (
+                    <div
+                      key={course.id}
+                      style={{
+                        padding: "0.75rem 1rem",
+                        borderBottom: "1px solid #f3f4f6",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "1rem",
+                        transition: "background 0.15s",
+                        cursor: "pointer",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "#f9fafb")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "white")}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "#111" }}>
+                          {course.code}
+                        </div>
+                        <div style={{ fontSize: "0.75rem", color: "#6b7280", marginTop: "0.125rem" }}>
+                          {course.title}
+                        </div>
+                        {course.professor && (
+                          <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: "0.125rem" }}>
+                            {course.professor}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => joinCourse(course.id)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          padding: "0.5rem",
+                          background: "#3b82f6",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "0.375rem",
+                          cursor: "pointer",
+                          transition: "background 0.15s",
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "#2563eb")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = "#3b82f6")}
+                        title="Join this course"
+                      >
+                        <Plus size={18} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem" }}>
+              <button
+                onClick={() => {
+                  setShowJoinCourse(false);
+                  setJoinSearchTerm('');
+                  setJoinSearchResults([]);
+                }}
+                style={{
+                  background: "#fff",
+                  color: "#666",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "0.375rem",
+                  padding: "0.5rem 1rem",
+                  cursor: "pointer",
+                  fontWeight: "600",
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+            <p
+              style={{
+                fontSize: "0.75rem",
+                color: "#666",
+                marginTop: "0.5rem",
+                marginBottom: 0,
+              }}
+            >
+              Search for existing courses by code or title to join as an instructor.
             </p>
           </div>
         )}
