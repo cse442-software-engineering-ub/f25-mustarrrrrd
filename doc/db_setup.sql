@@ -104,6 +104,19 @@ CREATE TABLE `office_hours_sessions` (
         ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+--notifications table
+CREATE TABLE IF NOT EXISTS notifications (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  course_id INT NULL,
+  type ENUM('queue_absent') NOT NULL,
+  message VARCHAR(512) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  is_read TINYINT(1) DEFAULT 0,
+  INDEX (user_id, is_read)
+);
+
+
 -- Migration: Add attendance column to queue_entries (if not already present)
 ALTER TABLE queue_entries ADD COLUMN attendance ENUM('present','absent') NULL AFTER user_email;
 
@@ -113,3 +126,14 @@ ALTER TABLE queue_entries ADD KEY idx_session (session_id, left_at, joined_at);
 ALTER TABLE queue_entries ADD CONSTRAINT fk_queue_session FOREIGN KEY (session_id) REFERENCES office_hours_sessions(id) ON DELETE SET NULL;
 
 -- Note: after adding the columns, the APIs will accept and use `session_id` and `attendance` when provided. Without these columns, behavior will fail.
+
+-- Run these one by one to update roles in db --
+SHOW COLUMNS FROM users LIKE 'role';
+
+ALTER TABLE users
+  MODIFY role ENUM('student','ta','professor','instructor') NOT NULL;
+
+UPDATE users SET role='professor' WHERE role='instructor';
+
+ALTER TABLE users
+  MODIFY role ENUM('student','ta','professor') NOT NULL;

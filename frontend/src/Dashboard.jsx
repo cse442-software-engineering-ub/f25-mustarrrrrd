@@ -1,9 +1,9 @@
 // src/Dashboard.jsx
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Star, Menu, Search, Plus, Calendar } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Star, Menu } from "lucide-react";
 import { CourseCardDashboard } from "./CourseCardDashboard";
-import { ReservedSessionCard } from "./ReservedSessionCard";
+import { AbsenceNotice } from "./AbsenceNotice";
 
 // Build absolute base from Vite base (ends with /), safe in subfolders
 const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
@@ -13,271 +13,59 @@ export function Dashboard() {
   const navigate = useNavigate();
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const [allCourses, setAllCourses] = useState([]); // All enrolled courses
-  const [reservedSessions, setReservedSessions] = useState([]); // Reserved sessions
+  const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
   const btnRef = useRef(null);
   const menuRef = useRef(null);
-  const searchRef = useRef(null);
 
-  // Fetch enrolled courses and reserved sessions on mount
+  // Fetch favorites on mount
   useEffect(() => {
-    fetchEnrolledCourses();
-    fetchReservedSessions();
+    fetchFavorites();
   }, []);
 
-  async function fetchEnrolledCourses() {
+  async function fetchFavorites() {
     setLoading(true);
     try {
-      // Fetch both enrolled courses and favorites
-      const [coursesRes, favoritesRes] = await Promise.all([
-        fetch(`${API_ROOT}my_courses.php`, {
-          method: "GET",
-          credentials: "include",
-        }),
-        fetch(`${API_ROOT}favorites.php`, {
-          method: "GET",
-          credentials: "include",
-        }),
-      ]);
-
-      const coursesData = await coursesRes.json();
-      const favoritesData = await favoritesRes.json();
-
-      if (coursesData.courses) {
-        const favoriteIds = new Set(favoritesData.favorites?.map(f => f.id) || []);
-
+      const res = await fetch(`${API_ROOT}favorites.php`, {
+        method: "GET",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (data.favorites) {
         // Transform API data to match expected course format
-        const formattedCourses = coursesData.courses.map(course => ({
-          id: course.id,
-          code: course.code,
-          name: course.title,
-          professor: course.professor || "Professor",
-          time: course.lecture_times,
-          location: course.room,
+        const formattedCourses = data.favorites.map(fav => ({
+          id: fav.id,
+          code: fav.code,
+          name: fav.title,
+          professor: "Professor", // You may want to add professor info to the API
+          time: fav.lecture_times,
+          location: fav.room,
           studentsInQueue: 0,
           status: "upcoming",
-          is_favorited: favoriteIds.has(course.id),
-          // Pass through active session data if it exists
-          activeSession: course.activeSession || null,
         }));
-
-        // For courses with active sessions, check if user is in queue
-        const coursesWithQueueStatus = await Promise.all(
-          formattedCourses.map(async (course) => {
-            if (course.activeSession && course.activeSession.id) {
-              try {
-                const queueRes = await fetch(
-                  `${API_ROOT}queue_status.php?session_id=${course.activeSession.id}`,
-                  {
-                    method: "GET",
-                    credentials: "include",
-                  }
-                );
-                const queueData = await queueRes.json();
-
-                if (queueData.ok && queueData.position) {
-                  // User is in queue, add position info
-                  return {
-                    ...course,
-                    activeSession: {
-                      ...course.activeSession,
-                      inQueue: true,
-                      position: queueData.position,
-                      total: queueData.total,
-                    },
-                  };
-                }
-              } catch (err) {
-                console.error("Error fetching queue status:", err);
-              }
-            }
-            return course;
-          })
-        );
-
-        setAllCourses(coursesWithQueueStatus);
+        setCourses(formattedCourses);
       }
     } catch (err) {
-      console.error("Error fetching courses:", err);
+      console.error("Error fetching favorites:", err);
     } finally {
       setLoading(false);
     }
   }
 
-  async function fetchReservedSessions() {
+  async function removeFavorite(courseId) {
     try {
-      const res = await fetch(`${API_ROOT}my_reserved_sessions.php`, {
-        method: "GET",
-        credentials: "include",
-      });
-      const data = await res.json();
-
-      if (data.ok && data.sessions) {
-        setReservedSessions(data.sessions);
-      }
-    } catch (err) {
-      console.error("Error fetching reserved sessions:", err);
-    }
-  }
-
-  async function cancelReservation(sessionId) {
-    try {
-      await fetch(`${API_ROOT}queue_leave.php`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: sessionId }),
-      });
-
-      // Remove from local state
-      setReservedSessions(reservedSessions.filter(s => s.sessionId !== sessionId));
-    } catch (err) {
-      console.error("Error canceling reservation:", err);
-    }
-  }
-
-  async function toggleFavorite(courseId, currentlyFavorited) {
-    try {
-      const method = currentlyFavorited ? "DELETE" : "POST";
       await fetch(`${API_ROOT}favorites.php`, {
-        method,
+        method: "DELETE",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ course_id: courseId }),
       });
-
-      // Update local state
-      setAllCourses(allCourses.map(course =>
-        course.id === courseId
-          ? { ...course, is_favorited: !currentlyFavorited }
-          : course
-      ));
+      // Remove from local state
+      setCourses(courses.filter(c => c.id !== courseId));
     } catch (err) {
-      console.error("Error toggling favorite:", err);
+      console.error("Error removing favorite:", err);
     }
   }
-
-  async function unenrollCourse(courseId) {
-    try {
-      const res = await fetch(`${API_ROOT}unenroll.php`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ course_id: courseId }),
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        // Remove the course from the list entirely
-        setAllCourses(allCourses.filter(course => course.id !== courseId));
-      } else if (data.error) {
-        console.error("Unenroll error:", data.error);
-      }
-    } catch (err) {
-      console.error("Error unenrolling from course:", err);
-    }
-  }
-
-  // Dynamic search as user types
-  useEffect(() => {
-    if (!searchTerm.trim()) {
-      setSearchResults([]);
-      setShowDropdown(false);
-      return;
-    }
-
-    const delayDebounce = setTimeout(() => {
-      performSearch();
-    }, 300); // Debounce for 300ms
-
-    return () => clearTimeout(delayDebounce);
-  }, [searchTerm]);
-
-  async function performSearch() {
-    if (!searchTerm.trim()) return;
-
-    setSearchLoading(true);
-    try {
-      const res = await fetch(`${API_ROOT}search_courses.php`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: searchTerm, filter: "None" }),
-      });
-
-      const data = await res.json();
-
-      if (data.courses) {
-        // Filter out already enrolled courses
-        const enrolledIds = new Set(allCourses.map(c => c.id));
-        const filteredResults = data.courses.filter(c => !enrolledIds.has(c.id));
-        setSearchResults(filteredResults);
-        setShowDropdown(filteredResults.length > 0);
-      } else {
-        setSearchResults([]);
-        setShowDropdown(false);
-      }
-    } catch (err) {
-      console.error("Error searching courses:", err);
-      setSearchResults([]);
-      setShowDropdown(false);
-    } finally {
-      setSearchLoading(false);
-    }
-  }
-
-  async function enrollAndFavorite(courseId) {
-    try {
-      // First enroll in the course
-      const enrollRes = await fetch(`${API_ROOT}enroll.php`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ course_id: courseId, role: "student" }),
-      });
-
-      const enrollData = await enrollRes.json();
-
-      if (enrollData.success) {
-        // Then auto-favorite it
-        await fetch(`${API_ROOT}favorites.php`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ course_id: courseId }),
-        });
-
-        // Refetch all courses to get active session data and queue status
-        await fetchEnrolledCourses();
-        // Also refetch reserved sessions in case this course has reserved sessions
-        await fetchReservedSessions();
-
-        // Clear search
-        setSearchTerm("");
-        setSearchResults([]);
-        setShowDropdown(false);
-      }
-    } catch (err) {
-      console.error("Error enrolling and favoriting:", err);
-    }
-  }
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (searchRef.current && !searchRef.current.contains(e.target)) {
-        setShowDropdown(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   // Close the menu on outside click / Esc
   useEffect(() => {
@@ -316,9 +104,9 @@ export function Dashboard() {
     navigate(to);
   };
 
-  // Separate courses into favorites and enrolled
-  const favoriteCourses = allCourses.filter(c => c.is_favorited);
-  const enrolledCourses = allCourses.filter(c => !c.is_favorited);
+  // Calculate course counts
+  const availableCount = courses.filter(c => c.status === 'available').length;
+  const upcomingCount = courses.filter(c => c.status === 'upcoming').length;
 
   return (
     <div
@@ -406,6 +194,7 @@ export function Dashboard() {
                   overflow: "hidden",
                 }}
               >
+                <MenuItem label="Courses" onClick={() => go("/mycourses")} />
                 <MenuItem label="Profile" onClick={() => go("/profile")} />
                 <MenuItem label="Settings" onClick={() => go("/settings")} />
                 <div
@@ -422,261 +211,83 @@ export function Dashboard() {
         </div>
       </div>
 
+      {/* Absent banner */}
+      <AbsenceNotice />
+
       {/* Main Content */}
       <div style={{ maxWidth: "64rem", margin: "0 auto", padding: "1.5rem" }}>
-        {/* Search Bar Section */}
-        <div style={{ marginBottom: "2rem" }} ref={searchRef}>
+        {/* Favorites Header */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          marginBottom: '1rem'
+        }}>
+          <Star size={20} color="#eab308" fill="#eab308" />
           <h2
             style={{
-              fontSize: "1rem",
+              fontSize: "1.125rem",
               fontWeight: 600,
-              margin: "0 0 0.75rem 0",
+              margin: 0,
               color: "#111",
             }}
           >
-            Find & Join Courses
+            Favorites
           </h2>
-          <div style={{ position: "relative" }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                background: "white",
-                border: "2px solid #e5e7eb",
-                borderRadius: "0.5rem",
-                padding: "0.75rem 1rem",
-                gap: "0.5rem",
-              }}
-            >
-              <Search size={20} color="#6b7280" />
-              <input
-                type="text"
-                placeholder="Search by course code, title, or professor..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onFocus={() => searchResults.length > 0 && setShowDropdown(true)}
-                style={{
-                  flex: 1,
-                  border: "none",
-                  outline: "none",
-                  fontSize: "0.875rem",
-                  color: "#111",
-                  background: "transparent",
-                }}
+        </div>
+
+        {/* Course Tags */}
+        <div style={{
+          display: 'flex',
+          gap: '0.5rem',
+          marginBottom: '1.5rem'
+        }}>
+          <button style={{
+            padding: '0.375rem 0.75rem',
+            background: '#10b981',
+            color: 'white',
+            border: 'none',
+            borderRadius: '0.375rem',
+            fontSize: '0.875rem',
+            cursor: 'pointer',
+            fontWeight: '500'
+          }}>
+            Available ({availableCount})
+          </button>
+          <button style={{
+            padding: '0.375rem 0.75rem',
+            background: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '0.375rem',
+            fontSize: '0.875rem',
+            cursor: 'pointer',
+            fontWeight: '500'
+          }}>
+            Upcoming ({upcomingCount})
+          </button>
+        </div>
+
+        {/* Course Cards Grid */}
+        {loading ? (
+          <p style={{ textAlign: 'center', color: '#6b7280' }}>Loading favorites...</p>
+        ) : courses.length === 0 ? (
+          <p style={{ textAlign: 'center', color: '#6b7280' }}>No favorite courses yet. Add some from the My Courses page!</p>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+              gap: "1rem",
+            }}
+          >
+            {courses.map((course) => (
+              <CourseCardDashboard
+                key={course.id}
+                course={course}
+                onRemoveFavorite={removeFavorite}
               />
-              {searchLoading && (
-                <div style={{ color: "#6b7280", fontSize: "0.875rem" }}>
-                  Searching...
-                </div>
-              )}
-            </div>
-
-            {/* Dropdown with search results */}
-            {showDropdown && searchResults.length > 0 && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "calc(100% + 0.5rem)",
-                  left: 0,
-                  right: 0,
-                  background: "white",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: "0.5rem",
-                  boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
-                  maxHeight: "300px",
-                  overflowY: "auto",
-                  zIndex: 50,
-                }}
-              >
-                {searchResults.map((course) => (
-                  <div
-                    key={course.id}
-                    style={{
-                      padding: "0.75rem 1rem",
-                      borderBottom: "1px solid #f3f4f6",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: "1rem",
-                      transition: "background 0.15s",
-                      cursor: "pointer",
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "#f9fafb")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "white")}
-                  >
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "#111" }}>
-                        {course.code}
-                      </div>
-                      <div style={{ fontSize: "0.75rem", color: "#6b7280", marginTop: "0.125rem" }}>
-                        {course.title}
-                      </div>
-                      <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: "0.125rem" }}>
-                        {course.professor} • {course.lecture_times}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => enrollAndFavorite(course.id)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        padding: "0.5rem",
-                        background: "#10b981",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "0.375rem",
-                        cursor: "pointer",
-                        transition: "background 0.15s",
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "#059669")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = "#10b981")}
-                      title="Join and add to favorites"
-                    >
-                      <Plus size={18} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* My Upcoming Sessions Section */}
-        <div style={{ marginBottom: "3rem" }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            marginBottom: '1rem'
-          }}>
-            <Calendar size={20} color="#3b82f6" />
-            <h2
-              style={{
-                fontSize: "1.125rem",
-                fontWeight: 600,
-                margin: 0,
-                color: "#111",
-              }}
-            >
-              My Upcoming Sessions
-            </h2>
-          </div>
-
-          {/* Reserved Sessions Cards or Empty State */}
-          {loading ? (
-            <p style={{ textAlign: 'center', color: '#6b7280' }}>Loading sessions...</p>
-          ) : reservedSessions.length === 0 ? (
-            <p style={{ textAlign: 'center', color: '#6b7280', fontSize: '0.875rem', lineHeight: '1.5' }}>
-              Reserved office hour sessions will appear here. To reserve a session, click "View Sessions" for your course below, and reserve any session that is within 24 hours of your current time.
-            </p>
-          ) : (
-            <div
-              style={{
-                display: "flex",
-                gap: "1rem",
-                overflowX: "auto",
-                paddingBottom: "0.5rem",
-              }}
-            >
-              {reservedSessions.map((session) => (
-                <ReservedSessionCard
-                  key={session.sessionId}
-                  session={session}
-                  onCancel={cancelReservation}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Favorites Section */}
-        <div style={{ marginBottom: "3rem" }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            marginBottom: '1rem'
-          }}>
-            <Star size={20} color="#eab308" fill="#eab308" />
-            <h2
-              style={{
-                fontSize: "1.125rem",
-                fontWeight: 600,
-                margin: 0,
-                color: "#111",
-              }}
-            >
-              Favorites
-            </h2>
-          </div>
-
-          {/* Favorites Course Cards Grid */}
-          {loading ? (
-            <p style={{ textAlign: 'center', color: '#6b7280' }}>Loading courses...</p>
-          ) : favoriteCourses.length === 0 ? (
-            <p style={{ textAlign: 'center', color: '#6b7280' }}>No favorite courses yet. Use the search bar above to find and join courses!</p>
-          ) : (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-                gap: "1rem",
-              }}
-            >
-              {favoriteCourses.map((course) => (
-                <CourseCardDashboard
-                  key={course.id}
-                  course={course}
-                  onToggleFavorite={toggleFavorite}
-                  onUnenroll={unenrollCourse}
-                  isFavorited={true}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Enrolled Courses Section */}
-        {enrolledCourses.length > 0 && (
-          <div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              marginBottom: '1rem'
-            }}>
-              <Star size={20} color="#9ca3af" fill="none" />
-              <h2
-                style={{
-                  fontSize: "1.125rem",
-                  fontWeight: 600,
-                  margin: 0,
-                  color: "#111",
-                }}
-              >
-                Enrolled Courses
-              </h2>
-            </div>
-
-            {/* Enrolled Course Cards Grid */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-                gap: "1rem",
-              }}
-            >
-              {enrolledCourses.map((course) => (
-                <CourseCardDashboard
-                  key={course.id}
-                  course={course}
-                  onToggleFavorite={toggleFavorite}
-                  onUnenroll={unenrollCourse}
-                  isFavorited={false}
-                />
-              ))}
-            </div>
+            ))}
           </div>
         )}
       </div>
