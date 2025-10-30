@@ -3,7 +3,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 // URL for your existing PHP session check
-const CHECK_SESSION_URL = '/api/check_session.php'; 
+const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
+const API_ROOT = new URL("../api/", ABS_BASE).pathname;
+const CHECK_SESSION_URL = `${API_ROOT}/check_session.php`;
 
 // 1. Create the Context
 const AuthContext = createContext(null);
@@ -16,7 +18,7 @@ export const AuthProvider = ({ children }) => {
     // user: null means not logged in.
     const [user, setUser] = useState(null); 
     // loading: null = Initial check not started, true = Checking, false = Done
-    const [loading, setLoading] = useState(null); 
+    const [loading, setLoading] = useState(true);
 
     // Function to run the session check
     const checkAuthStatus = async () => {

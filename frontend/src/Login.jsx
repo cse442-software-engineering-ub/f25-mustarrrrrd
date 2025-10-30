@@ -18,8 +18,7 @@ const deleteCookie = (name) => {
   document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
 };
 
-const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
-const API_ROOT = new URL("../api/", ABS_BASE).pathname;
+const API_ROOT = "../api/";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -29,17 +28,18 @@ export default function Login() {
   const [message, setMessage] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [sessionChecked, setSessionChecked] = useState(false);
 
   const clamp = (s) => (s || "").slice(0, MAX);
 
   useEffect(() => {
-  // disable scrolling while on login page
-  document.body.style.overflow = "hidden";
-  return () => {
-    document.body.style.overflow = "auto";
-  };
+    // disable scrolling while on login page
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "auto";
+    };
   }, []);
-  
+
   useEffect(() => {
     const checkSession = async () => {
       try {
@@ -47,11 +47,18 @@ export default function Login() {
           method: "GET",
           credentials: "include",
         });
+
+        if (!res.ok) {
+          console.warn("check_session returned non-200:", res.status);
+          setSessionChecked(true);
+          return;
+        }
+
         const data = await res.json();
 
         if (data?.loggedIn) {
-          if (data?.role === "student") navigate("/dashboard");
-          else if (data?.role === "professor") navigate("/professorview");
+          if (data.role === "student") navigate("/dashboard", { replace: true });
+          else if (data.role === "professor") navigate("/professorview", { replace: true });
           return;
         }
       } catch (err) {
@@ -64,6 +71,7 @@ export default function Login() {
         setRememberMe(true);
         setMessage("Welcome back");
       }
+      setSessionChecked(true);
     };
 
     checkSession();
@@ -93,13 +101,14 @@ export default function Login() {
         setMessage(`Welcome ${data?.name ?? ""}`.trim());
         setPassword("");
 
-        if (data?.role === "student") navigate("/dashboard");
-        else if (data?.role === "professor") navigate("/professorview");
+        if (data.role === "student") navigate("/dashboard");
+        else if (data.role === "professor") navigate("/professorview");
       } else {
-        setMessage(data?.message || "No match");
+        setMessage(data?.message || "Invalid credentials");
       }
-    } catch {
-      setMessage("server error");
+    } catch (err) {
+      console.error(err);
+      setMessage("Server error");
     } finally {
       setLoading(false);
     }
@@ -110,6 +119,24 @@ export default function Login() {
       e.preventDefault();
       handleLogin();
     }
+  }
+
+  if (!sessionChecked) {
+    // Prevent flickering redirect loop until session is confirmed
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          color: "#fff",
+          backgroundColor: "#000",
+        }}
+      >
+        Checking session...
+      </div>
+    );
   }
 
   return (
@@ -137,7 +164,6 @@ export default function Login() {
           boxShadow: "0 12px 32px rgba(0,0,0,0.45)",
         }}
       >
-        {/* Header */}
         <div
           style={{
             display: "flex",
@@ -149,7 +175,6 @@ export default function Login() {
           <h1 style={{ fontSize: "2rem", fontWeight: "bold", margin: 0 }}>Auto Office Hours</h1>
         </div>
 
-        {/* Email */}
         <label style={{ display: "block", marginBottom: 16 }}>
           Email
           <input
@@ -174,7 +199,6 @@ export default function Login() {
           />
         </label>
 
-        {/* Password */}
         <label style={{ display: "block", marginBottom: 20 }}>
           Password
           <input
@@ -208,7 +232,6 @@ export default function Login() {
           Remember Me
         </label>
 
-        {/* Buttons */}
         <button
           onClick={handleLogin}
           disabled={loading}
@@ -232,7 +255,6 @@ export default function Login() {
 
         {message && <p style={{ marginTop: 16 }}>{message}</p>}
 
-        {/* Signup */}
         <div style={{ marginTop: 24 }}>
           <p style={{ marginBottom: 8 }}>Don’t have an account?</p>
           <button

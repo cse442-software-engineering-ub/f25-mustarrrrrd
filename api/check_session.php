@@ -1,5 +1,9 @@
 <?php
 declare(strict_types=1);
+ini_set('display_errors', '1');
+ini_set('display_startup_errors', '1');
+error_reporting(E_ALL);
+error_log("check_session.php started", 0);
 
 require_once __DIR__ . '/db.php';
 
@@ -37,10 +41,12 @@ if (!empty($_SESSION['user_id'])) {
 }
 
 // 2️⃣ Otherwise, try to rebuild from a remember_token (optional)
+error_log("check_session.php reached token check", 0);
 $token = $_COOKIE['remember_token'] ?? null;
 if ($token) {
   try {
     $pdo = pdo();
+    error_log("pdo happened", 0);
     $stmt = $pdo->prepare('SELECT id, email, name, role FROM users WHERE remember_token = ? LIMIT 1');
     $stmt->execute([$token]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
