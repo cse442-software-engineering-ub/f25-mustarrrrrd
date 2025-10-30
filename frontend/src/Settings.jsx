@@ -3,24 +3,34 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Menu } from "lucide-react";
 
-// Build absolute base from Vite base (ends with /), safe in subfolders
 const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
 const API_ROOT = new URL("../api/", ABS_BASE).pathname;
+
+// --- Add this helper at the top of Settings.jsx ---
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, "+")
+    .replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
 
 export default function Settings() {
   const navigate = useNavigate();
 
-  // Menu state
   const [menuOpen, setMenuOpen] = useState(false);
   const btnRef = useRef(null);
   const menuRef = useRef(null);
 
-  // Example settings state (persist to server if/when you add endpoints)
   const [theme, setTheme] = useState("system");
   const [pushNotif, setPushNotif] = useState(false);
   const [msg, setMsg] = useState("");
 
-  // Close the menu on outside click / Esc
   useEffect(() => {
     function onDocClick(e) {
       if (!menuOpen) return;
@@ -53,18 +63,56 @@ export default function Settings() {
         credentials: "include",
       });
     } catch {}
-    // Hard clear PHP session cookie (path=/ to cover subdirs)
     document.cookie = "PHPSESSID=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
     navigate("/");
   }
 
+  async function requestNotificationPermission() {
+    if (!("Notification" in window)) {
+      alert("This browser does not support notifications.");
+      return false;
+    }
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      alert("Notifications were blocked. Enable them in browser settings.");
+      return false;
+    }
+    return true;
+  }
+
+async function subscribeToPush() {
+  const granted = await requestNotificationPermission();
+  if (!granted) return;
+
+  // Register the service worker (correct path)
+  const reg = await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`);
+  console.log("Service worker registered:", reg);
+
+  // Convert the public VAPID key to Uint8Array
+  const publicKey = "BOfcKUzF6sFrJbNbg7p9Hn9x3zMYo0R7T6n1omHxTyEBdbxJCU3zHVgMqxQKIXlK6HLJXIkXfq1pMWztk9V4Qdo"; // example
+  const convertedKey = urlBase64ToUint8Array(publicKey);
+
+  // Subscribe
+  const sub = await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: convertedKey,
+  });
+
+  // Send subscription to backend
+  await fetch(`${API_ROOT}push_subscribe.php`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(sub),
+  });
+
+  console.log("Push subscription saved!");
+}
+
+
   async function saveSettings(e) {
     e?.preventDefault?.();
     setMsg("");
-
-    // If you add a backend, POST here (example only):
-    // await fetch(`${API_ROOT}settings_update.php`, { method: "POST", credentials:"include", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ theme, pushNotif }) });
-
     setMsg("Settings saved.");
     setTimeout(() => setMsg(""), 1800);
   }
@@ -113,7 +161,6 @@ export default function Settings() {
             Settings
           </h1>
 
-          {/* Hamburger */}
           <div style={{ position: "relative" }}>
             <button
               ref={btnRef}
@@ -162,12 +209,8 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* Content */}
       <div style={{ maxWidth: "64rem", margin: "0 auto", padding: "1.5rem" }}>
-        <form
-          onSubmit={saveSettings}
-          style={{ display: "grid", gap: "1rem" }}
-        >
+        <form onSubmit={saveSettings} style={{ display: "grid", gap: "1rem" }}>
           <Card title="Appearance">
             <div style={row}>
               <label style={label}>Theme</label>
@@ -186,27 +229,21 @@ export default function Settings() {
           <Card title="Notifications">
             <ToggleRow
               title="Push notifications"
-              description="Get push alerts when your turn is near."
+              description="Get alerts before your office hours or when it’s your turn."
               checked={pushNotif}
-              onChange={setPushNotif}
+              onChange={async (v) => {
+                setPushNotif(v);
+                if (v) await subscribeToPush();
+              }}
             />
           </Card>
 
           <Card title="Account">
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <button
-                type="submit"
-                style={primaryBtn}
-                title="Save settings"
-              >
+              <button type="submit" style={primaryBtn}>
                 Save changes
               </button>
-              <button
-                type="button"
-                onClick={handleSignOut}
-                style={dangerBtn}
-                title="Sign out and clear session"
-              >
+              <button type="button" onClick={handleSignOut} style={dangerBtn}>
                 Sign out
               </button>
             </div>
@@ -269,9 +306,7 @@ function ToggleRow({ title, description, checked, onChange }) {
     >
       <div>
         <div style={{ fontWeight: 500, color: "#111" }}>{title}</div>
-        {description && (
-          <div style={{ color: "#6b7280", fontSize: 14 }}>{description}</div>
-        )}
+        {description && <div style={{ color: "#6b7280", fontSize: 14 }}>{description}</div>}
       </div>
       <label style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
         <input
@@ -286,42 +321,9 @@ function ToggleRow({ title, description, checked, onChange }) {
 }
 
 /* Inline styles */
-const row = {
-  display: "grid",
-  gridTemplateColumns: "200px 1fr",
-  gap: 12,
-  alignItems: "center",
-};
-
+const row = { display: "grid", gridTemplateColumns: "200px 1fr", gap: 12, alignItems: "center" };
 const label = { color: "#374151", fontSize: 14 };
-
-const input = {
-  padding: "10px 12px",
-  border: "1px solid #d1d5db",
-  borderRadius: 10,
-  background: "#fff",
-  fontSize: 14,
-  color: "#111",
-};
-
+const input = { padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: 10, background: "#fff", fontSize: 14, color: "#111" };
 const select = { ...input, appearance: "none" };
-
-const primaryBtn = {
-  background: "#1f6feb",
-  color: "#fff",
-  border: 0,
-  borderRadius: 10,
-  padding: "10px 14px",
-  fontWeight: 600,
-  cursor: "pointer",
-};
-
-const dangerBtn = {
-  background: "#b3261e",
-  color: "#fff",
-  border: 0,
-  borderRadius: 10,
-  padding: "10px 14px",
-  fontWeight: 600,
-  cursor: "pointer",
-};
+const primaryBtn = { background: "#1f6feb", color: "#fff", border: 0, borderRadius: 10, padding: "10px 14px", fontWeight: 600, cursor: "pointer" };
+const dangerBtn = { background: "#b3261e", color: "#fff", border: 0, borderRadius: 10, padding: "10px 14px", fontWeight: 600, cursor: "pointer" };

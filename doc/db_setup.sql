@@ -113,3 +113,5 @@ ALTER TABLE queue_entries ADD KEY idx_session (session_id, left_at, joined_at);
 ALTER TABLE queue_entries ADD CONSTRAINT fk_queue_session FOREIGN KEY (session_id) REFERENCES office_hours_sessions(id) ON DELETE SET NULL;
 
 -- Note: after adding the columns, the APIs will accept and use `session_id` and `attendance` when provided. Without these columns, behavior will fail.
+
+ALTER TABLE users ADD COLUMN push_sub TEXT NULL;
