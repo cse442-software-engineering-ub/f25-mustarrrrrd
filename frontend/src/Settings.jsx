@@ -5,21 +5,22 @@ import { Menu } from "lucide-react";
 
 const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
 const API_ROOT = new URL("../api/", ABS_BASE).pathname;
+const VAPID_PUBLIC_KEY = "BNct9u_rYLt-VDZs4cLNG65RzzAhferGHWWZLA_eRKfGY8TSgDQNRtLkYS7M10j7oUHiBozSPv4A0NIVuL8h6-I";
 
-// --- Add this helper at the top of Settings.jsx ---
+
+/* -------------------------------------------------------------------------- */
+/*                                Helper utils                                */
+/* -------------------------------------------------------------------------- */
 function urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding)
-    .replace(/-/g, "+")
-    .replace(/_/g, "/");
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
   const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
+  return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
 }
 
+/* -------------------------------------------------------------------------- */
+/*                                Main Component                              */
+/* -------------------------------------------------------------------------- */
 export default function Settings() {
   const navigate = useNavigate();
 
@@ -31,13 +32,12 @@ export default function Settings() {
   const [pushNotif, setPushNotif] = useState(false);
   const [msg, setMsg] = useState("");
 
+  /* ------------------------- Close dropdown on blur ------------------------ */
   useEffect(() => {
     function onDocClick(e) {
       if (!menuOpen) return;
-      const b = btnRef.current;
-      const m = menuRef.current;
-      if (b && b.contains(e.target)) return;
-      if (m && m.contains(e.target)) return;
+      if (btnRef.current?.contains(e.target)) return;
+      if (menuRef.current?.contains(e.target)) return;
       setMenuOpen(false);
     }
     function onKey(e) {
@@ -56,6 +56,7 @@ export default function Settings() {
     navigate(to);
   };
 
+  /* ----------------------------- Sign out user ----------------------------- */
   async function handleSignOut() {
     try {
       await fetch(`${API_ROOT}logout.php`, {
@@ -67,6 +68,7 @@ export default function Settings() {
     navigate("/");
   }
 
+  /* ---------------------- Notification + push handling --------------------- */
   async function requestNotificationPermission() {
     if (!("Notification" in window)) {
       alert("This browser does not support notifications.");
@@ -80,50 +82,52 @@ export default function Settings() {
     return true;
   }
 
-async function subscribeToPush() {
-  const granted = await requestNotificationPermission();
-  if (!granted) return;
+  async function subscribeToPush() {
+    const granted = await requestNotificationPermission();
+    if (!granted) return;
 
-  // Register the service worker (correct path)
-  const reg = await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`);
-  console.log("Service worker registered:", reg);
+    // Register service worker (works for subfolders)
+    const swUrl = `${import.meta.env.BASE_URL}sw.js`;
+    const reg = await navigator.serviceWorker.register(swUrl);
+    console.log("✅ Service worker registered:", reg.scope);
 
-  // Convert the public VAPID key to Uint8Array
-  const publicKey = "BOfcKUzF6sFrJbNbg7p9Hn9x3zMYo0R7T6n1omHxTyEBdbxJCU3zHVgMqxQKIXlK6HLJXIkXfq1pMWztk9V4Qdo"; // example
-  const convertedKey = urlBase64ToUint8Array(publicKey);
+    // Convert public VAPID key
+    const convertedKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
 
-  // Subscribe
-  const sub = await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: convertedKey,
-  });
+    // Try to subscribe (reuses old one if exists)
+    const existingSub = await reg.pushManager.getSubscription();
+    const sub =
+      existingSub ||
+      (await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: convertedKey,
+      }));
 
-  // Send subscription to backend
-  await fetch(`${API_ROOT}push_subscribe.php`, {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(sub),
-  });
+    // Send subscription to backend
+    await fetch(`${API_ROOT}push_subscribe.php`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sub),
+    });
 
-  console.log("Push subscription saved!");
-}
-
+    console.log("✅ Push subscription saved to backend!");
+  }
 
   async function saveSettings(e) {
     e?.preventDefault?.();
-    setMsg("");
     setMsg("Settings saved.");
     setTimeout(() => setMsg(""), 1800);
   }
 
+  /* -------------------------------------------------------------------------- */
+  /*                                   Render                                   */
+  /* -------------------------------------------------------------------------- */
   return (
     <div
       style={{
         minHeight: "100vh",
         background: "#f9fafb",
-        margin: 0,
-        padding: 0,
         position: "fixed",
         inset: 0,
         overflow: "auto",
@@ -201,7 +205,13 @@ async function subscribeToPush() {
               >
                 <MenuItem label="Profile" onClick={() => go("/profile")} />
                 <MenuItem label="Settings" onClick={() => go("/settings")} />
-                <div style={{ height: 1, background: "#f1f5f9", margin: "4px 0" }} />
+                <div
+                  style={{
+                    height: 1,
+                    background: "#f1f5f9",
+                    margin: "4px 0",
+                  }}
+                />
                 <MenuItem label="Sign out" danger onClick={handleSignOut} />
               </div>
             )}
@@ -209,6 +219,7 @@ async function subscribeToPush() {
         </div>
       </div>
 
+      {/* Content */}
       <div style={{ maxWidth: "64rem", margin: "0 auto", padding: "1.5rem" }}>
         <form onSubmit={saveSettings} style={{ display: "grid", gap: "1rem" }}>
           <Card title="Appearance">
@@ -255,7 +266,9 @@ async function subscribeToPush() {
   );
 }
 
-/* Reusable bits */
+/* -------------------------------------------------------------------------- */
+/*                              Reusable components                            */
+/* -------------------------------------------------------------------------- */
 function MenuItem({ label, onClick, danger }) {
   return (
     <button
@@ -286,7 +299,15 @@ function Card({ title, children }) {
         padding: 16,
       }}
     >
-      <h3 style={{ margin: 0, marginBottom: 12, fontSize: 16, fontWeight: 600, color: "#111" }}>
+      <h3
+        style={{
+          margin: 0,
+          marginBottom: 12,
+          fontSize: 16,
+          fontWeight: 600,
+          color: "#111",
+        }}
+      >
         {title}
       </h3>
       <div style={{ display: "grid", gap: 12 }}>{children}</div>
@@ -306,9 +327,18 @@ function ToggleRow({ title, description, checked, onChange }) {
     >
       <div>
         <div style={{ fontWeight: 500, color: "#111" }}>{title}</div>
-        {description && <div style={{ color: "#6b7280", fontSize: 14 }}>{description}</div>}
+        {description && (
+          <div style={{ color: "#6b7280", fontSize: 14 }}>{description}</div>
+        )}
       </div>
-      <label style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+      <label
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          cursor: "pointer",
+        }}
+      >
         <input
           type="checkbox"
           checked={checked}
@@ -320,10 +350,40 @@ function ToggleRow({ title, description, checked, onChange }) {
   );
 }
 
-/* Inline styles */
-const row = { display: "grid", gridTemplateColumns: "200px 1fr", gap: 12, alignItems: "center" };
+/* -------------------------------------------------------------------------- */
+/*                                 Inline styles                               */
+/* -------------------------------------------------------------------------- */
+const row = {
+  display: "grid",
+  gridTemplateColumns: "200px 1fr",
+  gap: 12,
+  alignItems: "center",
+};
 const label = { color: "#374151", fontSize: 14 };
-const input = { padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: 10, background: "#fff", fontSize: 14, color: "#111" };
+const input = {
+  padding: "10px 12px",
+  border: "1px solid #d1d5db",
+  borderRadius: 10,
+  background: "#fff",
+  fontSize: 14,
+  color: "#111",
+};
 const select = { ...input, appearance: "none" };
-const primaryBtn = { background: "#1f6feb", color: "#fff", border: 0, borderRadius: 10, padding: "10px 14px", fontWeight: 600, cursor: "pointer" };
-const dangerBtn = { background: "#b3261e", color: "#fff", border: 0, borderRadius: 10, padding: "10px 14px", fontWeight: 600, cursor: "pointer" };
+const primaryBtn = {
+  background: "#1f6feb",
+  color: "#fff",
+  border: 0,
+  borderRadius: 10,
+  padding: "10px 14px",
+  fontWeight: 600,
+  cursor: "pointer",
+};
+const dangerBtn = {
+  background: "#b3261e",
+  color: "#fff",
+  border: 0,
+  borderRadius: 10,
+  padding: "10px 14px",
+  fontWeight: 600,
+  cursor: "pointer",
+};
