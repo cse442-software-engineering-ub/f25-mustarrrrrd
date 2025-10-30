@@ -52,22 +52,16 @@ try {
         exit;
     }
 
-    $fullName = trim($user['name'] ?? '');
-    $nameParts = preg_split('/\s+/', $fullName);
-    $lastName = end($nameParts); // ✅ Extract only last name
-    $professor = clamp191($lastName);
-
-    // ✅ Insert course info with professor’s last name
+    // Insert course info
     $stmt = $pdo->prepare('
-        INSERT INTO courses (code, title, lecture_times, room, professor)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO courses (code, title, lecture_times, room)
+        VALUES (?, ?, ?, ?)
     ');
-    $stmt->execute([$code, $name, $lectureTimes, $room, $professor]);
+    $stmt->execute([$code, $name, $lectureTimes, $room]);
 
     echo json_encode([
         'success' => true,
-        'message' => 'Course created successfully',
-        'professor' => $professor
+        'message' => 'Course created successfully'
     ]);
 } catch (Throwable $e) {
     http_response_code(500);

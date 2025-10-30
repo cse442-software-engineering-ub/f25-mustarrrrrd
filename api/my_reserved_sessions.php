@@ -34,7 +34,6 @@ try {
       c.id as course_id,
       c.code as course_code,
       c.title as course_title,
-      c.professor,
       u.name as instructor_name
     FROM queue_entries qe
     JOIN office_hours_sessions ohs ON qe.session_id = ohs.id
