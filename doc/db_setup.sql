@@ -137,3 +137,5 @@ UPDATE users SET role='professor' WHERE role='instructor';
 
 ALTER TABLE users
   MODIFY role ENUM('student','ta','professor') NOT NULL;
+-- Drop professor column from courses table
+ALTER TABLE `courses` DROP COLUMN `professor`;

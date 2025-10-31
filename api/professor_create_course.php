@@ -58,15 +58,14 @@ try {
   try {
     // Create the course with default values for optional fields
     $stmt = $pdo->prepare('
-      INSERT INTO courses (code, title, lecture_times, room, professor)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO courses (code, title, lecture_times, room)
+      VALUES (?, ?, ?, ?)
     ');
     $stmt->execute([
       $code,
       $title,
       'TBD', // Default lecture times
-      'TBD', // Default room
-      $lastName
+      'TBD'  // Default room
     ]);
 
     $courseId = (int)$pdo->lastInsertId();
