@@ -25,6 +25,7 @@ try {
 
   echo json_encode(['ok'=>true,'sessions'=>$rows]);
 } catch (Throwable $e) {
+  error_log('Office hours sessions list error: ' . $e->getMessage());
   http_response_code(500);
-  echo json_encode(['ok'=>false,'error'=>$e->getMessage()]);
+  echo json_encode(['ok'=>false,'error'=>'Server error']);
 }

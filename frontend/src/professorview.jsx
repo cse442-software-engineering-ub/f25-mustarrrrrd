@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Menu, Search, Plus } from "lucide-react";
+import { Menu, Search, Plus, MoreVertical } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function ProfessorView() {
@@ -18,6 +18,7 @@ export default function ProfessorView() {
   const [joinSearchTerm, setJoinSearchTerm] = useState('');
   const [joinSearchResults, setJoinSearchResults] = useState([]);
   const [joinSearchLoading, setJoinSearchLoading] = useState(false);
+  const [courseMenuOpen, setCourseMenuOpen] = useState(null); // Tracks which course menu is open
 
   const btnRef = useRef(null);
   const menuRef = useRef(null);
@@ -342,6 +343,38 @@ export default function ProfessorView() {
     }
   }
 
+  async function handleRemoveCourse(courseId, courseCode) {
+    try {
+      const res = await fetch(`${API_ROOT}unenroll.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ course_id: courseId }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        // Remove course from local state
+        setCourses(prev => prev.filter(c => c.id !== courseId));
+
+        // If removed course was active, set another as active
+        if (activeCourse === courseCode) {
+          const remainingCourses = courses.filter(c => c.id !== courseId);
+          setActiveCourse(remainingCourses.length > 0 ? remainingCourses[0].code : null);
+        }
+
+        // Close the menu
+        setCourseMenuOpen(null);
+      } else {
+        alert(data?.error || 'Failed to remove course');
+      }
+    } catch (err) {
+      console.error('Error removing course:', err);
+      alert('Failed to remove course');
+    }
+  }
+
   // --- Handle sign out ---
   async function handleSignOut() {
     try {
@@ -374,6 +407,28 @@ export default function ProfessorView() {
       document.removeEventListener("keydown", onKey);
     };
   }, [menuOpen]);
+
+  // --- Close course menu when clicking outside or pressing Esc ---
+  useEffect(() => {
+    function onDocClick(e) {
+      if (!courseMenuOpen) return;
+      // Check if click is outside the course menu dropdown
+      const target = e.target;
+      const isClickInsideMenu = target.closest('[data-course-menu]');
+      if (!isClickInsideMenu) {
+        setCourseMenuOpen(null);
+      }
+    }
+    function onKey(e) {
+      if (e.key === "Escape") setCourseMenuOpen(null);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [courseMenuOpen]);
 
   return (
     <div
@@ -498,34 +553,121 @@ export default function ProfessorView() {
 
           {courses.map((course) => {
             const isActive = course.code === activeCourse;
+            const isMenuOpen = courseMenuOpen === course.code;
             return (
-              <button
+              <div
                 key={course.code}
-                onClick={() => setActiveCourse(course.code)}
                 style={{
-                  background: isActive ? "#111" : "#fff",
-                  color: isActive ? "#fff" : "#333",
-                  border: isActive ? "none" : "1px solid #ddd",
-                  borderRadius: "0.5rem",
-                  padding: "0.75rem 1rem",
-                  textAlign: "center",
-                  boxShadow: isActive
-                    ? "0 2px 6px rgba(0,0,0,0.2)"
-                    : "0 1px 3px rgba(0,0,0,0.1)",
-                  cursor: "pointer",
+                  position: "relative",
+                  display: "inline-block",
                 }}
               >
-                <p style={{ fontWeight: "600", margin: 0 }}>{course.code}</p>
-                <p
+                <button
+                  onClick={() => setActiveCourse(course.code)}
                   style={{
-                    fontSize: "0.8rem",
-                    margin: 0,
-                    opacity: 0.8,
+                    background: isActive ? "#111" : "#fff",
+                    color: isActive ? "#fff" : "#333",
+                    border: isActive ? "none" : "1px solid #ddd",
+                    borderRadius: "0.5rem",
+                    padding: "0.75rem 1rem",
+                    paddingRight: "2.5rem",
+                    textAlign: "left",
+                    boxShadow: isActive
+                      ? "0 2px 6px rgba(0,0,0,0.2)"
+                      : "0 1px 3px rgba(0,0,0,0.1)",
+                    cursor: "pointer",
+                    width: "100%",
                   }}
                 >
-                  {course.title}
-                </p>
-              </button>
+                  <p style={{ fontWeight: "600", margin: 0 }}>{course.code}</p>
+                  <p
+                    style={{
+                      fontSize: "0.8rem",
+                      margin: 0,
+                      opacity: 0.8,
+                    }}
+                  >
+                    {course.title}
+                  </p>
+                </button>
+
+                {/* 3-dot menu button */}
+                <button
+                  data-course-menu
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCourseMenuOpen(isMenuOpen ? null : course.code);
+                  }}
+                  style={{
+                    position: "absolute",
+                    top: "50%",
+                    right: "0.5rem",
+                    transform: "translateY(-50%)",
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "0.25rem",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: "0.25rem",
+                    color: isActive ? "#fff" : "#666",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = isActive ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "transparent";
+                  }}
+                >
+                  <MoreVertical size={16} />
+                </button>
+
+                {/* Dropdown menu */}
+                {isMenuOpen && (
+                  <div
+                    data-course-menu
+                    style={{
+                      position: "absolute",
+                      top: "100%",
+                      right: 0,
+                      marginTop: "0.25rem",
+                      background: "#fff",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "0.375rem",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                      zIndex: 100,
+                      minWidth: "120px",
+                    }}
+                  >
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveCourse(course.id, course.code);
+                      }}
+                      style={{
+                        width: "100%",
+                        textAlign: "left",
+                        padding: "0.5rem 0.75rem",
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: "0.875rem",
+                        color: "#dc2626",
+                        fontWeight: "500",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "#fef2f2";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
             );
           })}
 

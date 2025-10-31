@@ -26,8 +26,9 @@ function sess_start(): void {
 function pdo_or_die(): PDO {
   try { return pdo(); }
   catch (Throwable $e) {
+    error_log('DB connection failed: ' . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['ok'=>false,'error'=>'DB connect failed: '.$e->getMessage()]);
+    echo json_encode(['ok'=>false,'error'=>'Database connection error']);
     exit;
   }
 }

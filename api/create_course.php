@@ -1,7 +1,16 @@
 <?php
 require __DIR__ . '/db.php';
+require __DIR__ . '/auth.php';
 
 header('Content-Type: application/json; charset=utf-8');
+
+// Authentication required
+$u = current_user();
+if (!$u) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => 'Not logged in']);
+    exit;
+}
 
 try {
     $data = json_decode(file_get_contents('php://input'), true) ?? [];
@@ -10,9 +19,11 @@ try {
     $name          = clamp191($data['name'] ?? '');
     $lectureTimes  = clamp191($data['lectureTimes'] ?? '');
     $room          = clamp191($data['room'] ?? '');
-    $userEmail     = clamp191($data['userEmail'] ?? '');
 
-    // ✅ Validation
+    // Use authenticated user's email instead of accepting from request
+    $userEmail = $u['email'];
+
+    // Validation
     if ($code === '') {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Course code required']);
@@ -33,24 +44,8 @@ try {
         echo json_encode(['success' => false, 'message' => 'Room required']);
         exit;
     }
-    if ($userEmail === '') {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'User email missing']);
-        exit;
-    }
 
     $pdo = pdo();
-
-    // ✅ Look up the user’s name from the users table
-    $stmtUser = $pdo->prepare('SELECT name FROM users WHERE email = ? LIMIT 1');
-    $stmtUser->execute([$userEmail]);
-    $user = $stmtUser->fetch(PDO::FETCH_ASSOC);
-
-    if (!$user) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'message' => 'No user found for that email']);
-        exit;
-    }
 
     // Insert course info
     $stmt = $pdo->prepare('
@@ -64,9 +59,10 @@ try {
         'message' => 'Course created successfully'
     ]);
 } catch (Throwable $e) {
+    error_log('Create course error: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'Server error: ' . $e->getMessage()
+        'message' => 'Server error'
     ]);
 }

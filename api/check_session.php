@@ -68,7 +68,8 @@ if ($token) {
       ]);
     }
   } catch (Throwable $e) {
-    reply(false, ['loggedIn' => false, 'error' => $e->getMessage()]);
+    error_log('Check session error: ' . $e->getMessage());
+    reply(false, ['loggedIn' => false, 'error' => 'Server error']);
   }
 }
 

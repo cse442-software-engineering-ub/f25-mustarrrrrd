@@ -76,5 +76,6 @@ try {
     'notes'    => $notes,
   ]);
 } catch (Throwable $e) {
-  out(500, ['ok'=>false,'error'=>$e->getMessage()]);
+  error_log('Queue status error: ' . $e->getMessage());
+  out(500, ['ok'=>false,'error'=>'Server error']);
 }

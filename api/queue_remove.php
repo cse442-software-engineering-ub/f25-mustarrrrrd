@@ -8,28 +8,79 @@ require_once __DIR__ . '/db.php';
 json_headers();
 sess_start();
 
+set_cors_headers();
+sess_start();
+
+// CORS (with whitelist validation)
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+  header('Access-Control-Allow-Methods: POST, OPTIONS');
+  header('Access-Control-Allow-Headers: Content-Type');
+  exit;
+}
+
+// Authentication required
 $u = current_user();
-if (!$u) { http_response_code(401); echo json_encode(['ok'=>false,'error'=>'not_logged_in']); exit; }
+if (!$u) {
+  http_response_code(401);
+  echo json_encode(['ok' => false, 'message' => 'Not logged in']);
+  exit;
+}
+
+// Read JSON input
+$in = read_json();
+$user_email = trim($in['user_email'] ?? '');
+$session_id = isset($in['session_id']) && ctype_digit((string)$in['session_id']) ? (int)$in['session_id'] : null;
+$course_id = $in['course_id'] ?? null;
+
+// Validation
+if (!$user_email || (!$session_id && !$course_id)) {
+  http_response_code(400);
+  echo json_encode(['ok' => false, 'message' => 'Missing required parameters']);
+  exit;
+}
+
+// If no user_email provided, use the authenticated user's email
+if (!$user_email) {
+  $user_email = $u['email'];
+}
+
+// Authorization: users can only remove themselves unless they're a professor
+if ($user_email !== $u['email']) {
+  if (!$session_id && !$course_id) {
+    http_response_code(403);
+    echo json_encode(['ok' => false, 'message' => 'Cannot remove other users without session_id or course_id']);
+    exit;
+  }
+  
+  try {
+    $pdo = pdo();
+    $auth_check = $pdo->prepare('
+      SELECT 1 FROM office_hours_sessions ohs
+      JOIN enrollments e ON e.course_id = ohs.course_id
+      WHERE ohs.id = ? AND e.user_id = ? AND e.role_in_course = "professor"
+      LIMIT 1
+    ');
+    $auth_check->execute([$session_id, $u['id']]);
+    if (!$auth_check->fetchColumn()) {
+      http_response_code(403);
+      echo json_encode(['ok' => false, 'message' => 'Not authorized to remove other users']);
+      exit;
+    }
+  } catch (Throwable $e) {
+    error_log('Queue remove auth check error: ' . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['ok' => false, 'message' => 'Server error']);
+    exit;
+  }
+}
 
 try {
   $pdo = pdo();
 } catch (Throwable $e) {
   http_response_code(500);
-  echo json_encode(['ok'=>false,'error'=>'db_connect']);
+  echo json_encode(['ok' => false, 'message' => 'Database connection error']);
   exit;
 }
-
-$in = json_decode(file_get_contents('php://input'), true) ?: [];
-$user_email = trim((string)($in['user_email'] ?? ''));
-$session_id = isset($in['session_id']) && ctype_digit((string)$in['session_id']) ? (int)$in['session_id'] : null;
-$course_id  = $in['course_id'] ?? null; // not required, but tolerated
-
-if ($user_email === '' || (!$session_id && !$course_id)) {
-  http_response_code(400);
-  echo json_encode(['ok'=>false,'error'=>'missing_params']);
-  exit;
-}
-
 try {
   // 1) Fetch the entry BEFORE deleting so we can see attendance
   if ($session_id) {
@@ -82,6 +133,7 @@ try {
 
   echo json_encode(['ok'=>true, 'removed'=>$removed]);
 } catch (Throwable $e) {
+  error_log('Queue remove error: ' . $e->getMessage());
   http_response_code(500);
-  echo json_encode(['ok'=>false, 'error'=>'remove_failed', 'detail'=>$e->getMessage()]);
+  echo json_encode(['ok' => false, 'message' => 'Server error']);
 }
