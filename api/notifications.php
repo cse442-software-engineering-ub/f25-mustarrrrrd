@@ -4,18 +4,15 @@ require_once __DIR__ . '/auth.php';
 
 header('Content-Type: application/json');
 
-// CORS
-if (isset($_SERVER['HTTP_ORIGIN'])) {
-  header('Access-Control-Allow-Origin: ' . $_SERVER['HTTP_ORIGIN']);
-  header('Access-Control-Allow-Credentials: true');
-}
+// CORS (with whitelist validation)
+set_cors_headers();
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
   header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
   header('Access-Control-Allow-Headers: Content-Type');
   exit;
 }
 
-sess_start();
+if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 $u = current_user();
 if (!$u) { http_response_code(401); echo json_encode(['ok'=>false,'error'=>'not_logged_in']); exit; }
 
@@ -52,6 +49,7 @@ try {
 
   echo json_encode(['ok'=>false,'error'=>'unsupported_method']);
 } catch (Throwable $e) {
+  error_log('Notifications error: ' . $e->getMessage());
   http_response_code(500);
-  echo json_encode(['ok'=>false,'error'=>$e->getMessage()]);
+  echo json_encode(['ok'=>false,'error'=>'Server error']);
 }
