@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Star, Menu, Search, Plus, Calendar } from "lucide-react";
 import { CourseCardDashboard } from "./CourseCardDashboard";
 import { ReservedSessionCard } from "./ReservedSessionCard";
+import { AbsenceNotice } from "./AbsenceNotice"; // ⬅️ add banner
 
 // Build absolute base from Vite base (ends with /), safe in subfolders
 const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
@@ -41,14 +42,12 @@ export function Dashboard() {
         const data = await res.json();
 
         if (!data.loggedIn) {
-          // Not logged in - redirect to login page
           navigate("/");
           return;
         }
 
-        // Check if user is a student (this is the student dashboard)
+        // If professor/TA, route to professor view
         if (data.role === "professor" || data.role === "ta") {
-          // Wrong dashboard - redirect to professor view
           navigate("/professorview");
           return;
         }
@@ -86,10 +85,10 @@ export function Dashboard() {
       const favoritesData = await favoritesRes.json();
 
       if (coursesData.courses) {
-        const favoriteIds = new Set(favoritesData.favorites?.map(f => f.id) || []);
+        const favoriteIds = new Set(favoritesData.favorites?.map((f) => f.id) || []);
 
-        // Transform API data to match expected course format
-        const formattedCourses = coursesData.courses.map(course => ({
+        // Normalize to course cards the dev dashboard expects
+        const formattedCourses = coursesData.courses.map((course) => ({
           id: course.id,
           code: course.code,
           name: course.title,
@@ -98,26 +97,21 @@ export function Dashboard() {
           studentsInQueue: 0,
           status: "upcoming",
           is_favorited: favoriteIds.has(course.id),
-          // Pass through active session data if it exists
           activeSession: course.activeSession || null,
         }));
 
-        // For courses with active sessions, check if user is in queue
+        // If a course has an active session, compute user's queue status
         const coursesWithQueueStatus = await Promise.all(
           formattedCourses.map(async (course) => {
             if (course.activeSession && course.activeSession.id) {
               try {
                 const queueRes = await fetch(
                   `${API_ROOT}queue_status.php?session_id=${course.activeSession.id}`,
-                  {
-                    method: "GET",
-                    credentials: "include",
-                  }
+                  { method: "GET", credentials: "include" }
                 );
                 const queueData = await queueRes.json();
 
                 if (queueData.ok && queueData.position) {
-                  // User is in queue, add position info
                   return {
                     ...course,
                     activeSession: {
@@ -170,8 +164,7 @@ export function Dashboard() {
         body: JSON.stringify({ session_id: sessionId }),
       });
 
-      // Remove from local state
-      setReservedSessions(reservedSessions.filter(s => s.sessionId !== sessionId));
+      setReservedSessions((prev) => prev.filter((s) => s.sessionId !== sessionId));
     } catch (err) {
       console.error("Error canceling reservation:", err);
     }
@@ -187,12 +180,11 @@ export function Dashboard() {
         body: JSON.stringify({ course_id: courseId }),
       });
 
-      // Update local state
-      setAllCourses(allCourses.map(course =>
-        course.id === courseId
-          ? { ...course, is_favorited: !currentlyFavorited }
-          : course
-      ));
+      setAllCourses((prev) =>
+        prev.map((course) =>
+          course.id === courseId ? { ...course, is_favorited: !currentlyFavorited } : course
+        )
+      );
     } catch (err) {
       console.error("Error toggling favorite:", err);
     }
@@ -210,8 +202,7 @@ export function Dashboard() {
       const data = await res.json();
 
       if (data.success) {
-        // Remove the course from the list entirely
-        setAllCourses(allCourses.filter(course => course.id !== courseId));
+        setAllCourses((prev) => prev.filter((course) => course.id !== courseId));
       } else if (data.error) {
         console.error("Unenroll error:", data.error);
       }
@@ -220,7 +211,7 @@ export function Dashboard() {
     }
   }
 
-  // Dynamic search as user types
+  // Dynamic search as user types (dev behavior)
   useEffect(() => {
     if (!searchTerm.trim()) {
       setSearchResults([]);
@@ -230,7 +221,7 @@ export function Dashboard() {
 
     const delayDebounce = setTimeout(() => {
       performSearch();
-    }, 300); // Debounce for 300ms
+    }, 300);
 
     return () => clearTimeout(delayDebounce);
   }, [searchTerm]);
@@ -249,9 +240,8 @@ export function Dashboard() {
       const data = await res.json();
 
       if (data.courses) {
-        // Filter out already enrolled courses
-        const enrolledIds = new Set(allCourses.map(c => c.id));
-        const filteredResults = data.courses.filter(c => !enrolledIds.has(c.id));
+        const enrolledIds = new Set(allCourses.map((c) => c.id));
+        const filteredResults = data.courses.filter((c) => !enrolledIds.has(c.id));
         setSearchResults(filteredResults);
         setShowDropdown(filteredResults.length > 0);
       } else {
@@ -269,7 +259,7 @@ export function Dashboard() {
 
   async function enrollAndFavorite(courseId) {
     try {
-      // First enroll in the course
+      // Enroll
       const enrollRes = await fetch(`${API_ROOT}enroll.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -280,7 +270,7 @@ export function Dashboard() {
       const enrollData = await enrollRes.json();
 
       if (enrollData.success) {
-        // Then auto-favorite it
+        // Favorite
         await fetch(`${API_ROOT}favorites.php`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -288,12 +278,9 @@ export function Dashboard() {
           body: JSON.stringify({ course_id: courseId }),
         });
 
-        // Refetch all courses to get active session data and queue status
         await fetchEnrolledCourses();
-        // Also refetch reserved sessions in case this course has reserved sessions
         await fetchReservedSessions();
 
-        // Clear search
         setSearchTerm("");
         setSearchResults([]);
         setShowDropdown(false);
@@ -310,7 +297,6 @@ export function Dashboard() {
         setShowDropdown(false);
       }
     }
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
@@ -353,8 +339,8 @@ export function Dashboard() {
   };
 
   // Separate courses into favorites and enrolled
-  const favoriteCourses = allCourses.filter(c => c.is_favorited);
-  const enrolledCourses = allCourses.filter(c => !c.is_favorited);
+  const favoriteCourses = allCourses.filter((c) => c.is_favorited);
+  const enrolledCourses = allCourses.filter((c) => !c.is_favorited);
 
   return (
     <div
@@ -371,7 +357,7 @@ export function Dashboard() {
         overflow: "auto",
       }}
     >
-      {/* Header */}
+      {/* Header (unchanged from dev) */}
       <div
         style={{
           background: "white",
@@ -442,15 +428,10 @@ export function Dashboard() {
                   overflow: "hidden",
                 }}
               >
+                {/* Dev routes preserved */}
                 <MenuItem label="Profile" onClick={() => go("/profile")} />
                 <MenuItem label="Settings" onClick={() => go("/settings")} />
-                <div
-                  style={{
-                    height: 1,
-                    background: "#f1f5f9",
-                    margin: "4px 0",
-                  }}
-                />
+                <div style={{ height: 1, background: "#f1f5f9", margin: "4px 0" }} />
                 <MenuItem label="Sign out" danger onClick={handleSignOut} />
               </div>
             )}
@@ -458,7 +439,10 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* 🚩 Absence banner (new) */}
+      <AbsenceNotice />
+
+      {/* Main Content (unchanged from dev) */}
       <div style={{ maxWidth: "64rem", margin: "0 auto", padding: "1.5rem" }}>
         {/* Search Bar Section */}
         <div style={{ marginBottom: "2rem" }} ref={searchRef}>
@@ -501,13 +485,10 @@ export function Dashboard() {
                 }}
               />
               {searchLoading && (
-                <div style={{ color: "#6b7280", fontSize: "0.875rem" }}>
-                  Searching...
-                </div>
+                <div style={{ color: "#6b7280", fontSize: "0.875rem" }}>Searching...</div>
               )}
             </div>
 
-            {/* Dropdown with search results */}
             {showDropdown && searchResults.length > 0 && (
               <div
                 style={{
@@ -580,47 +561,23 @@ export function Dashboard() {
 
         {/* My Upcoming Sessions Section */}
         <div style={{ marginBottom: "3rem" }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            marginBottom: '1rem'
-          }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
             <Calendar size={20} color="#3b82f6" />
-            <h2
-              style={{
-                fontSize: "1.125rem",
-                fontWeight: 600,
-                margin: 0,
-                color: "#111",
-              }}
-            >
+            <h2 style={{ fontSize: "1.125rem", fontWeight: 600, margin: 0, color: "#111" }}>
               My Upcoming Sessions
             </h2>
           </div>
 
-          {/* Reserved Sessions Cards or Empty State */}
           {loading ? (
-            <p style={{ textAlign: 'center', color: '#6b7280' }}>Loading sessions...</p>
+            <p style={{ textAlign: "center", color: "#6b7280" }}>Loading sessions...</p>
           ) : reservedSessions.length === 0 ? (
-            <p style={{ textAlign: 'center', color: '#6b7280', fontSize: '0.875rem', lineHeight: '1.5' }}>
+            <p style={{ textAlign: "center", color: "#6b7280", fontSize: "0.875rem", lineHeight: "1.5" }}>
               Reserved office hour sessions will appear here. To reserve a session, click "View Sessions" for your course below, and reserve any session that is within 24 hours of your current time.
             </p>
           ) : (
-            <div
-              style={{
-                display: "flex",
-                gap: "1rem",
-                overflowX: "auto",
-                paddingBottom: "0.5rem",
-              }}
-            >
+            <div style={{ display: "flex", gap: "1rem", overflowX: "auto", paddingBottom: "0.5rem" }}>
               {reservedSessions.map((session) => (
-                <ReservedSessionCard
-                  key={session.sessionId}
-                  session={session}
-                  onCancel={cancelReservation}
-                />
+                <ReservedSessionCard key={session.sessionId} session={session} onCancel={cancelReservation} />
               ))}
             </div>
           )}
@@ -628,30 +585,17 @@ export function Dashboard() {
 
         {/* Favorites Section */}
         <div style={{ marginBottom: "3rem" }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            marginBottom: '1rem'
-          }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
             <Star size={20} color="#eab308" fill="#eab308" />
-            <h2
-              style={{
-                fontSize: "1.125rem",
-                fontWeight: 600,
-                margin: 0,
-                color: "#111",
-              }}
-            >
-              Favorites
-            </h2>
+            <h2 style={{ fontSize: "1.125rem", fontWeight: 600, margin: 0, color: "#111" }}>Favorites</h2>
           </div>
 
-          {/* Favorites Course Cards Grid */}
           {loading ? (
-            <p style={{ textAlign: 'center', color: '#6b7280' }}>Loading courses...</p>
+            <p style={{ textAlign: "center", color: "#6b7280" }}>Loading courses...</p>
           ) : favoriteCourses.length === 0 ? (
-            <p style={{ textAlign: 'center', color: '#6b7280' }}>No favorite courses yet. Use the search bar above to find and join courses!</p>
+            <p style={{ textAlign: "center", color: "#6b7280" }}>
+              No favorite courses yet. Use the search bar above to find and join courses!
+            </p>
           ) : (
             <div
               style={{
@@ -676,26 +620,13 @@ export function Dashboard() {
         {/* Enrolled Courses Section */}
         {enrolledCourses.length > 0 && (
           <div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              marginBottom: '1rem'
-            }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
               <Star size={20} color="#9ca3af" fill="none" />
-              <h2
-                style={{
-                  fontSize: "1.125rem",
-                  fontWeight: 600,
-                  margin: 0,
-                  color: "#111",
-                }}
-              >
+              <h2 style={{ fontSize: "1.125rem", fontWeight: 600, margin: 0, color: "#111" }}>
                 Enrolled Courses
               </h2>
             </div>
 
-            {/* Enrolled Course Cards Grid */}
             <div
               style={{
                 display: "grid",
