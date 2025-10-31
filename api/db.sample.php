@@ -3,8 +3,8 @@
 // never commit secrets here
 $DB_HOST = '127.0.0.1';
 $DB_NAME = 'cse442_2025_fall_team_ai_db';
-$DB_USER = 'root';
-$DB_PASS = '';
+$DB_USER = 'sammyibr';
+$DB_PASS = '50456200';
 
 function pdo() {
   static $pdo = null;
