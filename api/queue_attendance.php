@@ -47,5 +47,6 @@ try {
 
   out(200, ['ok'=>true, 'updated'=>$upd->rowCount()]);
 } catch (Throwable $e) {
-  out(500, ['ok'=>false,'error'=>$e->getMessage()]);
+  error_log('Queue attendance error: ' . $e->getMessage());
+  out(500, ['ok'=>false,'error'=>'Server error']);
 }

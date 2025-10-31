@@ -3,10 +3,8 @@
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/auth.php';
 
-// Allow public read (no CORS creds needed for an <img>, but OK to reflect origin)
-if (isset($_SERVER['HTTP_ORIGIN'])) {
-  header('Access-Control-Allow-Origin: ' . $_SERVER['HTTP_ORIGIN']);
-}
+// Allow public read with CORS whitelist
+set_cors_headers();
 
 $uid = isset($_GET['uid']) ? (int)$_GET['uid'] : 0;
 if ($uid <= 0) {

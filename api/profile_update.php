@@ -4,11 +4,8 @@ require_once __DIR__ . '/auth.php';
 
 header('Content-Type: application/json');
 
-// CORS (reflect origin; allow credentials)
-if (isset($_SERVER['HTTP_ORIGIN'])) {
-  header('Access-Control-Allow-Origin: ' . $_SERVER['HTTP_ORIGIN']);
-  header('Access-Control-Allow-Credentials: true');
-}
+// CORS (with whitelist validation)
+set_cors_headers();
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
   header('Access-Control-Allow-Methods: POST, OPTIONS');
   header('Access-Control-Allow-Headers: Content-Type');
@@ -20,22 +17,6 @@ function fail($msg, $http=400, $extra=[]) {
   echo json_encode(['ok'=>false,'message'=>$msg] + $extra);
   exit;
 }
-
-// Headers first
-header('Content-Type: application/json');
-if (isset($_SERVER['HTTP_ORIGIN'])) {
-  header('Access-Control-Allow-Origin: ' . $_SERVER['HTTP_ORIGIN']);
-  header('Access-Control-Allow-Credentials: true');
-}
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-  header('Access-Control-Allow-Methods: POST, OPTIONS');
-  header('Access-Control-Allow-Headers: Content-Type');
-  exit;
-}
-
-// Includes: need BOTH db.php and auth.php for pdo(), read_json(), current_user()
-require_once __DIR__ . '/db.php';
-require_once __DIR__ . '/auth.php';
 
 // Get current user (via session or remember cookie)
 $u = current_user();
@@ -110,7 +91,8 @@ try {
     ],
   ]);
 } catch (Throwable $e) {
-  // Show real error while you’re debugging; swap to a generic message later
+  // Log error server-side, return generic message to client
+  error_log('Profile update error: ' . $e->getMessage() . "\nSQL: " . ($sql ?? 'N/A'));
   http_response_code(500);
-  echo json_encode(['ok'=>false,'message'=>'Server error','error'=>$e->getMessage(),'sql'=>$sql]);
+  echo json_encode(['ok'=>false,'message'=>'Server error']);
 }

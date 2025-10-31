@@ -30,3 +30,30 @@ function read_json() {
   $data = json_decode($raw, true);
   return is_array($data) ? $data : [];
 }
+
+/**
+ * Set CORS headers with origin whitelist validation
+ * Call this early in your API endpoints
+ */
+function set_cors_headers() {
+  // Whitelist of allowed origins
+  $allowed_origins = [
+    // LOCAL
+    'http://localhost',
+
+    // XAMPP LOCAL environment
+    'http://localhost/f25-mustarrrrrd',
+
+    // DEV SERVER + PROD SERVER
+    'https://aptitude.cse.buffalo.edu',
+    'https://cattle.cse.buffalo.edu',
+  ];
+
+  $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+
+  // Only set CORS headers if origin is in whitelist
+  if (in_array($origin, $allowed_origins, true)) {
+    header('Access-Control-Allow-Origin: ' . $origin);
+    header('Access-Control-Allow-Credentials: true');
+  }
+}
