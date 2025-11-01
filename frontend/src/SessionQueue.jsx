@@ -2,6 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 export default function SessionQueue(){
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
+  const [studentToRemove, setStudentToRemove] = useState(null);
+
   const { sessionId } = useParams();
   const navigate = useNavigate();
   const [entries, setEntries] = useState([]);
@@ -181,24 +184,37 @@ export default function SessionQueue(){
     }catch(e){ console.error('Failed to mark attendance:', e); }
   }
 
-  async function removeStudentFromQueue(userEmail) {
-    if (!window.confirm("Remove this student from the queue?")) return;
-    try {
-      const res = await fetch(`${API_ROOT}queue_remove.php`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {'Content-Type':'application/json', Accept:'application/json'},
-        body: JSON.stringify({ session_id: sessionId, user_email: userEmail })
-      });
-      if (!res.ok) throw new Error('remove failed');
-      const d = await res.json().catch(()=>null);
-      if (d && d.ok) {
-        setEntries(prev => prev.filter(e => e.user_email !== userEmail));
-      }
-    } catch (e) {
-      console.error('Failed to remove student:', e);
-    }
-  }
+  function initiateRemoveStudent(userEmail, displayName) {
+     setStudentToRemove({ email: userEmail, name: displayName });
+     setShowRemoveModal(true);
+   }
+
+   async function confirmRemoveStudent() {
+     if (!studentToRemove) return;
+     try {
+       const res = await fetch(`${API_ROOT}queue_remove.php`, {
+         method: 'POST',
+         credentials: 'include',
+         headers: {'Content-Type':'application/json', Accept:'application/json'},
+         body: JSON.stringify({ session_id: sessionId, user_email: studentToRemove.email })
+       });
+       if (!res.ok) throw new Error('remove failed');
+       const d = await res.json().catch(()=>null);
+       if (d && d.ok) {
+         setEntries(prev => prev.filter(e => e.user_email !== studentToRemove.email));
+       }
+     } catch (e) {
+       console.error('Failed to remove student:', e);
+     } finally {
+       setShowRemoveModal(false);
+       setStudentToRemove(null);
+     }
+   }
+
+   function cancelRemoveStudent() {
+     setShowRemoveModal(false);
+     setStudentToRemove(null);
+   }
 
   if(!booted) {
     return (
@@ -269,7 +285,7 @@ export default function SessionQueue(){
                       <button onClick={()=>markAttendance(e.user_email, 'present')} style={{ background: e.attendance === 'present' ? '#166534' : '#bbf7d0', color: e.attendance === 'present' ? '#fff' : '#164e2e', border: 'none', padding: '0.5rem 0.75rem', borderRadius: 8, cursor: 'pointer', fontWeight: 600, flex: isMobile ? 1 : 'none' }}>Present</button>
                       <button onClick={()=>markAttendance(e.user_email, 'absent')} style={{ background: e.attendance === 'absent' ? '#7f1d1d' : '#fecaca', color: e.attendance === 'absent' ? '#fff' : '#7f1d1d', border: 'none', padding: '0.5rem 0.75rem', borderRadius: 8, cursor: 'pointer', fontWeight: 600, flex: isMobile ? 1 : 'none' }}>Absent</button>
                       <button
-                        onClick={() => removeStudentFromQueue(e.user_email)}
+                        onClick={() => initiateRemoveStudent(e.user_email, e.display_name || e.user_email)}
                         style={{
                           background: '#fff',        // neutral gray that fits the app background
                           color: '#374151',             // dark gray text for contrast
@@ -291,12 +307,12 @@ export default function SessionQueue(){
           </div>
           </div>
 
-        {showEditForm && (
+                {showEditForm && (
           <div style={{ maxWidth: '70rem', margin: '2rem auto', padding: 12 }}>
             <div style={{ background: '#fff', border: '1px solid #e5e7eb', padding: 12, borderRadius: 8 }}>
               <h2 style={{ marginTop: 0, marginBottom: 12 }}>Edit Session</h2>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-                <select value={editSessionData.day_of_week} onChange={(e)=>setEditSessionData(s=>({...s, day_of_week: e.target.value}))} style={{ padding:8, borderRadius:8, border:'1px solid #e5e7eb', background:'#fff' }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
+                <select value={editSessionData.day_of_week} onChange={(e)=>setEditSessionData(s=>({...s, day_of_week: e.target.value}))} style={{ padding:8, borderRadius:8, border:'1px solid #e5e7eb', background:'#fff', minWidth: 120 }}>
                   <option>Monday</option>
                   <option>Tuesday</option>
                   <option>Wednesday</option>
@@ -307,7 +323,7 @@ export default function SessionQueue(){
                 </select>
                 <input type='time' value={editSessionData.start_time} onChange={(e)=>setEditSessionData(s=>({...s, start_time: e.target.value}))} style={{ padding:8, borderRadius:8, border:'1px solid #e5e7eb', width:120 }} />
                 <input type='time' value={editSessionData.end_time} onChange={(e)=>setEditSessionData(s=>({...s, end_time: e.target.value}))} style={{ padding:8, borderRadius:8, border:'1px solid #e5e7eb', width:120 }} />
-                <input placeholder='Location' value={editSessionData.location} onChange={(e)=>setEditSessionData(s=>({...s, location: e.target.value}))} style={{ padding:8, borderRadius:8, border:'1px solid #e5e7eb', flex:1 }} />
+                <input placeholder='Location' value={editSessionData.location} onChange={(e)=>setEditSessionData(s=>({...s, location: e.target.value}))} style={{ padding:8, borderRadius:8, border:'1px solid #e5e7eb', flex:1, minWidth: 200 }} />
               </div>
               <div style={{ display:'flex', gap:8 }}>
                 <button onClick={async ()=>{
@@ -338,6 +354,54 @@ export default function SessionQueue(){
                 }} style={{ background:'#fee2e2', color:'#991b1b', border:'1px solid #fecaca', padding:'8px 12px', borderRadius:8, fontWeight:600 }}>Delete</button>
 
                 <button onClick={()=>setShowEditForm(false)} style={{ background:'#fff', color:'#111827', border:'1px solid #e5e7eb', padding:'8px 12px', borderRadius:8, fontWeight:600 }}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Custom Remove Confirmation Modal */}
+        {showRemoveModal && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }} onClick={cancelRemoveStudent}>
+            <div style={{ background: '#fff', borderRadius: 12, padding: '1.5rem', maxWidth: '400px', width: '100%', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }} onClick={(e) => e.stopPropagation()}>
+              <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1.25rem', fontWeight: 700, color: '#111827' }}>Remove Student from Queue?</h3>
+              <p style={{ margin: '0 0 1.5rem 0', color: '#6b7280', fontSize: '0.95rem' }}>
+                Are you sure you want to remove <strong>{studentToRemove?.name}</strong> from the queue?
+              </p>
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                <button
+                  onClick={cancelRemoveStudent}
+                  style={{
+                    background: '#fff',
+                    color: '#374151',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 8,
+                    padding: '0.625rem 1.25rem',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: '0.95rem'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.background = '#f9fafb'}
+                  onMouseOut={(e) => e.currentTarget.style.background = '#fff'}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmRemoveStudent}
+                  style={{
+                    background: '#dc2626',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 8,
+                    padding: '0.625rem 1.25rem',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: '0.95rem'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.background = '#b91c1c'}
+                  onMouseOut={(e) => e.currentTarget.style.background = '#dc2626'}
+                >
+                  Remove
+                </button>
               </div>
             </div>
           </div>
