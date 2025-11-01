@@ -1071,12 +1071,12 @@ export default function ProfessorView() {
             {showScheduleForm && (
               <div style={{ background: '#fff', border: '1px solid #e5e7eb', padding: 12, borderRadius: 8, marginBottom: 12 }}>
                 {/* compact, consistent input styles */}
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
                   {(() => {
                     const common = { padding: 8, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff' };
                     return (
                       <>
-                        <select value={newSession.day_of_week} onChange={(e)=>setNewSession(s=>({...s, day_of_week: e.target.value}))} style={{ ...common }}>
+                        <select value={newSession.day_of_week} onChange={(e)=>setNewSession(s=>({...s, day_of_week: e.target.value}))} style={{ ...common, minWidth: 120 }}>
                           <option>Monday</option>
                           <option>Tuesday</option>
                           <option>Wednesday</option>
@@ -1087,7 +1087,7 @@ export default function ProfessorView() {
                         </select>
                         <input type="time" value={newSession.start_time} onChange={(e)=>setNewSession(s=>({...s, start_time: e.target.value}))} style={{ ...common, width: 120 }} />
                         <input type="time" value={newSession.end_time} onChange={(e)=>setNewSession(s=>({...s, end_time: e.target.value}))} style={{ ...common, width: 120 }} />
-                        <input placeholder="Location" value={newSession.location} onChange={(e)=>setNewSession(s=>({...s, location: e.target.value}))} style={{ ...common, flex: 1 }} />
+                        <input placeholder="Location" value={newSession.location} onChange={(e)=>setNewSession(s=>({...s, location: e.target.value}))} style={{ ...common, flex: 1, minWidth: 200 }} />
                       </>
                     );
                   })()}
