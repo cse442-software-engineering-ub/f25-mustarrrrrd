@@ -187,6 +187,7 @@ export default function StudentSessions(){
               <div>
                 <div style={{ fontWeight: 700 }}>{s.day_of_week} • {s.start_time}–{s.end_time}</div>
                 <div style={{ color: '#6b7280', marginTop: 4 }}>{s.location || '(no location)'}</div>
+                <div style={{ color: '#6b7280', marginTop: 6 }}>Instructor: {s.instructor_name || s.instructor_email || '(TBA)'}</div>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 { inQueueMap[s.id] ? (
