@@ -7,16 +7,7 @@ require_once __DIR__ . '/db.php';
 
 json_headers();
 sess_start();
-
 set_cors_headers();
-sess_start();
-
-// CORS (with whitelist validation)
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-  header('Access-Control-Allow-Methods: POST, OPTIONS');
-  header('Access-Control-Allow-Headers: Content-Type');
-  exit;
-}
 
 // Authentication required
 $u = current_user();
@@ -57,7 +48,7 @@ if ($user_email !== $u['email']) {
     $auth_check = $pdo->prepare('
       SELECT 1 FROM office_hours_sessions ohs
       JOIN enrollments e ON e.course_id = ohs.course_id
-      WHERE ohs.id = ? AND e.user_id = ? AND e.role_in_course = "professor"
+      WHERE ohs.id = ? AND e.user_id = ? AND e.role_in_course IN ("professor", "ta")
       LIMIT 1
     ');
     $auth_check->execute([$session_id, $u['id']]);

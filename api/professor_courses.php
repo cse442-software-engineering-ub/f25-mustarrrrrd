@@ -17,7 +17,7 @@ try {
     FROM enrollments e
     JOIN courses c ON c.id = e.course_id
     JOIN users u ON u.id = e.user_id
-    WHERE u.email = ? AND e.role_in_course = "professor"
+    WHERE u.email = ? AND e.role_in_course IN ("professor", "ta")
   ');
   $stmt->execute([$session]);
   $courses = $stmt->fetchAll(PDO::FETCH_ASSOC);

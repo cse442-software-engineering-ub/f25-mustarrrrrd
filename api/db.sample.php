@@ -34,6 +34,7 @@ function read_json() {
 /**
  * Set CORS headers with origin whitelist validation
  * Call this early in your API endpoints
+ * Automatically handles OPTIONS preflight requests
  */
 function set_cors_headers() {
   // Whitelist of allowed origins
@@ -55,5 +56,28 @@ function set_cors_headers() {
   if (in_array($origin, $allowed_origins, true)) {
     header('Access-Control-Allow-Origin: ' . $origin);
     header('Access-Control-Allow-Credentials: true');
+    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization');
+    header('Access-Control-Max-Age: 86400'); // 24 hours
   }
+
+  // Handle preflight OPTIONS requests
+  if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+  }
+}
+
+/**
+ * Validate table name against allowlist to prevent SQL injection
+ * @param string $table The table name to validate
+ * @param array $allowed Array of allowed table names
+ * @return string The validated table name
+ * @throws Exception if table name is not in allowlist
+ */
+function validate_table_name($table, $allowed) {
+  if (!in_array($table, $allowed, true)) {
+    throw new Exception('Invalid table name');
+  }
+  return $table;
 }
