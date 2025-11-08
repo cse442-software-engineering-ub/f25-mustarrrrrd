@@ -11,7 +11,11 @@ export default function TADashboard() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [newSession, setNewSession] = useState({ day_of_week: 'Monday', start_time: '12:00', end_time: '13:00', location: '' });
+  const [editSessionId, setEditSessionId] = useState(null);
+  const [editSessionData, setEditSessionData] = useState({ day_of_week: 'Monday', start_time: '12:00', end_time: '13:00', location: '' });
   const [taName, setTAName] = useState('TA');
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [currentUserRole, setCurrentUserRole] = useState(null);
   const [showJoinCourse, setShowJoinCourse] = useState(false);
   const [joinSearchTerm, setJoinSearchTerm] = useState('');
   const [joinSearchResults, setJoinSearchResults] = useState([]);
@@ -82,8 +86,10 @@ export default function TADashboard() {
           return;
         }
 
-        if (data.loggedIn && data.name) {
-          setTAName(data.name);
+        if (data.loggedIn) {
+          if (data.name) setTAName(data.name);
+          if (data.user_id) setCurrentUserId(data.user_id);
+          if (data.role) setCurrentUserRole(data.role);
         }
       } catch (err) {
         console.error("Error fetching TA info:", err);
@@ -895,11 +901,17 @@ export default function TADashboard() {
                         <div style={{ fontWeight: 700 }}>{s.day_of_week} • {s.start_time}–{s.end_time}</div>
                         <div style={{ fontSize: '0.9rem', color: '#555' }}>{s.location || '(no location)'}</div>
                       </div>
-                      <div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                         {active ? (
                           <span style={{ fontSize: '0.75rem', background: '#dcfce7', color: '#166534', padding: '4px 8px', borderRadius: 6, fontWeight: 600 }}>Active Now</span>
                         ) : (
                           <span style={{ fontSize: '0.75rem', background: '#e0f2fe', color: '#0369a1', padding: '4px 8px', borderRadius: 6, fontWeight: 600 }}>Upcoming</span>
+                        )}
+                        {(currentUserRole === 'professor' || Number(currentUserId) === Number(s.instructor_id)) && (
+                          <>
+                            <button onClick={(e) => { e.stopPropagation(); setEditSessionId(s.id); setEditSessionData({ day_of_week: s.day_of_week || 'Monday', start_time: s.start_time || '12:00', end_time: s.end_time || '13:00', location: s.location || '' }); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ background: '#fff', color: '#111827', border: '1px solid #e5e7eb', padding: '6px 10px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Edit</button>
+                            <button onClick={async (e) => { e.stopPropagation(); if(!window.confirm('Delete this session?')) return; try{ const res = await fetch(`${API_ROOT}delete_office_hours_session.php`, { method:'POST', credentials:'include', headers:{'Content-Type':'application/json', Accept:'application/json'}, body: JSON.stringify({ session_id: s.id }) }); if(!res.ok) throw new Error('delete failed'); const d = await res.json().catch(()=>null); if(d && d.ok){ fetchSessions(); } }catch(err){ console.error('Failed to delete session', err); alert('Failed to delete session'); } }} style={{ background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', padding: '6px 10px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Delete</button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -939,6 +951,48 @@ export default function TADashboard() {
                 </div>
               </div>
             )}
+
+            {/* Edit session form (for TAs) */}
+            {editSessionId && (
+              <div style={{ background: '#fff', border: '1px solid #e5e7eb', padding: 12, borderRadius: 8, marginBottom: 12 }}>
+                <h3 style={{ marginTop: 0, marginBottom: 8 }}>Edit Session</h3>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
+                  {(() => {
+                    const common = { padding: 8, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff' };
+                    return (
+                      <>
+                        <select value={editSessionData.day_of_week} onChange={(e)=>setEditSessionData(s=>({...s, day_of_week: e.target.value}))} style={{ ...common, minWidth: 120 }}>
+                          <option>Monday</option>
+                          <option>Tuesday</option>
+                          <option>Wednesday</option>
+                          <option>Thursday</option>
+                          <option>Friday</option>
+                          <option>Saturday</option>
+                          <option>Sunday</option>
+                        </select>
+                        <input type="time" value={editSessionData.start_time} onChange={(e)=>setEditSessionData(s=>({...s, start_time: e.target.value}))} style={{ ...common, width: 120 }} />
+                        <input type="time" value={editSessionData.end_time} onChange={(e)=>setEditSessionData(s=>({...s, end_time: e.target.value}))} style={{ ...common, width: 120 }} />
+                        <input placeholder="Location" value={editSessionData.location} onChange={(e)=>setEditSessionData(s=>({...s, location: e.target.value}))} style={{ ...common, flex: 1, minWidth: 200 }} />
+                      </>
+                    );
+                  })()}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={async ()=>{
+                    try{
+                      const body = { session_id: editSessionId, ...editSessionData };
+                      const res = await fetch(`${API_ROOT}update_office_hours_session.php`, { method:'POST', credentials:'include', headers:{'Content-Type':'application/json', Accept:'application/json'}, body: JSON.stringify(body) });
+                      if(!res.ok) throw new Error('update failed');
+                      const d = await res.json().catch(()=>null);
+                      if(d && d.ok){ setEditSessionId(null); fetchSessions(); }
+                    }catch(e){ console.error('Failed to update session', e); alert('Failed to update session'); }
+                  }} style={{ background: '#111827', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Save</button>
+                  <button onClick={()=>setEditSessionId(null)} style={{ background: '#fff', color: '#111827', border: '1px solid #e5e7eb', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Cancel</button>
+                </div>
+              </div>
+            )}
+
+            
 
             {sessions.length === 0 && queue.map((entry, idx) => {
               const isNext = idx === 0;
