@@ -28,10 +28,6 @@ try {
     $course_id = canonical_course_id($pdo, $courseKey);
   }
 
-  // (back-compat guard) ensure 'attendance' column exists
-  try { $pdo->query('SELECT attendance FROM queue_entries LIMIT 1'); }
-  catch (Throwable $e) { $pdo->exec("ALTER TABLE queue_entries ADD COLUMN attendance ENUM('present','absent') NULL"); }
-
   if ($sessionId) {
     $upd = $pdo->prepare('UPDATE queue_entries SET attendance = ? WHERE session_id = ? AND user_email = ? AND left_at IS NULL');
     $upd->execute([$status, $sessionId, $userEmail]);
@@ -48,6 +44,9 @@ try {
     $targetTable = 'notifications';
     try { $pdo->query("SELECT 1 FROM {$targetTable} LIMIT 1"); }
     catch (Throwable $e) { $targetTable = 'user_notifications'; }
+
+    // Validate table name against allowlist
+    $targetTable = validate_table_name($targetTable, ['notifications', 'user_notifications']);
 
     if ($targetTable === 'notifications') {
       // expected columns: id, user_email, notif_type, message, created_at, seen

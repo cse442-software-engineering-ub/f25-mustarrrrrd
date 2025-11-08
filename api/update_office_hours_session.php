@@ -31,8 +31,8 @@ try {
   if ($row['instructor_id'] && (int)$row['instructor_id'] === $uid) {
     $isAllowed = true;
   } else {
-    // fallback: check enrollments for professor role on the course
-    $q = $pdo->prepare('SELECT 1 FROM enrollments WHERE course_id = ? AND user_id = ? AND role_in_course = "professor" LIMIT 1');
+    // fallback: check enrollments for professor or TA role on the course
+    $q = $pdo->prepare('SELECT 1 FROM enrollments WHERE course_id = ? AND user_id = ? AND role_in_course IN ("professor", "ta") LIMIT 1');
     $q->execute([(int)$row['course_id'], $uid]);
     if ($q->fetchColumn()) $isAllowed = true;
   }

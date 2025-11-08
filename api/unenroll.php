@@ -1,8 +1,10 @@
 <?php
-session_start();
+require_once __DIR__ . '/_shared.php';
 require_once __DIR__ . '/db.php';
 
 header('Content-Type: application/json');
+set_cors_headers();
+sess_start();
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
