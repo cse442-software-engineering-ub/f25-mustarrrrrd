@@ -1,10 +1,10 @@
 <?php
-// local db config; use this as template for a seperate file: db.php
-// never commit secrets here
+// local db config; use this as template for a separate file: db.php
+// NEVER commit secrets here
 $DB_HOST = '127.0.0.1';
 $DB_NAME = 'cse442_2025_fall_team_ai_db';
-$DB_USER = 'sammyibr';
-$DB_PASS = '50456200';
+$DB_USER = 'root';
+$DB_PASS = '';
 
 function pdo() {
   static $pdo = null;
