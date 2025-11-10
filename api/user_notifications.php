@@ -6,14 +6,7 @@ require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/db.php';
 
 json_headers();
-
-// CORS (with whitelist validation)
 set_cors_headers();
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-  header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-  header('Access-Control-Allow-Headers: Content-Type');
-  exit;
-}
 
 sess_start();
 
