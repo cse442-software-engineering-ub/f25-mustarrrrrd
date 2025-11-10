@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom"; // ✅ added import
 
 export default function SignUp() {
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // ✅ added this line
+
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -17,12 +18,9 @@ export default function SignUp() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // Build two possible API roots from the deployed BASE_URL:
-  // 1) Primary:  .../auto_oh/api/
-  // 2) Fallback: .../api/  (strip the auto_oh/ segment)
-  const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin); // ends with /
-  const API_PRIMARY = new URL("api/", ABS_BASE).pathname;                     // .../auto_oh/api/
-  const API_FALLBACK = new URL("../api/", ABS_BASE).pathname;                 // .../api/
+  // Build API root relative to /f25-mustarrrrrd/app/
+  const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
+  const API_ROOT = new URL("../api/", ABS_BASE).pathname;
 
   async function trySignup(apiRoot) {
     const res = await fetch(`${apiRoot}signup.php`, {
@@ -34,7 +32,7 @@ export default function SignUp() {
         email: form.email,
         password: form.password,
         confirmPassword: form.confirmPassword,
-        role: form.role, // server maps "professor" -> "instructor"
+        role: form.role,
       }),
     });
     let data = {};
@@ -46,7 +44,6 @@ export default function SignUp() {
     e.preventDefault();
     if (submitting) return;
 
-    // minimal front-end checks (no visual changes)
     if (!form.firstName || !form.lastName || !form.email || !form.password || !form.confirmPassword || !form.role) {
       alert("Please fill out all fields.");
       return;
@@ -58,13 +55,7 @@ export default function SignUp() {
 
     setSubmitting(true);
     try {
-      // Try under .../auto_oh/api/ first
-      let { res, data } = await trySignup(API_PRIMARY);
-
-      // If that endpoint doesn’t exist on server, fall back to .../api/
-      if (res.status === 404) {
-        ({ res, data } = await trySignup(API_FALLBACK));
-      }
+      let { res, data } = await trySignup(API_ROOT);
 
       if (!res.ok || !data?.ok) {
         const msg = data?.message || `Signup failed (HTTP ${res.status}).`;
@@ -73,7 +64,6 @@ export default function SignUp() {
       } else {
         alert("Account created successfully!");
         console.log("Created user:", data.user);
-        // Redirect based on user role
         if (data?.user?.role === "professor") {
           navigate("/professorview");
         } else {
@@ -202,6 +192,7 @@ export default function SignUp() {
             <option value="">Select your role</option>
             <option value="student">Student</option>
             <option value="professor">Professor</option>
+            <option value="ta">TA</option>
           </select>
 
           <button
