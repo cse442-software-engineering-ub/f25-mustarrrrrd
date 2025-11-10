@@ -1,18 +1,12 @@
 <?php
+require_once __DIR__ . '/_shared.php';
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/auth.php';
 
 header('Content-Type: application/json');
-
-// CORS (with whitelist validation)
 set_cors_headers();
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-  header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-  header('Access-Control-Allow-Headers: Content-Type');
-  exit;
-}
+sess_start();
 
-if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 $u = current_user();
 if (!$u) { http_response_code(401); echo json_encode(['ok'=>false,'error'=>'not_logged_in']); exit; }
 
@@ -27,6 +21,9 @@ try {
   $table = 'notifications';
   try { $pdo->query("SELECT 1 FROM {$table} LIMIT 1"); }
   catch (Throwable $e) { $table = 'user_notifications'; }
+
+  // Validate table name against allowlist
+  $table = validate_table_name($table, ['notifications', 'user_notifications']);
 
   if ($method === 'GET') {
     $stmt = $pdo->prepare("SELECT id, notif_type, message, created_at

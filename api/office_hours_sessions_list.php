@@ -2,16 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/_shared.php';
 
-header('Content-Type: application/json');
-
-// CORS (with whitelist validation)
 set_cors_headers();
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-  header('Access-Control-Allow-Methods: POST, OPTIONS');
-  header('Access-Control-Allow-Headers: Content-Type');
-  exit;
-}
-
 json_headers();
 sess_start();
 

@@ -58,6 +58,7 @@ export default function Login() {
 
         if (data?.loggedIn) {
           if (data.role === "student") navigate("/dashboard", { replace: true });
+          else if (data.role === "ta") navigate("/tadashboard", { replace: true });
           else if (data.role === "professor") navigate("/professorview", { replace: true });
           return;
         }
@@ -102,6 +103,7 @@ export default function Login() {
         setPassword("");
 
         if (data.role === "student") navigate("/dashboard");
+        else if (data.role === "ta") navigate("/tadashboard");
         else if (data.role === "professor") navigate("/professorview");
       } else {
         setMessage(data?.message || "Invalid credentials");

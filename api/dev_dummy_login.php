@@ -4,6 +4,9 @@ declare(strict_types=1);
 require __DIR__ . '/db.php';
 require __DIR__ . '/auth.php';
 
+header('Content-Type: application/json');
+set_cors_headers();
+
 // --- DEV ONLY: enable only on localhost ---
 if (!in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1'], true)) {
   http_response_code(403);
