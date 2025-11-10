@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Menu, Search, Plus, MoreVertical } from "lucide-react";
+import { Menu, Search, Plus, MoreVertical, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function ProfessorView() {
@@ -10,15 +10,24 @@ export default function ProfessorView() {
   const [loading, setLoading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
-  const [newSession, setNewSession] = useState({ day_of_week: 'Monday', start_time: '12:00', end_time: '13:00', location: '' });
+  const [newSession, setNewSession] = useState({
+    day_of_week: "Monday",
+    start_time: "12:00",
+    end_time: "13:00",
+    location: "",
+  });
   const [showCreateCourse, setShowCreateCourse] = useState(false);
-  const [newCourse, setNewCourse] = useState({ code: '', title: '' });
-  const [professorName, setProfessorName] = useState('Professor');
+  const [newCourse, setNewCourse] = useState({ code: "", title: "" });
+  const [professorName, setProfessorName] = useState("Professor");
   const [showJoinCourse, setShowJoinCourse] = useState(false);
-  const [joinSearchTerm, setJoinSearchTerm] = useState('');
+  const [joinSearchTerm, setJoinSearchTerm] = useState("");
   const [joinSearchResults, setJoinSearchResults] = useState([]);
   const [joinSearchLoading, setJoinSearchLoading] = useState(false);
   const [courseMenuOpen, setCourseMenuOpen] = useState(null); // Tracks which course menu is open
+
+  // NEW: who am I (email) + banner message
+  const [currentUserEmail, setCurrentUserEmail] = useState("");
+  const [noticeMsg, setNoticeMsg] = useState("");
 
   const btnRef = useRef(null);
   const menuRef = useRef(null);
@@ -31,16 +40,16 @@ export default function ProfessorView() {
   // Parse 12-hour time format "3:00 PM" to 24-hour { hours, minutes }
   function parse12HourTime(timeStr) {
     if (!timeStr) return { hours: 0, minutes: 0 };
-    const parts = timeStr.trim().split(' '); // ["3:00", "PM"]
+    const parts = timeStr.trim().split(" "); // ["3:00", "PM"]
     if (parts.length !== 2) return { hours: 0, minutes: 0 };
 
     const [timePart, period] = parts;
-    const [h, m] = timePart.split(':').map(nt => parseInt(nt, 10) || 0);
+    const [h, m] = timePart.split(":").map((nt) => parseInt(nt, 10) || 0);
 
     let hours = h;
-    if (period === 'PM' && hours !== 12) {
+    if (period === "PM" && hours !== 12) {
       hours += 12;
-    } else if (period === 'AM' && hours === 12) {
+    } else if (period === "AM" && hours === 12) {
       hours = 0;
     }
 
@@ -78,8 +87,16 @@ export default function ProfessorView() {
           return;
         }
 
-        if (data.loggedIn && data.name) {
-          setProfessorName(data.name);
+        if (data.loggedIn) {
+          if (data.name) setProfessorName(data.name);
+          // NEW: capture email from common keys
+          const email =
+            data.email ||
+            data.user_email ||
+            data.username ||
+            data.user ||
+            "";
+          setCurrentUserEmail((email || "").toLowerCase());
         }
       } catch (err) {
         console.error("Error fetching professor info:", err);
@@ -129,7 +146,9 @@ export default function ProfessorView() {
       try {
         setLoading(true);
         const res = await fetch(
-          `${API_ROOT}queue_list.php?course_id=${encodeURIComponent(activeCourse)}`,
+          `${API_ROOT}queue_list.php?course_id=${encodeURIComponent(
+            activeCourse
+          )}`,
           {
             method: "GET",
             credentials: "include",
@@ -162,97 +181,137 @@ export default function ProfessorView() {
     // fetch sessions too
     fetchSessions();
     const sInterval = setInterval(fetchSessions, 60000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      clearInterval(sInterval);
+    };
   }, [activeCourse]);
 
-  async function fetchSessions(){
-    try{
-      const res = await fetch(`${API_ROOT}office_hours_sessions_list.php?course_id=${encodeURIComponent(activeCourse)}`, { credentials: 'include', headers:{Accept:'application/json'} });
-      if(!res.ok){ console.error('Failed to load sessions', res.status); return; }
-      const data = await res.json().catch(()=>null);
-      if(!(data && data.ok && Array.isArray(data.sessions))){ console.error('Invalid sessions response', data); return; }
+  async function fetchSessions() {
+    try {
+      const res = await fetch(
+        `${API_ROOT}office_hours_sessions_list.php?course_id=${encodeURIComponent(
+          activeCourse
+        )}`,
+        { credentials: "include", headers: { Accept: "application/json" } }
+      );
+      if (!res.ok) {
+        console.error("Failed to load sessions", res.status);
+        return;
+      }
+      const data = await res.json().catch(() => null);
+      if (!(data && data.ok && Array.isArray(data.sessions))) {
+        console.error("Invalid sessions response", data);
+        return;
+      }
 
       // normalize and sort sessions: Monday..Sunday then start_time ascending
-      const dayOrder = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-      const dayIdx = (d)=> Math.max(0, dayOrder.indexOf(d));
+      const dayOrder = [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+      ];
+      const dayIdx = (d) => Math.max(0, dayOrder.indexOf(d));
 
-      const sorted = data.sessions.slice().sort((a,b)=>{
+      const sorted = data.sessions.slice().sort((a, b) => {
         const da = dayIdx(a.day_of_week);
         const db = dayIdx(b.day_of_week);
-        if(da !== db) return da - db;
+        if (da !== db) return da - db;
         // compare start_time strings 'HH:MM'
-        if((a.start_time||'') < (b.start_time||'')) return -1;
-        if((a.start_time||'') > (b.start_time||'')) return 1;
+        if ((a.start_time || "") < (b.start_time || "")) return -1;
+        if ((a.start_time || "") > (b.start_time || "")) return 1;
         return 0;
       });
 
       // avoid flicker: only update state when data actually changed
-      try{
+      try {
         const prev = JSON.stringify(sessions || []);
         const next = JSON.stringify(sorted || []);
-        if(prev !== next){
+        if (prev !== next) {
           setSessions(sorted);
         }
-      }catch(e){
+      } catch (e) {
         setSessions(sorted);
       }
-    }catch(err){ console.error('Error fetching sessions',err); }
+    } catch (err) {
+      console.error("Error fetching sessions", err);
+    }
   }
 
-  function isSessionActive(s){
-    try{
-      const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  function isSessionActive(s) {
+    try {
+      const days = [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ];
       const now = new Date();
       const today = days[now.getDay()];
-      if(s.day_of_week !== today) return false;
+      if (s.day_of_week !== today) return false;
       // s.start_time like "3:00 PM"
       const { hours: sh, minutes: sm } = parse12HourTime(s.start_time);
       const { hours: eh, minutes: em } = parse12HourTime(s.end_time);
-      const nowMinutes = now.getHours()*60 + now.getMinutes();
-      const startMinutes = sh*60 + sm;
-      const endMinutes = eh*60 + em;
+      const nowMinutes = now.getHours() * 60 + now.getMinutes();
+      const startMinutes = sh * 60 + sm;
+      const endMinutes = eh * 60 + em;
       return nowMinutes >= startMinutes && nowMinutes <= endMinutes;
-    }catch(e){ return false; }
+    } catch (e) {
+      return false;
+    }
   }
 
-  async function createSession(){
-    try{
-      const res = await fetch(`${API_ROOT}create_office_hours_session.php`,{
-        method: 'POST', credentials:'include', headers:{'Content-Type':'application/json', Accept:'application/json'},
-        body: JSON.stringify({ course_id: activeCourse, ...newSession })
+  async function createSession() {
+    try {
+      const res = await fetch(`${API_ROOT}create_office_hours_session.php`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ course_id: activeCourse, ...newSession }),
       });
-      if(!res.ok) throw new Error('create failed');
-      const data = await res.json().catch(()=>null);
-      if(data && data.ok){
+      if (!res.ok) throw new Error("create failed");
+      const data = await res.json().catch(() => null);
+      if (data && data.ok) {
         setShowScheduleForm(false);
         // refresh sessions
         fetchSessions();
       }
-    }catch(err){ console.error('Failed to create session', err); }
+    } catch (err) {
+      console.error("Failed to create session", err);
+    }
   }
 
-  async function createCourse(){
-    try{
-      const res = await fetch(`${API_ROOT}professor_create_course.php`,{
-        method: 'POST', credentials:'include', headers:{'Content-Type':'application/json', Accept:'application/json'},
-        body: JSON.stringify({ code: newCourse.code, title: newCourse.title })
+  async function createCourse() {
+    try {
+      const res = await fetch(`${API_ROOT}professor_create_course.php`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ code: newCourse.code, title: newCourse.title }),
       });
-      if(!res.ok) throw new Error('create course failed');
-      const data = await res.json().catch(()=>null);
-      if(data && data.ok){
+      if (!res.ok) throw new Error("create course failed");
+      const data = await res.json().catch(() => null);
+      if (data && data.ok) {
         // Add the new course to the list
         const newCourseData = data.course;
-        setCourses(prev => [...prev, newCourseData]);
+        setCourses((prev) => [...prev, newCourseData]);
         setActiveCourse(newCourseData.code);
         // Reset form
-        setNewCourse({ code: '', title: '' });
+        setNewCourse({ code: "", title: "" });
         setShowCreateCourse(false);
       } else {
-        alert(data?.error || 'Failed to create course');
+        alert(data?.error || "Failed to create course");
       }
-    }catch(err){
-      console.error('Failed to create course', err);
-      alert('Failed to create course');
+    } catch (err) {
+      console.error("Failed to create course", err);
+      alert("Failed to create course");
     }
   }
 
@@ -276,23 +335,23 @@ export default function ProfessorView() {
     setJoinSearchLoading(true);
     try {
       const res = await fetch(`${API_ROOT}search_courses.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: joinSearchTerm, filter: 'None' }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: joinSearchTerm, filter: "None" }),
       });
 
       const data = await res.json();
 
       if (data.courses) {
         // Filter out courses already in the professor's list
-        const enrolledCodes = new Set(courses.map(c => c.code));
-        const filteredResults = data.courses.filter(c => !enrolledCodes.has(c.code));
+        const enrolledCodes = new Set(courses.map((c) => c.code));
+        const filteredResults = data.courses.filter((c) => !enrolledCodes.has(c.code));
         setJoinSearchResults(filteredResults);
       } else {
         setJoinSearchResults([]);
       }
     } catch (err) {
-      console.error('Error searching courses:', err);
+      console.error("Error searching courses:", err);
       setJoinSearchResults([]);
     } finally {
       setJoinSearchLoading(false);
@@ -302,10 +361,10 @@ export default function ProfessorView() {
   async function joinCourse(courseId) {
     try {
       const res = await fetch(`${API_ROOT}enroll.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ course_id: courseId, role: 'professor' }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ course_id: courseId, role: "professor" }),
       });
 
       const data = await res.json();
@@ -313,9 +372,9 @@ export default function ProfessorView() {
       if (data.success) {
         // Refetch courses to include the newly joined course
         const coursesRes = await fetch(`${API_ROOT}professor_courses.php`, {
-          method: 'GET',
-          credentials: 'include',
-          headers: { Accept: 'application/json' },
+          method: "GET",
+          credentials: "include",
+          headers: { Accept: "application/json" },
         });
 
         if (coursesRes.ok) {
@@ -323,7 +382,7 @@ export default function ProfessorView() {
           if (coursesData.ok && Array.isArray(coursesData.courses)) {
             setCourses(coursesData.courses);
             // Set the newly joined course as active
-            const joinedCourse = coursesData.courses.find(c => c.id === courseId);
+            const joinedCourse = coursesData.courses.find((c) => c.id === courseId);
             if (joinedCourse) {
               setActiveCourse(joinedCourse.code);
             }
@@ -331,24 +390,24 @@ export default function ProfessorView() {
         }
 
         // Clear search
-        setJoinSearchTerm('');
+        setJoinSearchTerm("");
         setJoinSearchResults([]);
         setShowJoinCourse(false);
       } else {
-        alert(data?.error || 'Failed to join course');
+        alert(data?.error || "Failed to join course");
       }
     } catch (err) {
-      console.error('Error joining course:', err);
-      alert('Failed to join course');
+      console.error("Error joining course:", err);
+      alert("Failed to join course");
     }
   }
 
   async function handleRemoveCourse(courseId, courseCode) {
     try {
       const res = await fetch(`${API_ROOT}unenroll.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ course_id: courseId }),
       });
 
@@ -356,22 +415,22 @@ export default function ProfessorView() {
 
       if (data.success) {
         // Remove course from local state
-        setCourses(prev => prev.filter(c => c.id !== courseId));
+        setCourses((prev) => prev.filter((c) => c.id !== courseId));
 
         // If removed course was active, set another as active
         if (activeCourse === courseCode) {
-          const remainingCourses = courses.filter(c => c.id !== courseId);
+          const remainingCourses = courses.filter((c) => c.id !== courseId);
           setActiveCourse(remainingCourses.length > 0 ? remainingCourses[0].code : null);
         }
 
         // Close the menu
         setCourseMenuOpen(null);
       } else {
-        alert(data?.error || 'Failed to remove course');
+        alert(data?.error || "Failed to remove course");
       }
     } catch (err) {
-      console.error('Error removing course:', err);
-      alert('Failed to remove course');
+      console.error("Error removing course:", err);
+      alert("Failed to remove course");
     }
   }
 
@@ -414,7 +473,7 @@ export default function ProfessorView() {
       if (!courseMenuOpen) return;
       // Check if click is outside the course menu dropdown
       const target = e.target;
-      const isClickInsideMenu = target.closest('[data-course-menu]');
+      const isClickInsideMenu = target.closest("[data-course-menu]");
       if (!isClickInsideMenu) {
         setCourseMenuOpen(null);
       }
@@ -429,6 +488,33 @@ export default function ProfessorView() {
       document.removeEventListener("keydown", onKey);
     };
   }, [courseMenuOpen]);
+
+  // NEW: helper to check ownership from common keys
+  function isOwnerOfSession(s) {
+    const ownerEmail =
+      (s.created_by ||
+        s.professor_email ||
+        s.instructor_email ||
+        s.owner_email ||
+        "")
+        .toString()
+        .toLowerCase();
+    if (!ownerEmail || !currentUserEmail) return false;
+    return ownerEmail === currentUserEmail;
+  }
+
+  // NEW: handle clicking a session
+  function onSessionClick(sid, owned) {
+    if (owned) {
+      window.location.hash = `#/session/${sid}`;
+      return;
+    }
+    // Show banner
+    setNoticeMsg("session was not created by you");
+    // Auto-hide after 4s
+    window.clearTimeout(onSessionClick._t);
+    onSessionClick._t = window.setTimeout(() => setNoticeMsg(""), 4000);
+  }
 
   return (
     <div
@@ -456,7 +542,7 @@ export default function ProfessorView() {
           justifyContent: "space-between",
           position: "sticky",
           top: 0,
-          zIndex: 10,
+          zIndex: 20,
         }}
       >
         <div style={{ display: "flex", flexDirection: "column" }}>
@@ -533,6 +619,44 @@ export default function ProfessorView() {
           )}
         </div>
       </div>
+
+      {/* NEW: top-of-screen banner for notice */}
+      {noticeMsg && (
+        <div
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 15,
+            background: "#fef3c7",
+            color: "#92400e",
+            borderBottom: "1px solid #fcd34d",
+            padding: "0.6rem 1rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+          role="status"
+          aria-live="polite"
+        >
+          <span style={{ fontWeight: 600 }}>{noticeMsg}</span>
+          <button
+            onClick={() => setNoticeMsg("")}
+            style={{
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              color: "#92400e",
+              display: "inline-flex",
+              alignItems: "center",
+              padding: 4,
+            }}
+            aria-label="Dismiss notification"
+            title="Dismiss"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      )}
 
       {/* Main Content */}
       <div style={{ maxWidth: "70rem", margin: "0 auto", padding: "1.5rem" }}>
@@ -614,7 +738,9 @@ export default function ProfessorView() {
                     color: isActive ? "#fff" : "#666",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = isActive ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)";
+                    e.currentTarget.style.background = isActive
+                      ? "rgba(255,255,255,0.1)"
+                      : "rgba(0,0,0,0.05)";
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = "transparent";
@@ -777,10 +903,13 @@ export default function ProfessorView() {
               />
               <button
                 onClick={createCourse}
-                disabled={newCourse.code.length !== 6 || newCourse.title.trim() === ''}
+                disabled={
+                  newCourse.code.length !== 6 || newCourse.title.trim() === ""
+                }
                 style={{
                   background:
-                    newCourse.code.length === 6 && newCourse.title.trim() !== ''
+                    newCourse.code.length === 6 &&
+                    newCourse.title.trim() !== ""
                       ? "#16a34a"
                       : "#d1d5db",
                   color: "#fff",
@@ -788,7 +917,8 @@ export default function ProfessorView() {
                   borderRadius: "0.375rem",
                   padding: "0.5rem 1rem",
                   cursor:
-                    newCourse.code.length === 6 && newCourse.title.trim() !== ''
+                    newCourse.code.length === 6 &&
+                    newCourse.title.trim() !== ""
                       ? "pointer"
                       : "not-allowed",
                   fontWeight: "600",
@@ -801,7 +931,7 @@ export default function ProfessorView() {
               <button
                 onClick={() => {
                   setShowCreateCourse(false);
-                  setNewCourse({ code: '', title: '' });
+                  setNewCourse({ code: "", title: "" });
                 }}
                 style={{
                   background: "#fff",
@@ -917,18 +1047,40 @@ export default function ProfessorView() {
                         transition: "background 0.15s",
                         cursor: "pointer",
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "#f9fafb")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = "white")}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.background = "#f9fafb")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.background = "white")
+                      }
                     >
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "#111" }}>
+                        <div
+                          style={{
+                            fontWeight: 600,
+                            fontSize: "0.875rem",
+                            color: "#111",
+                          }}
+                        >
                           {course.code}
                         </div>
-                        <div style={{ fontSize: "0.75rem", color: "#6b7280", marginTop: "0.125rem" }}>
+                        <div
+                          style={{
+                            fontSize: "0.75rem",
+                            color: "#6b7280",
+                            marginTop: "0.125rem",
+                          }}
+                        >
                           {course.title}
                         </div>
                         {course.professor && (
-                          <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: "0.125rem" }}>
+                          <div
+                            style={{
+                              fontSize: "0.75rem",
+                              color: "#9ca3af",
+                              marginTop: "0.125rem",
+                            }}
+                          >
                             {course.professor}
                           </div>
                         )}
@@ -947,8 +1099,12 @@ export default function ProfessorView() {
                           cursor: "pointer",
                           transition: "background 0.15s",
                         }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = "#2563eb")}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = "#3b82f6")}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.background = "#2563eb")
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.background = "#3b82f6")
+                        }
                         title="Join this course"
                       >
                         <Plus size={18} />
@@ -963,7 +1119,7 @@ export default function ProfessorView() {
               <button
                 onClick={() => {
                   setShowJoinCourse(false);
-                  setJoinSearchTerm('');
+                  setJoinSearchTerm("");
                   setJoinSearchResults([]);
                 }}
                 style={{
@@ -1018,23 +1174,21 @@ export default function ProfessorView() {
                 }}
               >
                 {activeCourse} —{" "}
-                {
-                  courses.find((c) => c.code === activeCourse)?.title ||
-                  "Course Queue"
-                }
+                {courses.find((c) => c.code === activeCourse)?.title ||
+                  "Course Queue"}
               </h2>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button
                   onClick={() => setShowScheduleForm((v) => !v)}
                   style={{
-                    background: '#eef2ff',
-                    color: '#3730a3',
-                    border: '1px solid #e0e7ff',
+                    background: "#eef2ff",
+                    color: "#3730a3",
+                    border: "1px solid #e0e7ff",
                     borderRadius: 8,
-                    padding: '6px 10px',
-                    cursor: 'pointer',
+                    padding: "6px 10px",
+                    cursor: "pointer",
                     fontWeight: 600,
-                    fontSize: '0.85rem'
+                    fontSize: "0.85rem",
                   }}
                 >
                   Schedule session
@@ -1043,22 +1197,88 @@ export default function ProfessorView() {
             </div>
 
             {loading && <p style={{ color: "#666" }}>Loading queue...</p>}
+
             {/* Sessions list for this course */}
             {sessions.length > 0 && (
               <div style={{ marginBottom: 12 }}>
                 {sessions.map((s) => {
                   const active = isSessionActive(s);
+
+                  // NEW: ownership check (support multiple possible keys)
+                  const owned = isOwnerOfSession(s);
+
                   return (
-                    <div key={s.id} onClick={() => window.location.hash = `#/session/${s.id}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f9fafb', border: '1px solid #e5e7eb', padding: 10, borderRadius: 8, marginBottom: 8, cursor: 'pointer' }}>
+                    <div
+                      key={s.id}
+                      onClick={() => onSessionClick(s.id, owned)}
+                      aria-disabled={!owned}
+                      title={
+                        owned
+                          ? "Open session"
+                          : "Session not created by you"
+                      }
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        background: "#f9fafb",
+                        border: "1px solid #e5e7eb",
+                        padding: 10,
+                        borderRadius: 8,
+                        marginBottom: 8,
+                        cursor: owned ? "pointer" : "not-allowed",
+                        opacity: owned ? 1 : 0.6,
+                        userSelect: "none",
+                      }}
+                    >
                       <div>
-                        <div style={{ fontWeight: 700 }}>{s.day_of_week} • {s.start_time}–{s.end_time}</div>
-                        <div style={{ fontSize: '0.9rem', color: '#555' }}>{s.location || '(no location)'}</div>
+                        <div style={{ fontWeight: 700 }}>
+                          {s.day_of_week} • {s.start_time}–{s.end_time}
+                        </div>
+                        <div style={{ fontSize: "0.9rem", color: "#555" }}>
+                          {s.location || "(no location)"}
+                        </div>
+                        {/* Optional: show owner email for clarity if present */}
+                        {(s.created_by ||
+                          s.professor_email ||
+                          s.instructor_email ||
+                          s.owner_email) && (
+                          <div style={{ fontSize: "0.75rem", color: "#777" }}>
+                            Owner:{" "}
+                            {s.created_by ||
+                              s.professor_email ||
+                              s.instructor_email ||
+                              s.owner_email}
+                          </div>
+                        )}
                       </div>
                       <div>
                         {active ? (
-                          <span style={{ fontSize: '0.75rem', background: '#dcfce7', color: '#166534', padding: '4px 8px', borderRadius: 6, fontWeight: 600 }}>Active Now</span>
+                          <span
+                            style={{
+                              fontSize: "0.75rem",
+                              background: "#dcfce7",
+                              color: "#166534",
+                              padding: "4px 8px",
+                              borderRadius: 6,
+                              fontWeight: 600,
+                            }}
+                          >
+                            Active Now
+                          </span>
                         ) : (
-                          <span style={{ fontSize: '0.75rem', background: '#e0f2fe', color: '#0369a1', padding: '4px 8px', borderRadius: 6, fontWeight: 600 }}>Upcoming</span>
+                          <span
+                            style={{
+                              fontSize: "0.75rem",
+                              background: "#e0f2fe",
+                              color: "#0369a1",
+                              padding: "4px 8px",
+                              borderRadius: 6,
+                              fontWeight: 600,
+                            }}
+                          >
+                            Upcoming
+                          </span>
                         )}
                       </div>
                     </div>
@@ -1069,14 +1289,44 @@ export default function ProfessorView() {
 
             {/* Schedule form */}
             {showScheduleForm && (
-              <div style={{ background: '#fff', border: '1px solid #e5e7eb', padding: 12, borderRadius: 8, marginBottom: 12 }}>
+              <div
+                style={{
+                  background: "#fff",
+                  border: "1px solid #e5e7eb",
+                  padding: 12,
+                  borderRadius: 8,
+                  marginBottom: 12,
+                }}
+              >
                 {/* compact, consistent input styles */}
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    alignItems: "center",
+                    marginBottom: 8,
+                    flexWrap: "wrap",
+                  }}
+                >
                   {(() => {
-                    const common = { padding: 8, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff' };
+                    const common = {
+                      padding: 8,
+                      borderRadius: 8,
+                      border: "1px solid #e5e7eb",
+                      background: "#fff",
+                    };
                     return (
                       <>
-                        <select value={newSession.day_of_week} onChange={(e)=>setNewSession(s=>({...s, day_of_week: e.target.value}))} style={{ ...common, minWidth: 120 }}>
+                        <select
+                          value={newSession.day_of_week}
+                          onChange={(e) =>
+                            setNewSession((s) => ({
+                              ...s,
+                              day_of_week: e.target.value,
+                            }))
+                          }
+                          style={{ ...common, minWidth: 120 }}
+                        >
                           <option>Monday</option>
                           <option>Tuesday</option>
                           <option>Wednesday</option>
@@ -1085,162 +1335,226 @@ export default function ProfessorView() {
                           <option>Saturday</option>
                           <option>Sunday</option>
                         </select>
-                        <input type="time" value={newSession.start_time} onChange={(e)=>setNewSession(s=>({...s, start_time: e.target.value}))} style={{ ...common, width: 120 }} />
-                        <input type="time" value={newSession.end_time} onChange={(e)=>setNewSession(s=>({...s, end_time: e.target.value}))} style={{ ...common, width: 120 }} />
-                        <input placeholder="Location" value={newSession.location} onChange={(e)=>setNewSession(s=>({...s, location: e.target.value}))} style={{ ...common, flex: 1, minWidth: 200 }} />
+                        <input
+                          type="time"
+                          value={newSession.start_time}
+                          onChange={(e) =>
+                            setNewSession((s) => ({
+                              ...s,
+                              start_time: e.target.value,
+                            }))
+                          }
+                          style={{ ...common, width: 120 }}
+                        />
+                        <input
+                          type="time"
+                          value={newSession.end_time}
+                          onChange={(e) =>
+                            setNewSession((s) => ({
+                              ...s,
+                              end_time: e.target.value,
+                            }))
+                          }
+                          style={{ ...common, width: 120 }}
+                        />
+                        <input
+                          placeholder="Location"
+                          value={newSession.location}
+                          onChange={(e) =>
+                            setNewSession((s) => ({
+                              ...s,
+                              location: e.target.value,
+                            }))
+                          }
+                          style={{ ...common, flex: 1, minWidth: 200 }}
+                        />
                       </>
                     );
                   })()}
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={createSession} style={{ background: '#111827', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Save</button>
-                  <button onClick={()=>setShowScheduleForm(false)} style={{ background: '#fff', color: '#111827', border: '1px solid #e5e7eb', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Cancel</button>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={createSession}
+                    style={{
+                      background: "#111827",
+                      color: "#fff",
+                      border: "none",
+                      padding: "8px 12px",
+                      borderRadius: 8,
+                      fontWeight: 600,
+                    }}
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setShowScheduleForm(false)}
+                    style={{
+                      background: "#fff",
+                      color: "#111827",
+                      border: "1px solid #e5e7eb",
+                      padding: "8px 12px",
+                      borderRadius: 8,
+                      fontWeight: 600,
+                    }}
+                  >
+                    Cancel
+                  </button>
                 </div>
               </div>
             )}
-            {/* {!loading && queue.length === 0 && (
-              <p style={{ color: "#666" }}>No students currently in queue.</p>
-            )} */}
 
-            {sessions.length === 0 && queue.map((entry, idx) => {
-              const isNext = idx === 0;
-              return (
-                <div
-                  key={idx}
-                  style={{
-                    background: "#f9fafb",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: "0.5rem",
-                    padding: "0.75rem",
-                    marginBottom: "0.75rem",
-                  }}
-                >
+            {sessions.length === 0 &&
+              queue.map((entry, idx) => {
+                const isNext = idx === 0;
+                return (
                   <div
+                    key={idx}
                     style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      marginBottom: "0.5rem",
+                      background: "#f9fafb",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "0.5rem",
+                      padding: "0.75rem",
+                      marginBottom: "0.75rem",
                     }}
                   >
-                    <p style={{ fontWeight: "600", margin: 0 }}>
-                      {entry.user_email}
-                    </p>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: "0.5rem",
+                      }}
+                    >
+                      <p style={{ fontWeight: "600", margin: 0 }}>
+                        {entry.user_email}
+                      </p>
+                      <p
+                        style={{
+                          fontSize: "0.8rem",
+                          color: "#777",
+                          margin: 0,
+                        }}
+                      >
+                        Joined:{" "}
+                        {new Date(entry.joined_at).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
                     <p
                       style={{
-                        fontSize: "0.8rem",
-                        color: "#777",
+                        fontSize: "0.85rem",
+                        color: "#444",
                         margin: 0,
                       }}
                     >
-                      Joined:{" "}
-                      {new Date(entry.joined_at).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {entry.notes || "(no note provided)"}
                     </p>
+
+                    {/* Present / Absent controls for the student who is up next */}
+                    {isNext && (
+                      <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const res = await fetch(
+                                `${API_ROOT}queue_attendance.php`,
+                                {
+                                  method: "POST",
+                                  credentials: "include",
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                    Accept: "application/json",
+                                  },
+                                  body: JSON.stringify({
+                                    course_id: activeCourse,
+                                    user_email: entry.user_email,
+                                    status: "present",
+                                  }),
+                                }
+                              );
+                              if (!res.ok) throw new Error("request failed");
+                              const data = await res.json().catch(() => ({}));
+                              if (data.ok) {
+                                // reflect change locally
+                                setQueue((q) => {
+                                  const copy = q.slice();
+                                  copy[0] = { ...copy[0], attendance: "present" };
+                                  return copy;
+                                });
+                              }
+                            } catch (err) {
+                              console.error("Failed to mark present:", err);
+                            }
+                          }}
+                          style={{
+                            background:
+                              entry.attendance === "present"
+                                ? "#166534"
+                                : "#bbf7d0",
+                            color:
+                              entry.attendance === "present" ? "#fff" : "#164e2e",
+                            border: "none",
+                            padding: "0.5rem 0.75rem",
+                            borderRadius: 8,
+                            cursor: "pointer",
+                            fontWeight: 600,
+                          }}
+                        >
+                          Present
+                        </button>
+
+                        <button
+                          onClick={async () => {
+                            try {
+                              const res = await fetch(
+                                `${API_ROOT}queue_attendance.php`,
+                                {
+                                  method: "POST",
+                                  credentials: "include",
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                    Accept: "application/json",
+                                  },
+                                  body: JSON.stringify({
+                                    course_id: activeCourse,
+                                    user_email: entry.user_email,
+                                    status: "absent",
+                                  }),
+                                }
+                              );
+                              if (!res.ok) throw new Error("request failed");
+                              const data = await res.json().catch(() => ({}));
+                              if (data.ok) {
+                                setQueue((q) => {
+                                  const copy = q.slice();
+                                  copy[0] = { ...copy[0], attendance: "absent" };
+                                  return copy;
+                                });
+                              }
+                            } catch (err) {
+                              console.error("Failed to mark absent:", err);
+                            }
+                          }}
+                          style={{
+                            background:
+                              entry.attendance === "absent" ? "#7f1d1d" : "#fecaca",
+                            color:
+                              entry.attendance === "absent" ? "#fff" : "#7f1d1d",
+                            border: "none",
+                            padding: "0.5rem 0.75rem",
+                            borderRadius: 8,
+                            cursor: "pointer",
+                            fontWeight: 600,
+                          }}
+                        >
+                          Absent
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <p
-                    style={{
-                      fontSize: "0.85rem",
-                      color: "#444",
-                      margin: 0,
-                    }}
-                  >
-                    {entry.notes || "(no note provided)"}
-                  </p>
-
-                  {/* Present / Absent controls for the student who is up next */}
-                  {isNext && (
-                    <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
-                      <button
-                        onClick={async () => {
-                          try {
-                            const res = await fetch(
-                              `${API_ROOT}queue_attendance.php`,
-                              {
-                                method: "POST",
-                                credentials: "include",
-                                headers: { "Content-Type": "application/json", Accept: "application/json" },
-                                body: JSON.stringify({
-                                  course_id: activeCourse,
-                                  user_email: entry.user_email,
-                                  status: "present",
-                                }),
-                              }
-                            );
-                            if (!res.ok) throw new Error("request failed");
-                            const data = await res.json().catch(() => ({}));
-                            if (data.ok) {
-                              // reflect change locally
-                              setQueue((q) => {
-                                const copy = q.slice();
-                                copy[0] = { ...copy[0], attendance: "present" };
-                                return copy;
-                              });
-                            }
-                          } catch (err) {
-                            console.error("Failed to mark present:", err);
-                          }
-                        }}
-                        style={{
-                          background: entry.attendance === "present" ? "#166534" : "#bbf7d0",
-                          color: entry.attendance === "present" ? "#fff" : "#164e2e",
-                          border: "none",
-                          padding: "0.5rem 0.75rem",
-                          borderRadius: 8,
-                          cursor: "pointer",
-                          fontWeight: 600,
-                        }}
-                      >
-                        Present
-                      </button>
-
-                      <button
-                        onClick={async () => {
-                          try {
-                            const res = await fetch(
-                              `${API_ROOT}queue_attendance.php`,
-                              {
-                                method: "POST",
-                                credentials: "include",
-                                headers: { "Content-Type": "application/json", Accept: "application/json" },
-                                body: JSON.stringify({
-                                  course_id: activeCourse,
-                                  user_email: entry.user_email,
-                                  status: "absent",
-                                }),
-                              }
-                            );
-                            if (!res.ok) throw new Error("request failed");
-                            const data = await res.json().catch(() => ({}));
-                            if (data.ok) {
-                              setQueue((q) => {
-                                const copy = q.slice();
-                                copy[0] = { ...copy[0], attendance: "absent" };
-                                return copy;
-                              });
-                            }
-                          } catch (err) {
-                            console.error("Failed to mark absent:", err);
-                          }
-                        }}
-                        style={{
-                          background: entry.attendance === "absent" ? "#7f1d1d" : "#fecaca",
-                          color: entry.attendance === "absent" ? "#fff" : "#7f1d1d",
-                          border: "none",
-                          padding: "0.5rem 0.75rem",
-                          borderRadius: 8,
-                          cursor: "pointer",
-                          fontWeight: 600,
-                        }}
-                      >
-                        Absent
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                );
+              })}
           </div>
         )}
       </div>
