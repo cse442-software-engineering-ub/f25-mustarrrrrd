@@ -15,15 +15,18 @@ try {
 
   $sql = "
     SELECT s.id, s.day_of_week, DATE_FORMAT(s.start_time, '%h:%i %p') AS start_time, DATE_FORMAT(s.end_time, '%h:%i %p') AS end_time, s.location, s.instructor_id, s.created_at,
-           COALESCE(NULLIF(u.name, ''), u.email) AS instructor_name, u.email AS instructor_email
+           COALESCE(NULLIF(u.name, ''), u.email) AS instructor_name, u.email AS instructor_email,
+           e.role_in_course AS owner_role
     FROM office_hours_sessions s
     LEFT JOIN users u ON u.id = s.instructor_id
-  WHERE course_id = ?
+    LEFT JOIN enrollments e ON e.user_id = s.instructor_id AND e.course_id = ?
+  WHERE s.course_id = ?
   ORDER BY FIELD(day_of_week, 'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'), start_time ASC
   ";
 
   $stmt = $pdo->prepare($sql);
-  $stmt->execute([$course_id]);
+  // e.course_id and WHERE course_id both need the canonical course id
+  $stmt->execute([$course_id, $course_id]);
   $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
   echo json_encode(['ok'=>true,'sessions'=>$rows]);
