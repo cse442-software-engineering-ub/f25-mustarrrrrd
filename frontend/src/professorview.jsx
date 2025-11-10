@@ -24,6 +24,8 @@ export default function ProfessorView() {
   const [joinSearchResults, setJoinSearchResults] = useState([]);
   const [joinSearchLoading, setJoinSearchLoading] = useState(false);
   const [courseMenuOpen, setCourseMenuOpen] = useState(null); // Tracks which course menu is open
+  const[showAddTA, setShowAddTA] = useState(false);
+  const[newTA, setNewTA] = useState({ ta_email: '' });
 
   // NEW: who am I (email) + banner message
   const [currentUserEmail, setCurrentUserEmail] = useState("");
@@ -399,6 +401,27 @@ export default function ProfessorView() {
     } catch (err) {
       console.error("Error joining course:", err);
       alert("Failed to join course");
+    }
+  }
+
+  async function addTA() {
+    try{
+      const res = await fetch(`${API_ROOT}add_ta.php`,{
+        method: 'POST', credentials:'include', headers:{'Content-Type':'application/json', Accept:'application/json'},
+        body: JSON.stringify({ code: activeCourse, ta_email: newTA.ta_email })
+      });
+      if(!res.ok) throw new Error('add TA failed');
+      const data = await res.json().catch(()=>null);
+      if(data && data.ok){
+        // Reset form
+        setNewTA({ ta_email: '' });
+        setShowAddTA(false);
+      } else {
+        alert(data?.error || 'Failed to add TA');
+      }
+    }catch(err){
+      console.error('Failed to add TA', err);
+      alert('Failed to add TA');
     }
   }
 
@@ -834,6 +857,25 @@ export default function ProfessorView() {
           >
             + Join Course
           </button>
+        
+        {/* Add TA Button */}
+          <button
+            onClick={() => setShowAddTA(true)}
+            style={{
+              background: "#f3e8ff",
+              color: "#7e22ce",
+              border: "2px dashed #c084fc",
+              borderRadius: "0.5rem",
+              padding: "0.75rem 1rem",
+              textAlign: "center",
+              cursor: "pointer",
+              fontWeight: "600",
+              fontSize: "0.9rem",
+              minWidth: "120px",
+            }}
+          >
+            + Add TA
+          </button>
         </div>
 
         {/* Create Course Form */}
@@ -1144,6 +1186,106 @@ export default function ProfessorView() {
               }}
             >
               Search for existing courses by code or title to join as an instructor.
+            </p>
+          </div>
+        )}
+
+        {/* Add TA Form */}
+        {showAddTA && (
+          <div
+            style={{
+              background: "white",
+              border: "2px solid #c084fc",
+              borderRadius: "0.5rem",
+              padding: "1rem",
+              marginBottom: "1.5rem",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            }}
+          >
+            <h3
+              style={{
+                fontSize: "1rem",
+                fontWeight: "600",
+                marginBottom: "0.75rem",
+                color: "#7e22ce",
+              }}
+            >
+              Add TA
+            </h3>
+            <div
+              style={{
+                display: "flex",
+                gap: "0.5rem",
+                alignItems: "center",
+                flexWrap: "wrap",
+              }}
+            >
+              <input
+                type="text"
+                placeholder="Enter TA email (e.g., 'newTA@email.com')"
+                value={newTA.ta_email}
+                onChange={(e) =>
+                  setNewTA((prev) => ({ ...prev, ta_email: e.target.value }))
+                }
+                style={{
+                  padding: "0.5rem",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "0.375rem",
+                  fontSize: "0.9rem",
+                  flex: 1,
+                  minWidth: "200px",
+                }}
+              />
+              <button
+                onClick={addTA}
+                disabled={newTA.ta_email.trim() === ''}
+                style={{
+                  background:
+                    newTA.ta_email.trim() !== ''
+                      ? "#16a34a"
+                      : "#d1d5db",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "0.375rem",
+                  padding: "0.5rem 1rem",
+                  cursor:
+                    newTA.ta_email.trim() !== ''
+                      ? "pointer"
+                      : "not-allowed",
+                  fontWeight: "600",
+                  fontSize: "1.2rem",
+                }}
+                title="Add TA"
+              >
+                +
+              </button>
+              <button
+                onClick={() => {
+                  setShowAddTA(false);
+                  setNewTA({ ta_email: '' });
+                }}
+                style={{
+                  background: "#fff",
+                  color: "#666",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "0.375rem",
+                  padding: "0.5rem 1rem",
+                  cursor: "pointer",
+                  fontWeight: "600",
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+            <p
+              style={{
+                fontSize: "0.75rem",
+                color: "#666",
+                marginTop: "0.5rem",
+                marginBottom: 0,
+              }}
+            >
+              This will immediately enroll the TA into the course.
             </p>
           </div>
         )}
