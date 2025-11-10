@@ -30,6 +30,8 @@ export default function ProfessorView() {
   // NEW: who am I (email) + banner message
   const [currentUserEmail, setCurrentUserEmail] = useState("");
   const [noticeMsg, setNoticeMsg] = useState("");
+  // NEW: current user role (professor or ta)
+  const [currentUserRole, setCurrentUserRole] = useState("");
 
   const btnRef = useRef(null);
   const menuRef = useRef(null);
@@ -99,6 +101,8 @@ export default function ProfessorView() {
             data.user ||
             "";
           setCurrentUserEmail((email || "").toLowerCase());
+          // capture role so we can apply professor-specific privileges
+          if (data.role) setCurrentUserRole(data.role);
         }
       } catch (err) {
         console.error("Error fetching professor info:", err);
@@ -515,15 +519,17 @@ export default function ProfessorView() {
   // NEW: helper to check ownership from common keys
   function isOwnerOfSession(s) {
     const ownerEmail =
-      (s.created_by ||
-        s.professor_email ||
-        s.instructor_email ||
-        s.owner_email ||
-        "")
+      (s.created_by || s.professor_email || s.instructor_email || s.owner_email || "")
         .toString()
         .toLowerCase();
-    if (!ownerEmail || !currentUserEmail) return false;
-    return ownerEmail === currentUserEmail;
+    // If the session was created by the current user, allow open
+    if (ownerEmail && currentUserEmail && ownerEmail === currentUserEmail) return true;
+
+    // Professors may also open sessions that were created by a TA for this course
+    // (server returns owner_role which is the enrollment.role_in_course for the session instructor)
+    if (currentUserRole === 'professor' && (s.owner_role === 'ta' || s.owner_role === 'TA')) return true;
+
+    return false;
   }
 
   // NEW: handle clicking a session

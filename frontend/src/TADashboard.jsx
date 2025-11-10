@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Menu, Search, Plus, MoreVertical } from "lucide-react";
+import { Menu, Search, Plus, MoreVertical, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function TADashboard() {
@@ -16,6 +16,8 @@ export default function TADashboard() {
   const [taName, setTAName] = useState('TA');
   const [currentUserId, setCurrentUserId] = useState(null);
   const [currentUserRole, setCurrentUserRole] = useState(null);
+  const [noticeMsg, setNoticeMsg] = useState("");
+  const noticeTimerRef = useRef(null);
   const [showJoinCourse, setShowJoinCourse] = useState(false);
   const [joinSearchTerm, setJoinSearchTerm] = useState('');
   const [joinSearchResults, setJoinSearchResults] = useState([]);
@@ -415,6 +417,13 @@ export default function TADashboard() {
     };
   }, [courseMenuOpen]);
 
+  // cleanup notice timer on unmount
+  useEffect(() => {
+    return () => {
+      if (noticeTimerRef.current) window.clearTimeout(noticeTimerRef.current);
+    };
+  }, []);
+
   return (
     <div
       style={{
@@ -518,6 +527,44 @@ export default function TADashboard() {
           )}
         </div>
       </div>
+
+      {/* Top banner for TA notices (e.g., trying to open a session they didn't create) */}
+      {noticeMsg && (
+        <div
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 15,
+            background: "#fef3c7",
+            color: "#92400e",
+            borderBottom: "1px solid #fcd34d",
+            padding: "0.6rem 1rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+          role="status"
+          aria-live="polite"
+        >
+          <span style={{ fontWeight: 600 }}>{noticeMsg}</span>
+          <button
+            onClick={() => setNoticeMsg("")}
+            style={{
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              color: "#92400e",
+              display: "inline-flex",
+              alignItems: "center",
+              padding: 4,
+            }}
+            aria-label="Dismiss notification"
+            title="Dismiss"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      )}
 
       {/* Main Content */}
       <div style={{ maxWidth: "70rem", margin: "0 auto", padding: "1.5rem" }}>
@@ -895,11 +942,33 @@ export default function TADashboard() {
               <div style={{ marginBottom: 12 }}>
                 {sessions.map((s) => {
                   const active = isSessionActive(s);
+                  // TAs can only open sessions they created (instructor_id === currentUserId)
+                  const taCanOpen = Number(currentUserId) === Number(s.instructor_id);
                   return (
-                    <div key={s.id} onClick={() => window.location.hash = `#/session/${s.id}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f9fafb', border: '1px solid #e5e7eb', padding: 10, borderRadius: 8, marginBottom: 8, cursor: 'pointer' }}>
-                      <div>
+                    <div
+                      key={s.id}
+                      onClick={() => {
+                        if (taCanOpen) {
+                          window.location.hash = `#/session/${s.id}`;
+                        } else {
+                          // show banner like the professor view
+                          setNoticeMsg("session was not created by you");
+                          if (noticeTimerRef.current) window.clearTimeout(noticeTimerRef.current);
+                          // auto-hide after 4s
+                          noticeTimerRef.current = window.setTimeout(() => setNoticeMsg(""), 4000);
+                        }
+                      }}
+                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f9fafb', border: '1px solid #e5e7eb', padding: 10, borderRadius: 8, marginBottom: 8, cursor: taCanOpen ? 'pointer' : 'not-allowed', opacity: taCanOpen ? 1 : 0.6 }}
+                    >
+                        <div>
                         <div style={{ fontWeight: 700 }}>{s.day_of_week} • {s.start_time}–{s.end_time}</div>
                         <div style={{ fontSize: '0.9rem', color: '#555' }}>{s.location || '(no location)'}</div>
+                        {/* Owner tag: show who created the session when available */}
+                        {(s.created_by || s.professor_email || s.instructor_email || s.owner_email) && (
+                          <div style={{ fontSize: '0.75rem', color: '#777' }}>
+                            Owner: {s.created_by || s.professor_email || s.instructor_email || s.owner_email}
+                          </div>
+                        )}
                       </div>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                         {active ? (
