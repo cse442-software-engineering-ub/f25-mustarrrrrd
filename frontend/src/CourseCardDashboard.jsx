@@ -1,6 +1,7 @@
 // frontend/src/CourseCardDashboard.jsx
 import { Star, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 // Build absolute base from Vite base (ends with /), safe in subfolders
 const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
@@ -8,6 +9,7 @@ const API_ROOT = new URL("../api/", ABS_BASE).pathname;
 
 export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFavorited }) {
   const navigate = useNavigate();
+  const [showRemoveDialog, setShowRemoveDialog] = useState(false);
 
   const handleToggleFavorite = (e) => {
     e.stopPropagation();
@@ -16,7 +18,16 @@ export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFa
 
   const handleUnenroll = (e) => {
     e.stopPropagation();
+    setShowRemoveDialog(true);
+  };
+
+  const confirmUnenroll = () => {
+    setShowRemoveDialog(false);
     if (onUnenroll) onUnenroll(course.id);
+  };
+
+  const cancelUnenroll = () => {
+    setShowRemoveDialog(false);
   };
 
   // Navigate to sessions view
@@ -71,6 +82,9 @@ export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFa
           ? "0 4px 12px rgba(16, 185, 129, 0.15)"
           : "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
         position: "relative",
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
       }}
     >
       {/* Active Session Banner */}
@@ -188,6 +202,7 @@ export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFa
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          marginTop: "auto",
         }}
       >
         {/* Favorite Button */}
@@ -244,6 +259,108 @@ export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFa
           View Sessions
         </button>
       </div>
+
+      {/* Remove Confirmation Dialog */}
+      {showRemoveDialog && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={cancelUnenroll}
+        >
+          <div
+            style={{
+              background: "white",
+              borderRadius: "0.75rem",
+              padding: "1.5rem",
+              maxWidth: "400px",
+              width: "90%",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3
+              style={{
+                fontSize: "1.125rem",
+                fontWeight: 600,
+                color: "#111",
+                margin: "0 0 0.5rem 0",
+              }}
+            >
+              Remove Course?
+            </h3>
+            <p
+              style={{
+                fontSize: "0.875rem",
+                color: "#6b7280",
+                margin: "0 0 1.5rem 0",
+                lineHeight: "1.5",
+              }}
+            >
+              Are you sure you want to remove <strong>{course.code}</strong> from your courses? This will also remove it from your favorites.
+            </p>
+            <div
+              style={{
+                display: "flex",
+                gap: "0.75rem",
+                justifyContent: "flex-end",
+              }}
+            >
+              <button
+                onClick={cancelUnenroll}
+                style={{
+                  padding: "0.5rem 1rem",
+                  background: "white",
+                  color: "#374151",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "0.5rem",
+                  fontSize: "0.875rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = "#f9fafb";
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = "white";
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmUnenroll}
+                style={{
+                  padding: "0.5rem 1rem",
+                  background: "#dc2626",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "0.5rem",
+                  fontSize: "0.875rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = "#b91c1c";
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = "#dc2626";
+                }}
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,10 +1,11 @@
 // src/Dashboard.jsx
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Star, Menu, Search, Plus, Calendar } from "lucide-react";
+import { Star, Menu, Search, Plus, Calendar, X } from "lucide-react";
 import { CourseCardDashboard } from "./CourseCardDashboard";
 import { ReservedSessionCard } from "./ReservedSessionCard";
 import { AbsenceNotice } from "./AbsenceNotice"; // ⬅️ add banner
+import { ViewSwitcher } from "./ViewSwitcher";
 
 // Build absolute base from Vite base (ends with /), safe in subfolders
 const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
@@ -21,9 +22,14 @@ export function Dashboard() {
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [userRole, setUserRole] = useState(null); // User's account role
+  const [activeView, setActiveView] = useState("student"); // Current view: "student" or "ta"
+  const [userName, setUserName] = useState(""); // User's name for display
+  const [errorMessage, setErrorMessage] = useState(""); // Custom error message
   const btnRef = useRef(null);
   const menuRef = useRef(null);
   const searchRef = useRef(null);
+  const errorTimerRef = useRef(null);
 
   // Check authentication status on mount - redirect if not logged in
   useEffect(() => {
@@ -46,11 +52,17 @@ export function Dashboard() {
           return;
         }
 
-        // If professor/TA, route to professor view
-        if (data.role === "professor" || data.role === "ta") {
+        // Store user role and name for view switching
+        setUserRole(data.role);
+        if (data.name) setUserName(data.name);
+
+        // If professor (not TA), route to professor view
+        if (data.role === "professor") {
           navigate("/professorview");
           return;
         }
+
+        // TAs can stay here and switch views
       } catch (err) {
         console.error("Auth check failed:", err);
         navigate("/");
@@ -70,8 +82,9 @@ export function Dashboard() {
     setLoading(true);
     try {
       // Fetch both enrolled courses and favorites
+      // Filter by role_in_course = 'student' to only show student courses
       const [coursesRes, favoritesRes] = await Promise.all([
-        fetch(`${API_ROOT}my_courses.php`, {
+        fetch(`${API_ROOT}my_courses.php?role_in_course=student`, {
           method: "GET",
           credentials: "include",
         }),
@@ -241,9 +254,13 @@ export function Dashboard() {
 
       if (data.courses) {
         const enrolledIds = new Set(allCourses.map((c) => c.id));
-        const filteredResults = data.courses.filter((c) => !enrolledIds.has(c.id));
-        setSearchResults(filteredResults);
-        setShowDropdown(filteredResults.length > 0);
+        // Mark courses as already enrolled instead of filtering them out
+        const resultsWithEnrollmentStatus = data.courses.map((c) => ({
+          ...c,
+          alreadyEnrolled: enrolledIds.has(c.id),
+        }));
+        setSearchResults(resultsWithEnrollmentStatus);
+        setShowDropdown(resultsWithEnrollmentStatus.length > 0);
       } else {
         setSearchResults([]);
         setShowDropdown(false);
@@ -284,9 +301,17 @@ export function Dashboard() {
         setSearchTerm("");
         setSearchResults([]);
         setShowDropdown(false);
+      } else if (enrollData.error) {
+        // Show custom error message (e.g., when TA tries to join as student)
+        setErrorMessage(enrollData.error);
+        if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+        errorTimerRef.current = setTimeout(() => setErrorMessage(""), 5000);
       }
     } catch (err) {
       console.error("Error enrolling and favoriting:", err);
+      setErrorMessage("Failed to enroll in course");
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+      errorTimerRef.current = setTimeout(() => setErrorMessage(""), 5000);
     }
   }
 
@@ -338,6 +363,14 @@ export function Dashboard() {
     navigate(to);
   };
 
+  function handleViewChange(newView) {
+    if (newView === "ta") {
+      navigate("/tadashboard");
+    } else {
+      setActiveView(newView);
+    }
+  }
+
   // Separate courses into favorites and enrolled
   const favoriteCourses = allCourses.filter((c) => c.is_favorited);
   const enrolledCourses = allCourses.filter((c) => !c.is_favorited);
@@ -357,7 +390,7 @@ export function Dashboard() {
         overflow: "auto",
       }}
     >
-      {/* Header (unchanged from dev) */}
+      {/* Header */}
       <div
         style={{
           background: "white",
@@ -378,16 +411,28 @@ export function Dashboard() {
             margin: "0 auto",
           }}
         >
-          <h1
-            style={{
-              fontSize: "1.25rem",
-              fontWeight: 600,
-              margin: 0,
-              color: "#111",
-            }}
-          >
-            Office Hours
-          </h1>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <h1
+              style={{
+                fontSize: "1.5rem",
+                fontWeight: "500",
+                margin: 0,
+                color: "#111",
+              }}
+            >
+              Student Dashboard
+            </h1>
+            <p style={{ fontSize: "0.9rem", color: "#555", margin: 0 }}>
+              {userName}
+            </p>
+          </div>
+
+          {/* View Switcher (only for TAs) */}
+          {userRole === "ta" && (
+            <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)" }}>
+              <ViewSwitcher activeView={activeView} onViewChange={handleViewChange} />
+            </div>
+          )}
 
           {/* Hamburger */}
           <div style={{ position: "relative" }}>
@@ -438,6 +483,46 @@ export function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Custom Error Banner */}
+      {errorMessage && (
+        <div
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 15,
+            background: "#fef2f2",
+            color: "#991b1b",
+            borderBottom: "1px solid #fecaca",
+            padding: "0.75rem 1rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            maxWidth: "64rem",
+            margin: "0 auto",
+          }}
+          role="alert"
+          aria-live="assertive"
+        >
+          <span style={{ fontWeight: 600 }}>{errorMessage}</span>
+          <button
+            onClick={() => setErrorMessage("")}
+            style={{
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              color: "#991b1b",
+              display: "inline-flex",
+              alignItems: "center",
+              padding: 4,
+            }}
+            aria-label="Dismiss error"
+            title="Dismiss"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      )}
 
       {/* 🚩 Absence banner (new) */}
       <AbsenceNotice />
@@ -533,22 +618,31 @@ export function Dashboard() {
                       </div>
                     </div>
                     <button
-                      onClick={() => enrollAndFavorite(course.id)}
+                      onClick={() => !course.alreadyEnrolled && enrollAndFavorite(course.id)}
+                      disabled={course.alreadyEnrolled}
                       style={{
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         padding: "0.5rem",
-                        background: "#10b981",
-                        color: "white",
+                        background: course.alreadyEnrolled ? "#d1d5db" : "#10b981",
+                        color: course.alreadyEnrolled ? "#9ca3af" : "white",
                         border: "none",
                         borderRadius: "0.375rem",
-                        cursor: "pointer",
+                        cursor: course.alreadyEnrolled ? "not-allowed" : "pointer",
                         transition: "background 0.15s",
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "#059669")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = "#10b981")}
-                      title="Join and add to favorites"
+                      onMouseEnter={(e) => {
+                        if (!course.alreadyEnrolled) {
+                          e.currentTarget.style.background = "#059669";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!course.alreadyEnrolled) {
+                          e.currentTarget.style.background = "#10b981";
+                        }
+                      }}
+                      title={course.alreadyEnrolled ? "Already enrolled" : "Join and add to favorites"}
                     >
                       <Plus size={18} />
                     </button>

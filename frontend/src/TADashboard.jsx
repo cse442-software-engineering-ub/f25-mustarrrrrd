@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Menu, Search, Plus, MoreVertical, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { ViewSwitcher } from "./ViewSwitcher";
 
 export default function TADashboard() {
   const [courses, setCourses] = useState([]);
@@ -23,9 +24,12 @@ export default function TADashboard() {
   const [joinSearchResults, setJoinSearchResults] = useState([]);
   const [joinSearchLoading, setJoinSearchLoading] = useState(false);
   const [courseMenuOpen, setCourseMenuOpen] = useState(null); // Tracks which course menu is open
+  const [activeView, setActiveView] = useState("ta"); // Current view: "student" or "ta"
+  const [errorMessage, setErrorMessage] = useState(""); // Custom error message
 
   const btnRef = useRef(null);
   const menuRef = useRef(null);
+  const errorTimerRef = useRef(null);
   const navigate = useNavigate();
 
   // ✅ Use correct API root for XAMPP
@@ -75,18 +79,15 @@ export default function TADashboard() {
           return;
         }
 
-        // Check if user is a TA (this is the TA dashboard)
+        // Check if user is a TA or professor (this is the TA dashboard)
         if (data.role === "student") {
           // Wrong dashboard - redirect to student dashboard
           navigate("/dashboard");
           return;
         }
 
-        if (data.role === "professor") {
-          // Wrong dashboard - redirect to professor dashboard
-          navigate("/professorview");
-          return;
-        }
+        // Professors can access this view too
+        // TAs can switch between this and student dashboard
 
         if (data.loggedIn) {
           if (data.name) setTAName(data.name);
@@ -174,7 +175,10 @@ export default function TADashboard() {
     // fetch sessions too
     fetchSessions();
     const sInterval = setInterval(fetchSessions, 60000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      clearInterval(sInterval);
+    };
   }, [activeCourse]);
 
   async function fetchSessions(){
@@ -271,10 +275,13 @@ export default function TADashboard() {
       const data = await res.json();
 
       if (data.courses) {
-        // Filter out courses already in the TA's list
+        // Mark courses as already enrolled instead of filtering them out
         const enrolledCodes = new Set(courses.map(c => c.code));
-        const filteredResults = data.courses.filter(c => !enrolledCodes.has(c.code));
-        setJoinSearchResults(filteredResults);
+        const resultsWithEnrollmentStatus = data.courses.map(c => ({
+          ...c,
+          alreadyEnrolled: enrolledCodes.has(c.code),
+        }));
+        setJoinSearchResults(resultsWithEnrollmentStatus);
       } else {
         setJoinSearchResults([]);
       }
@@ -322,11 +329,16 @@ export default function TADashboard() {
         setJoinSearchResults([]);
         setShowJoinCourse(false);
       } else {
-        alert(data?.error || 'Failed to join course');
+        // Show custom error message
+        setErrorMessage(data?.error || 'Failed to join course');
+        if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+        errorTimerRef.current = setTimeout(() => setErrorMessage(""), 5000);
       }
     } catch (err) {
       console.error('Error joining course:', err);
-      alert('Failed to join course');
+      setErrorMessage('Failed to join course');
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+      errorTimerRef.current = setTimeout(() => setErrorMessage(""), 5000);
     }
   }
 
@@ -354,11 +366,16 @@ export default function TADashboard() {
         // Close the menu
         setCourseMenuOpen(null);
       } else {
-        alert(data?.error || 'Failed to remove course');
+        // Show custom error message
+        setErrorMessage(data?.error || 'Failed to remove course');
+        if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+        errorTimerRef.current = setTimeout(() => setErrorMessage(""), 5000);
       }
     } catch (err) {
       console.error('Error removing course:', err);
-      alert('Failed to remove course');
+      setErrorMessage('Failed to remove course');
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+      errorTimerRef.current = setTimeout(() => setErrorMessage(""), 5000);
     }
   }
 
@@ -372,6 +389,15 @@ export default function TADashboard() {
     } catch {}
     document.cookie = "PHPSESSID=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
     navigate("/");
+  }
+
+  // Handle view switching
+  function handleViewChange(newView) {
+    if (newView === "student") {
+      navigate("/dashboard");
+    } else {
+      setActiveView(newView);
+    }
   }
 
   // --- Close menu when clicking outside or pressing Esc ---
@@ -424,6 +450,13 @@ export default function TADashboard() {
     };
   }, []);
 
+  // cleanup error timer on unmount
+  useEffect(() => {
+    return () => {
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    };
+  }, []);
+
   return (
     <div
       style={{
@@ -445,88 +478,143 @@ export default function TADashboard() {
           background: "white",
           borderBottom: "1px solid #e5e7eb",
           padding: "0.75rem 1rem",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
           position: "sticky",
           top: 0,
           zIndex: 10,
         }}
       >
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <h1
-            style={{
-              fontSize: "1.5rem",
-              fontWeight: "500",
-              margin: 0,
-              color: "#111",
-            }}
-          >
-            TA Dashboard
-          </h1>
-          <p style={{ fontSize: "0.9rem", color: "#555", margin: 0 }}>
-            {taName} • Computer Science & Engineering
-          </p>
-        </div>
-
-        {/* Hamburger Menu */}
-        <div style={{ position: "relative" }}>
-          <button
-            ref={btnRef}
-            onClick={() => setMenuOpen((v) => !v)}
-            aria-haspopup="menu"
-            aria-expanded={menuOpen}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 40,
-              height: 40,
-              borderRadius: 10,
-              border: "1px solid #e5e7eb",
-              background: "#fff",
-              cursor: "pointer",
-            }}
-            title="Menu"
-          >
-            <Menu size={20} />
-          </button>
-
-          {menuOpen && (
-            <div
-              ref={menuRef}
-              role="menu"
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            maxWidth: "64rem",
+            margin: "0 auto",
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <h1
               style={{
-                position: "absolute",
-                right: 0,
-                marginTop: 8,
-                width: 160,
-                background: "#fff",
-                border: "1px solid #e5e7eb",
-                borderRadius: 10,
-                boxShadow: "0 8px 20px rgba(0,0,0,0.08)",
-                overflow: "hidden",
+                fontSize: "1.5rem",
+                fontWeight: "500",
+                margin: 0,
+                color: "#111",
               }}
             >
-              <button
-                onClick={handleSignOut}
-                style={{
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "10px 12px",
-                  background: "transparent",
-                  border: 0,
-                  cursor: "pointer",
-                  fontSize: 14,
-                  color: "#b3261e",
-                }}
-              >
-                Sign out
-              </button>
+              TA Dashboard
+            </h1>
+            <p style={{ fontSize: "0.9rem", color: "#555", margin: 0 }}>
+              {taName}
+            </p>
+          </div>
+
+          {/* View Switcher (only for TAs, not professors) */}
+          {currentUserRole === "ta" && (
+            <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)" }}>
+              <ViewSwitcher activeView={activeView} onViewChange={handleViewChange} />
             </div>
           )}
+
+          {/* Hamburger Menu */}
+          <div style={{ position: "relative" }}>
+            <button
+              ref={btnRef}
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                border: "1px solid #e5e7eb",
+                background: "#fff",
+                cursor: "pointer",
+              }}
+              title="Menu"
+            >
+              <Menu size={20} />
+            </button>
+
+            {menuOpen && (
+              <div
+                ref={menuRef}
+                role="menu"
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  marginTop: 8,
+                  width: 160,
+                  background: "#fff",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 10,
+                  boxShadow: "0 8px 20px rgba(0,0,0,0.08)",
+                  overflow: "hidden",
+                }}
+              >
+                <button
+                  onClick={handleSignOut}
+                  style={{
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "10px 12px",
+                    background: "transparent",
+                    border: 0,
+                    cursor: "pointer",
+                    fontSize: 14,
+                    color: "#b3261e",
+                  }}
+                >
+                  Sign out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Custom Error Banner */}
+      {errorMessage && (
+        <div
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 15,
+            background: "#fef2f2",
+            color: "#991b1b",
+            borderBottom: "1px solid #fecaca",
+            padding: "0.75rem 1rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            maxWidth: "64rem",
+            margin: "0 auto",
+          }}
+          role="alert"
+          aria-live="assertive"
+        >
+          <span style={{ fontWeight: 600 }}>{errorMessage}</span>
+          <button
+            onClick={() => setErrorMessage("")}
+            style={{
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              color: "#991b1b",
+              display: "inline-flex",
+              alignItems: "center",
+              padding: 4,
+            }}
+            aria-label="Dismiss error"
+            title="Dismiss"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      )}
 
       {/* Top banner for TA notices (e.g., trying to open a session they didn't create) */}
       {noticeMsg && (
@@ -542,6 +630,8 @@ export default function TADashboard() {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
+            maxWidth: "64rem",
+            margin: "0 auto",
           }}
           role="status"
           aria-live="polite"
@@ -567,7 +657,7 @@ export default function TADashboard() {
       )}
 
       {/* Main Content */}
-      <div style={{ maxWidth: "70rem", margin: "0 auto", padding: "1.5rem" }}>
+      <div style={{ maxWidth: "64rem", margin: "0 auto", padding: "1.5rem" }}>
         {/* Course Tabs */}
         <div
           style={{
@@ -828,22 +918,31 @@ export default function TADashboard() {
                         )}
                       </div>
                       <button
-                        onClick={() => joinCourse(course.id)}
+                        onClick={() => !course.alreadyEnrolled && joinCourse(course.id)}
+                        disabled={course.alreadyEnrolled}
                         style={{
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                           padding: "0.5rem",
-                          background: "#3b82f6",
-                          color: "white",
+                          background: course.alreadyEnrolled ? "#d1d5db" : "#3b82f6",
+                          color: course.alreadyEnrolled ? "#9ca3af" : "white",
                           border: "none",
                           borderRadius: "0.375rem",
-                          cursor: "pointer",
+                          cursor: course.alreadyEnrolled ? "not-allowed" : "pointer",
                           transition: "background 0.15s",
                         }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = "#2563eb")}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = "#3b82f6")}
-                        title="Join this course"
+                        onMouseEnter={(e) => {
+                          if (!course.alreadyEnrolled) {
+                            e.currentTarget.style.background = "#2563eb";
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!course.alreadyEnrolled) {
+                            e.currentTarget.style.background = "#3b82f6";
+                          }
+                        }}
+                        title={course.alreadyEnrolled ? "Already enrolled as TA" : "Join this course"}
                       >
                         <Plus size={18} />
                       </button>
