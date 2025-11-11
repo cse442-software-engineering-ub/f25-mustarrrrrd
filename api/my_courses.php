@@ -15,12 +15,15 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id = $_SESSION['user_id'];
 
+// Optional filter by role_in_course (for TAs switching between student/TA views)
+$role_filter = isset($_GET['role_in_course']) ? $_GET['role_in_course'] : null;
+
 try {
     $pdo = pdo();
 
     // Get all courses the user is enrolled in along with favorite status
     // Also include active session information if there's one happening now
-    $stmt = $pdo->prepare("
+    $sql = "
         SELECT
             c.id,
             c.code,
@@ -42,8 +45,18 @@ try {
             AND CURTIME() BETWEEN ohs.start_time AND ohs.end_time
         LEFT JOIN users u ON ohs.instructor_id = u.id
         WHERE e.user_id = ?
-    ");
-    $stmt->execute([$user_id, $user_id]);
+    ";
+
+    // Add role filter if specified
+    if ($role_filter && in_array($role_filter, ['student', 'ta', 'professor'])) {
+        $sql .= " AND e.role_in_course = ?";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$user_id, $user_id, $role_filter]);
+    } else {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$user_id, $user_id]);
+    }
+
     $courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Transform the data to include activeSession object when applicable

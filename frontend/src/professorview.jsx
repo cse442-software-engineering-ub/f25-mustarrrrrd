@@ -349,10 +349,13 @@ export default function ProfessorView() {
       const data = await res.json();
 
       if (data.courses) {
-        // Filter out courses already in the professor's list
+        // Mark courses as already enrolled instead of filtering them out
         const enrolledCodes = new Set(courses.map((c) => c.code));
-        const filteredResults = data.courses.filter((c) => !enrolledCodes.has(c.code));
-        setJoinSearchResults(filteredResults);
+        const resultsWithEnrollmentStatus = data.courses.map((c) => ({
+          ...c,
+          alreadyEnrolled: enrolledCodes.has(c.code),
+        }));
+        setJoinSearchResults(resultsWithEnrollmentStatus);
       } else {
         setJoinSearchResults([]);
       }
@@ -586,7 +589,7 @@ export default function ProfessorView() {
             Instructor Dashboard
           </h1>
           <p style={{ fontSize: "0.9rem", color: "#555", margin: 0 }}>
-            {professorName} • Computer Science & Engineering
+            {professorName}
           </p>
         </div>
 
@@ -1134,26 +1137,31 @@ export default function ProfessorView() {
                         )}
                       </div>
                       <button
-                        onClick={() => joinCourse(course.id)}
+                        onClick={() => !course.alreadyEnrolled && joinCourse(course.id)}
+                        disabled={course.alreadyEnrolled}
                         style={{
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                           padding: "0.5rem",
-                          background: "#3b82f6",
-                          color: "white",
+                          background: course.alreadyEnrolled ? "#d1d5db" : "#3b82f6",
+                          color: course.alreadyEnrolled ? "#9ca3af" : "white",
                           border: "none",
                           borderRadius: "0.375rem",
-                          cursor: "pointer",
+                          cursor: course.alreadyEnrolled ? "not-allowed" : "pointer",
                           transition: "background 0.15s",
                         }}
-                        onMouseEnter={(e) =>
-                          (e.currentTarget.style.background = "#2563eb")
-                        }
-                        onMouseLeave={(e) =>
-                          (e.currentTarget.style.background = "#3b82f6")
-                        }
-                        title="Join this course"
+                        onMouseEnter={(e) => {
+                          if (!course.alreadyEnrolled) {
+                            e.currentTarget.style.background = "#2563eb";
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!course.alreadyEnrolled) {
+                            e.currentTarget.style.background = "#3b82f6";
+                          }
+                        }}
+                        title={course.alreadyEnrolled ? "Already enrolled as instructor" : "Join this course"}
                       >
                         <Plus size={18} />
                       </button>

@@ -50,10 +50,27 @@ try {
         }
 
         // Check if already enrolled
-        $stmt = $pdo->prepare("SELECT * FROM enrollments WHERE user_id = ? AND course_id = ?");
+        $stmt = $pdo->prepare("SELECT role_in_course FROM enrollments WHERE user_id = ? AND course_id = ?");
         $stmt->execute([$user_id, $course_id]);
+        $existingEnrollment = $stmt->fetch();
 
-        if ($stmt->fetch()) {
+        if ($existingEnrollment) {
+            $existingRole = $existingEnrollment['role_in_course'];
+
+            // Prevent conflicting roles: TAs can't enroll as students in courses they TA
+            // and can't TA for courses they're students in
+            if (($existingRole === 'ta' || $existingRole === 'professor') && $role === 'student') {
+                http_response_code(400);
+                echo json_encode(['error' => 'You cannot join as a student in a course where you are a TA or professor']);
+                exit;
+            }
+
+            if ($existingRole === 'student' && ($role === 'ta' || $role === 'professor')) {
+                http_response_code(400);
+                echo json_encode(['error' => 'You cannot become a TA/professor for a course where you are enrolled as a student']);
+                exit;
+            }
+
             echo json_encode(['success' => true, 'message' => 'Already enrolled']);
             exit;
         }
