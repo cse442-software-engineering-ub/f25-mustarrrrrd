@@ -1,0 +1,10 @@
+RewriteEngine On
+RewriteBase /CSE442/2025-Fall/cse-442ai/auto_oh/
+
+# If the file or directory exists, serve it
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Otherwise, redirect everything to index.html
+RewriteRule . index.html [L]

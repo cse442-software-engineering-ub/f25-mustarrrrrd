@@ -1,36 +1,55 @@
 <?php
-require __DIR__.'/db.php';
+require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/auth.php';
 
-header('Content-Type: application/json; charset=utf-8');
+header('Content-Type: application/json');
+set_cors_headers();
+
+$in = read_json();
+$email = clamp191($in['email'] ?? '');
+$password = $in['password'] ?? '';
+
+if (!$email || !$password) {
+  http_response_code(400);
+  echo json_encode(['match'=>false,'message'=>'Email and password required']);
+  exit;
+}
 
 try {
-  $data  = json_decode(file_get_contents('php://input'), true) ?? [];
-  $name  = clamp191($data['name']  ?? '');
-  $email = clamp191($data['email'] ?? '');
-
-  if ($name === '' || $email === '') {
-    http_response_code(400);
-    echo json_encode(['match' => false, 'message' => 'name and email required']);
-    exit;
-  }
-
-  
-  if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    http_response_code(400);
-    echo json_encode(['match' => false, 'message' => 'invalid email']);
-    exit;
-  }
-
-  $stmt = pdo()->prepare('SELECT id, name FROM users WHERE email = ? AND name = ? LIMIT 1');
-  $stmt->execute([$email, $name]);
-  $row = $stmt->fetch();
-
-  if ($row) {
-    echo json_encode(['match' => true, 'message' => "Welcome {$row['name']}"]);
-  } else {
-    echo json_encode(['match' => false, 'message' => 'No match']);
-  }
+  $pdo = pdo();
 } catch (Throwable $e) {
   http_response_code(500);
-  echo json_encode(['match' => false, 'message' => 'server error']);
+  echo json_encode(['match'=>false,'message'=>'DB connection error']);
+  exit;
 }
+
+$stmt = $pdo->prepare('SELECT id, name, email, password_hash, role FROM users WHERE email = ? LIMIT 1');
+$stmt->execute([$email]);
+$user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// Verify the password using password_verify()
+if (!$user || !password_verify($password, $user['password_hash'])) {
+  echo json_encode(['match'=>false,'message'=>'Invalid email or password']);
+  exit;
+}
+
+// Start/refresh PHP session
+session_start();
+session_regenerate_id(true);
+$_SESSION['user_id'] = (int)$user['id'];
+$_SESSION['email']   = $user['email'];
+$_SESSION['name']    = $user['name'];
+$_SESSION['role']    = $user['role'];
+
+// Issue persistent remember-me cookie (server hashes; DB stores hash)
+issue_persistent_login($pdo, (int)$user['id']);
+
+session_write_close();
+
+// Role is already 'professor' in aptitude DB, no mapping needed
+echo json_encode([
+  'match'   => true,
+  'message' => 'Login successful',
+  'name'    => $user['name'],
+  'role'    => $user['role'],
+]);
