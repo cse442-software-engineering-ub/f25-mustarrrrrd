@@ -26,6 +26,16 @@ export default function ProfessorView() {
   const [courseMenuOpen, setCourseMenuOpen] = useState(null); // Tracks which course menu is open
   const[showAddTA, setShowAddTA] = useState(false);
   const[newTA, setNewTA] = useState({ ta_email: '' });
+  const[showRemoveTA, setShowRemoveTA] = useState(false);
+  const[removeTASearchTerm, setRemoveTASearchTerm] = useState('');
+  const[removeTASearchResults, setRemoveTASearchResults] = useState([]);
+  const[removeTASearchLoading, setRemoveTASearchLoading] = useState(false);
+
+  const [showAddTASuccess, setShowAddTASuccess] = useState(false);
+  const [AddedTAName, setAddedTAName] = useState('');
+
+  const [showRemoveTASuccess, setShowRemoveTASuccess] = useState(false);
+  const [removedTAName, setRemovedTAName] = useState('');
 
   // NEW: who am I (email) + banner message
   const [currentUserEmail, setCurrentUserEmail] = useState("");
@@ -367,6 +377,51 @@ export default function ProfessorView() {
     }
   }
 
+  // Add this useEffect for searching TAs (place it after the joinCourse search effect):
+
+  useEffect(() => {
+    if (!removeTASearchTerm.trim() || !activeCourse) {
+      setRemoveTASearchResults([]);
+      return;
+    }
+
+    const delayDebounce = setTimeout(() => {
+      performRemoveTASearch();
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [removeTASearchTerm, activeCourse]);
+
+  async function performRemoveTASearch() {
+    if (!removeTASearchTerm.trim() || !activeCourse) return;
+
+    setRemoveTASearchLoading(true);
+    try {
+      const res = await fetch(`${API_ROOT}search_tas.php`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ 
+        query: removeTASearchTerm,
+        course_id: activeCourse 
+      }),
+    });
+
+    const data = await res.json();
+
+    if (data.tas) {
+      setRemoveTASearchResults(data.tas);
+    } else {
+      setRemoveTASearchResults([]);
+    }
+    } catch (err) {
+      console.error("Error searching TAs:", err);
+      setRemoveTASearchResults([]);
+    } finally {
+      setRemoveTASearchLoading(false);
+    }
+  }
+
   async function joinCourse(courseId) {
     try {
       const res = await fetch(`${API_ROOT}enroll.php`, {
@@ -420,6 +475,9 @@ export default function ProfessorView() {
       if(!res.ok) throw new Error('add TA failed');
       const data = await res.json().catch(()=>null);
       if(data && data.ok){
+        // Show success modal
+        setAddedTAName(newTA.ta_email);
+        setShowAddTASuccess(true);
         // Reset form
         setNewTA({ ta_email: '' });
         setShowAddTA(false);
@@ -429,6 +487,35 @@ export default function ProfessorView() {
     }catch(err){
       console.error('Failed to add TA', err);
       alert('Failed to add TA');
+    }
+  }
+
+  // Replace the old removeTAHandler function with this updated version:
+
+  async function removeTAHandler(taEmail, taName) {
+    try {
+      const res = await fetch(`${API_ROOT}remove_ta.php`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ code: activeCourse, ta_email: taEmail })
+      });
+      if (!res.ok) throw new Error('remove TA failed');
+      const data = await res.json().catch(() => null);
+      if (data && data.ok) {
+        // Show success modal
+        setRemovedTAName(taName || taEmail);
+        setShowRemoveTASuccess(true);
+        // Reset form
+        setRemoveTASearchTerm('');
+        setRemoveTASearchResults([]);
+        setShowRemoveTA(false);
+      } else {
+        alert(data?.error || 'Failed to remove TA');
+      }
+    } catch (err) {
+      console.error('Failed to remove TA', err);
+      alert('Failed to remove TA');
     }
   }
 
@@ -885,6 +972,80 @@ export default function ProfessorView() {
           >
             + Add TA
           </button>
+
+        {/* TA Added Success Modal */}
+        {showAddTASuccess && (
+          <div 
+            style={{ 
+              position: 'fixed', 
+              inset: 0, 
+              background: 'rgba(0, 0, 0, 0.5)', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              zIndex: 1000, 
+              padding: '1rem' 
+            }} 
+            onClick={() => setShowAddTASuccess(false)}
+          >
+            <div 
+              style={{ 
+                background: '#fff', 
+                borderRadius: 12, 
+                padding: '1.5rem', 
+                maxWidth: '400px', 
+                width: '100%', 
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' 
+              }} 
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1.25rem', fontWeight: 700, color: '#111827' }}>
+                TA Added Successfully
+              </h3>
+              <p style={{ margin: '0 0 1.5rem 0', color: '#6b7280', fontSize: '0.95rem' }}>
+                <strong>{AddedTAName}</strong> has been successfully added to the course.
+              </p>
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setShowAddTASuccess(false)}
+                  style={{
+                    background: '#16a34a',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 8,
+                    padding: '0.625rem 1.25rem',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: '0.95rem'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.background = '#15803d'}
+                  onMouseOut={(e) => e.currentTarget.style.background = '#16a34a'}
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Remove TA Button */}
+          <button
+            onClick={() => setShowRemoveTA(true)}
+            style={{
+              background: "#fee2e2",
+              color: "#991b1b",
+              border: "2px dashed #fca5a5",
+              borderRadius: "0.5rem",
+              padding: "0.75rem 1rem",
+              textAlign: "center",
+              cursor: "pointer",
+              fontWeight: "600",
+              fontSize: "0.9rem",
+              minWidth: "120px",
+            }}
+          >
+            - Remove TA
+          </button>
         </div>
 
         {/* Create Course Form */}
@@ -1301,6 +1462,244 @@ export default function ProfessorView() {
             >
               This will immediately enroll the TA into the course.
             </p>
+          </div>
+        )}
+
+        {/* Remove TA Form */}
+        {showRemoveTA && (
+          <div
+            style={{
+              background: "white",
+              border: "2px solid #fca5a5",
+              borderRadius: "0.5rem",
+              padding: "1rem",
+              marginBottom: "1.5rem",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            }}
+          >
+            <h3
+              style={{
+                fontSize: "1rem",
+                fontWeight: "600",
+                marginBottom: "0.75rem",
+                color: "#991b1b",
+              }}
+            >
+              Remove TA
+            </h3>
+
+            {/* Search Bar */}
+            <div style={{ position: "relative", marginBottom: "0.5rem" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  background: "white",
+                  border: "2px solid #e5e7eb",
+                  borderRadius: "0.5rem",
+                  padding: "0.75rem 1rem",
+                  gap: "0.5rem",
+                }}
+              >
+                <Search size={20} color="#6b7280" />
+                <input
+                  type="text"
+                  placeholder="Search TAs by name or email... (e.g., 'John Doe' or 'johndoe@gmail.com')"
+                  value={removeTASearchTerm}
+                  onChange={(e) => setRemoveTASearchTerm(e.target.value)}
+                  style={{
+                    flex: 1,
+                    border: "none",
+                    outline: "none",
+                    fontSize: "0.875rem",
+                    color: "#111",
+                    background: "transparent",
+                  }}
+                />
+                {removeTASearchLoading && (
+                  <div style={{ color: "#6b7280", fontSize: "0.875rem" }}>
+                    Searching...
+                  </div>
+                )}
+              </div>
+
+              {/* Search Results Dropdown */}
+              {removeTASearchResults.length > 0 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "calc(100% + 0.5rem)",
+                    left: 0,
+                    right: 0,
+                    background: "white",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "0.5rem",
+                    boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+                    maxHeight: "300px",
+                    overflowY: "auto",
+                    zIndex: 50,
+                  }}
+                >
+                  {removeTASearchResults.map((ta) => (
+                    <div
+                      key={ta.email}
+                      style={{
+                        padding: "0.75rem 1rem",
+                        borderBottom: "1px solid #f3f4f6",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "1rem",
+                        transition: "background 0.15s",
+                        cursor: "pointer",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.background = "#fef2f2")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.background = "white")
+                      }
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div
+                          style={{
+                            fontWeight: 600,
+                            fontSize: "0.875rem",
+                            color: "#111",
+                          }}
+                        >
+                          {ta.name || ta.email}
+                        </div>
+                        {ta.name && (
+                          <div
+                            style={{
+                              fontSize: "0.75rem",
+                              color: "#6b7280",
+                              marginTop: "0.125rem",
+                            }}
+                          >
+                            {ta.email}
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => removeTAHandler(ta.email)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          padding: "0.5rem",
+                          background: "#dc2626",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "0.375rem",
+                          cursor: "pointer",
+                          transition: "background 0.15s",
+                          fontSize: "1.2rem",
+                          fontWeight: "600",
+                          minWidth: "36px",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = "#b91c1c";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "#dc2626";
+                        }}
+                        title="Remove this TA"
+                      >
+                        -
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem" }}>
+              <button
+                onClick={() => {
+                  setShowRemoveTA(false);
+                  setRemoveTASearchTerm("");
+                  setRemoveTASearchResults([]);
+                }}
+                style={{
+                  background: "#fff",
+                  color: "#666",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "0.375rem",
+                  padding: "0.5rem 1rem",
+                  cursor: "pointer",
+                  fontWeight: "600",
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+            <p
+              style={{
+                fontSize: "0.75rem",
+                color: "#666",
+                marginTop: "0.5rem",
+                marginBottom: 0,
+              }}
+            >
+              Search for TAs enrolled in this course to remove them.
+            </p>
+          </div>
+        )}
+
+        {/* TA Removed Success Modal */}
+        {showRemoveTASuccess && (
+          <div 
+            style={{ 
+              position: 'fixed', 
+              inset: 0, 
+              background: 'rgba(0, 0, 0, 0.5)', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              zIndex: 1000, 
+              padding: '1rem' 
+            }} 
+            onClick={() => setShowRemoveTASuccess(false)}
+          >
+            <div 
+              style={{ 
+                background: '#fff', 
+                borderRadius: 12, 
+                padding: '1.5rem', 
+                maxWidth: '400px', 
+                width: '100%', 
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' 
+              }} 
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1.25rem', fontWeight: 700, color: '#111827' }}>
+                TA Removed Successfully
+              </h3>
+              <p style={{ margin: '0 0 1.5rem 0', color: '#6b7280', fontSize: '0.95rem' }}>
+                <strong>{removedTAName}</strong> has been successfully removed from the course.
+              </p>
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setShowRemoveTASuccess(false)}
+                  style={{
+                    background: '#16a34a',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 8,
+                    padding: '0.625rem 1.25rem',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: '0.95rem'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.background = '#15803d'}
+                  onMouseOut={(e) => e.currentTarget.style.background = '#16a34a'}
+                >
+                  OK
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
