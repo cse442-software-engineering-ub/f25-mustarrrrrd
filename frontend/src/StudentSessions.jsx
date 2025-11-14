@@ -163,57 +163,57 @@ export default function StudentSessions(){
 
   // Use light dashboard background and wider layout similar to QueueDetails
   const pageStyle = {
-    position: 'fixed', inset: 0, overflow: 'auto', background: '#f3f4f6', margin: 0, padding: 0, width: '100%', height: '100%', boxSizing: 'border-box'
+    position: 'fixed', inset: 0, overflow: 'auto', background: 'var(--bg-secondary)', margin: 0, padding: 0, width: '100%', height: '100%', boxSizing: 'border-box'
   };
-  const headerStyle = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid #e5e7eb', background: '#fff' };
-  const backBtn = { background: '#fff', color: '#111827', border: '1px solid #e5e7eb', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 600 };
+  const headerStyle = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--border-color)', background: 'var(--card-bg)' };
+  const backBtn = { background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 600 };
   const containerStyle = { maxWidth: '70rem', margin: '0 auto', padding: '1.5rem' };
   const listStyle = { display: 'grid', gap: 12 };
-  const cardStyle = { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
+  const cardStyle = { background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: 12, padding: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' };
 
   return (
     <div style={pageStyle}>
       <div style={headerStyle}>
-        <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, color: '#111827' }}>Sessions • {courseId}</h1>
-        <button onClick={() => navigate('/dashboard')} style={backBtn} onMouseOver={(e)=>e.currentTarget.style.background='#f9fafb'} onMouseOut={(e)=>e.currentTarget.style.background='#fff'}>Back to Dashboard</button>
+        <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, color: 'var(--text-primary)' }}>Sessions • {courseId}</h1>
+        <button onClick={() => navigate('/dashboard')} style={backBtn} onMouseOver={(e)=>e.currentTarget.style.background='var(--bg-tertiary)'} onMouseOut={(e)=>e.currentTarget.style.background='var(--card-bg)'}>Back to Dashboard</button>
       </div>
 
       <div style={containerStyle}>
-        {loading && <div style={{ color: '#6b7280' }}>Loading sessions…</div>}
-        {!loading && sessions.length === 0 && <div style={{ color: '#6b7280' }}>No sessions scheduled for this course.</div>}
+        {loading && <div style={{ color: 'var(--text-secondary)' }}>Loading sessions…</div>}
+        {!loading && sessions.length === 0 && <div style={{ color: 'var(--text-secondary)' }}>No sessions scheduled for this course.</div>}
         <div style={listStyle}>
           {sessions.map(s => (
             <div key={s.id} style={cardStyle} onClick={() => navigate(`/session/${s.id}`)}>
               <div>
-                <div style={{ fontWeight: 700 }}>{s.day_of_week} • {s.start_time}–{s.end_time}</div>
-                <div style={{ color: '#6b7280', marginTop: 4 }}>{s.location || '(no location)'}</div>
-                <div style={{ color: '#6b7280', marginTop: 6 }}>Instructor: {s.instructor_name || s.instructor_email || '(TBA)'}</div>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{s.day_of_week} • {s.start_time}–{s.end_time}</div>
+                <div style={{ color: 'var(--text-secondary)', marginTop: 4 }}>{s.location || '(no location)'}</div>
+                <div style={{ color: 'var(--text-secondary)', marginTop: 6 }}>Instructor: {s.instructor_name || s.instructor_email || '(TBA)'}</div>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 { inQueueMap[s.id] ? (
-                  <button onClick={(e)=>{ e.stopPropagation(); leaveSession(s.id); }} style={{ background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', padding: '8px 12px', borderRadius: 10, fontWeight: 600 }} onMouseOver={(e)=>e.currentTarget.style.background='#fecaca'} onMouseOut={(e)=>e.currentTarget.style.background='#fee2e2'}>Leave Queue</button>
+                  <button onClick={(e)=>{ e.stopPropagation(); leaveSession(s.id); }} style={{ background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', padding: '8px 12px', borderRadius: 10, fontWeight: 600, cursor: 'pointer' }} onMouseOver={(e)=>e.currentTarget.style.background='#fecaca'} onMouseOut={(e)=>e.currentTarget.style.background='#fee2e2'}>Leave Queue</button>
                 ) : (
                   (() => {
                     // Check if another session is already reserved
                     const anotherReserved = reservedSessionId && reservedSessionId !== s.id;
                     if (anotherReserved) {
                       return (
-                        <button disabled title='You already have a reservation for another session in this course. Please cancel it first.' style={{ background: '#f3f4f6', color: '#9ca3af', border: '1px solid #e5e7eb', padding: '8px 12px', borderRadius: 10, fontWeight: 600, cursor: 'not-allowed' }}>Join</button>
+                        <button disabled title='You already have a reservation for another session in this course. Please cancel it first.' style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', padding: '8px 12px', borderRadius: 10, fontWeight: 600, cursor: 'not-allowed' }}>Join</button>
                       );
                     }
 
                     const allowed = joinAllowedWithin24h(s);
                     if (!allowed) {
                       return (
-                        <button disabled title='Joining is allowed within 24 hours of the session start' style={{ background: '#f3f4f6', color: '#9ca3af', border: '1px solid #e5e7eb', padding: '8px 12px', borderRadius: 10, fontWeight: 600, cursor: 'not-allowed' }}>Join</button>
+                        <button disabled title='Joining is allowed within 24 hours of the session start' style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)', padding: '8px 12px', borderRadius: 10, fontWeight: 600, cursor: 'not-allowed' }}>Join</button>
                       );
                     }
                     return (
-                      <button onClick={(e)=>{ e.stopPropagation(); joinSession(s.id, true); }} style={{ background: '#111827', color: '#fff', border: '1px solid #111827', padding: '8px 12px', borderRadius: 10, fontWeight: 600 }} onMouseOver={(e)=>e.currentTarget.style.background='#1f2937'} onMouseOut={(e)=>e.currentTarget.style.background='#111827'}>Join</button>
+                      <button onClick={(e)=>{ e.stopPropagation(); joinSession(s.id, true); }} style={{ background: 'var(--button-bg)', color: 'var(--button-text)', border: '1px solid var(--button-bg)', padding: '8px 12px', borderRadius: 10, fontWeight: 600, cursor: 'pointer' }} onMouseOver={(e)=>e.currentTarget.style.background='var(--button-hover)'} onMouseOut={(e)=>e.currentTarget.style.background='var(--button-bg)'}>Join</button>
                     );
                   })()
                 )}
-                <button onClick={(e)=>{ e.stopPropagation(); navigate(`/session/${s.id}`); }} style={{ background: '#fff', color: '#111827', border: '1px solid #e5e7eb', padding: '8px 12px', borderRadius: 10, fontWeight: 600 }}>View</button>
+                <button onClick={(e)=>{ e.stopPropagation(); navigate(`/session/${s.id}`); }} style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '8px 12px', borderRadius: 10, fontWeight: 600, cursor: 'pointer' }} onMouseOver={(e)=>e.currentTarget.style.background='var(--bg-tertiary)'} onMouseOut={(e)=>e.currentTarget.style.background='var(--card-bg)'}>View</button>
               </div>
             </div>
           ))}

@@ -72,15 +72,15 @@ export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFa
   return (
     <div
       style={{
-        background: "white",
+        background: "var(--card-bg)",
         border: course.activeSession
           ? "2px solid #10b981"
-          : "1px solid #e5e7eb",
+          : "1px solid var(--border-color)",
         borderRadius: "0.5rem",
         padding: "1rem",
         boxShadow: course.activeSession
           ? "0 4px 12px rgba(16, 185, 129, 0.15)"
-          : "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+          : "0 1px 2px var(--card-shadow)",
         position: "relative",
         display: "flex",
         flexDirection: "column",
@@ -161,7 +161,7 @@ export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFa
           <h3
             style={{
               fontWeight: 600,
-              color: "#111",
+              color: "var(--text-primary)",
               margin: "0 0 0.25rem 0",
               fontSize: "1rem",
             }}
@@ -212,7 +212,7 @@ export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFa
           style={{
             padding: "0.5rem",
             background: "transparent",
-            border: "1px solid #e5e7eb",
+            border: "1px solid var(--border-color)",
             borderRadius: "0.5rem",
             cursor: "pointer",
             display: "flex",
@@ -221,17 +221,17 @@ export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFa
             transition: "all 0.15s",
           }}
           onMouseOver={(e) => {
-            e.currentTarget.style.background = "#f9fafb";
-            e.currentTarget.style.borderColor = isFavorited ? "#eab308" : "#9ca3af";
+            e.currentTarget.style.background = "var(--bg-tertiary)";
+            e.currentTarget.style.borderColor = isFavorited ? "#eab308" : "var(--text-secondary)";
           }}
           onMouseOut={(e) => {
             e.currentTarget.style.background = "transparent";
-            e.currentTarget.style.borderColor = "#e5e7eb";
+            e.currentTarget.style.borderColor = "var(--border-color)";
           }}
         >
           <Star
             size={18}
-            color={isFavorited ? "#eab308" : "#9ca3af"}
+            color={isFavorited ? "#eab308" : "var(--text-secondary)"}
             fill={isFavorited ? "#eab308" : "none"}
           />
         </button>
@@ -240,8 +240,8 @@ export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFa
         <button
           style={{
             padding: "0.5rem 1rem",
-            background: "#111",
-            color: "white",
+            background: "var(--button-bg)",
+            color: "var(--button-text)",
             border: "none",
             borderRadius: "0.5rem",
             fontSize: "0.875rem",
@@ -249,10 +249,10 @@ export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFa
             fontWeight: 600,
           }}
           onMouseOver={(e) => {
-            e.currentTarget.style.background = "#1f2937";
+            e.currentTarget.style.background = "var(--button-hover)";
           }}
           onMouseOut={(e) => {
-            e.currentTarget.style.background = "#111";
+            e.currentTarget.style.background = "var(--button-bg)";
           }}
           onClick={handlePrimary}
         >
@@ -279,12 +279,12 @@ export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFa
         >
           <div
             style={{
-              background: "white",
+              background: "var(--card-bg)",
               borderRadius: "0.75rem",
               padding: "1.5rem",
               maxWidth: "400px",
               width: "90%",
-              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+              boxShadow: "0 20px 25px -5px var(--card-shadow)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -292,7 +292,7 @@ export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFa
               style={{
                 fontSize: "1.125rem",
                 fontWeight: 600,
-                color: "#111",
+                color: "var(--text-primary)",
                 margin: "0 0 0.5rem 0",
               }}
             >
@@ -301,7 +301,7 @@ export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFa
             <p
               style={{
                 fontSize: "0.875rem",
-                color: "#6b7280",
+                color: "var(--text-secondary)",
                 margin: "0 0 1.5rem 0",
                 lineHeight: "1.5",
               }}
@@ -319,19 +319,19 @@ export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFa
                 onClick={cancelUnenroll}
                 style={{
                   padding: "0.5rem 1rem",
-                  background: "white",
-                  color: "#374151",
-                  border: "1px solid #d1d5db",
+                  background: "var(--card-bg)",
+                  color: "var(--text-primary)",
+                  border: "1px solid var(--border-color)",
                   borderRadius: "0.5rem",
                   fontSize: "0.875rem",
                   fontWeight: 600,
                   cursor: "pointer",
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.background = "#f9fafb";
+                  e.currentTarget.style.background = "var(--bg-tertiary)";
                 }}
                 onMouseOut={(e) => {
-                  e.currentTarget.style.background = "white";
+                  e.currentTarget.style.background = "var(--card-bg)";
                 }}
               >
                 Cancel

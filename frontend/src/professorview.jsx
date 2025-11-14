@@ -639,7 +639,7 @@ export default function ProfessorView() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#f9fafb",
+        background: "var(--bg-secondary)",
         margin: 0,
         padding: 0,
         position: "fixed",
@@ -653,8 +653,8 @@ export default function ProfessorView() {
       {/* Header */}
       <div
         style={{
-          background: "white",
-          borderBottom: "1px solid #e5e7eb",
+          background: "var(--card-bg)",
+          borderBottom: "1px solid var(--border-color)",
           padding: "0.75rem 1rem",
           display: "flex",
           alignItems: "center",

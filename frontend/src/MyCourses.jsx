@@ -197,16 +197,16 @@ export default function MyCourses() {
           padding: 0;
           height: 100%;
           width: 100%;
-          background: #000000;
+          background: var(--bg-primary);
         }
 
         .mc-root {
-          --bg: #000000;
-          --panel: #111111;
-          --panel-2: #1a1a1a;
-          --muted: #9b9b9b;
-          --divider: #222;
-          color: #fff;
+          --bg: var(--bg-primary);
+          --panel: var(--bg-secondary);
+          --panel-2: var(--bg-tertiary);
+          --muted: var(--text-secondary);
+          --divider: var(--border-color);
+          color: var(--text-primary);
           min-height: 100vh;
           width: 100%;
           font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
@@ -246,8 +246,8 @@ export default function MyCourses() {
 
         .mc-back {
           background: var(--panel);
-          color: #fff;
-          border: 1px solid #2a2a2a;
+          color: var(--text-primary);
+          border: 1px solid var(--border-color);
           padding: 8px 14px;
           border-radius: 8px;
           cursor: pointer;
@@ -287,8 +287,8 @@ export default function MyCourses() {
           font-size: 14px;
           transition: background 120ms, color 120ms, transform 120ms;
         }
-        .mc-tab:hover { color: #fff; transform: translateY(-1px); }
-        .mc-tab.active { background: #333; color: #fff; font-weight: 600; }
+        .mc-tab:hover { color: var(--text-primary); transform: translateY(-1px); }
+        .mc-tab.active { background: var(--bg-tertiary); color: var(--text-primary); font-weight: 600; }
 
         .search-bar-wrap {
           position: fixed;
@@ -306,7 +306,7 @@ export default function MyCourses() {
           display: flex;
           align-items: center;
           background: var(--panel);
-          border: 1px solid #222;
+          border: 1px solid var(--border-color);
           border-radius: 12px;
           width: 80%;
           max-width: 700px;
@@ -319,14 +319,14 @@ export default function MyCourses() {
           flex: 1;
           background: transparent;
           border: none;
-          color: #fff;
+          color: var(--text-primary);
           font-size: 15px;
           outline: none;
           margin: 0 10px;
         }
 
         .search-bar svg {
-          color: #9b9b9b;
+          color: var(--muted);
           flex-shrink: 0;
         }
 
@@ -357,11 +357,11 @@ export default function MyCourses() {
 
         .filter-item:hover {
           background: var(--panel-2);
-          color: #fff;
+          color: var(--text-primary);
         }
 
         .filter-selected {
-          color: #fff;
+          color: var(--text-primary);
           font-weight: 600;
         }
 
@@ -386,7 +386,7 @@ export default function MyCourses() {
         }
 
         .course-card:hover {
-          background: #1a1a1a;
+          background: var(--bg-tertiary);
         }
 
         .course-header {
@@ -429,7 +429,7 @@ export default function MyCourses() {
         .star-btn, .join-btn {
           padding: 6px;
           background: transparent;
-          border: 1px solid #333;
+          border: 1px solid var(--border-color);
           border-radius: 6px;
           cursor: pointer;
           display: flex;
@@ -439,19 +439,19 @@ export default function MyCourses() {
         }
 
         .star-btn:hover {
-          background: #222;
+          background: var(--bg-tertiary);
         }
 
         .join-btn {
           padding: 6px 12px;
-          background: #fff;
-          color: #000;
+          background: var(--button-bg);
+          color: var(--button-text);
           font-size: 13px;
           font-weight: 500;
         }
 
         .join-btn:hover {
-          background: #e5e5e5;
+          background: var(--button-hover);
         }
 
         .unenroll-btn {
@@ -592,7 +592,7 @@ export default function MyCourses() {
                         <h3 className="course-title">
                           {course.code}
                         </h3>
-                        <p style={{ color: '#ccc', fontSize: '14px', margin: '0 0 8px 0' }}>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: '0 0 8px 0' }}>
                           {course.title}
                         </p>
                         <div className="course-meta">
@@ -610,7 +610,7 @@ export default function MyCourses() {
                         >
                           <Star
                             size={18}
-                            color={course.is_favorited ? "#eab308" : "#666"}
+                            color={course.is_favorited ? "#eab308" : "var(--text-secondary)"}
                             fill={course.is_favorited ? "#eab308" : "none"}
                           />
                         </button>
@@ -627,7 +627,7 @@ export default function MyCourses() {
                   </div>
                 ))
               ) : (
-                !loading && <p style={{ color: "#9a9a9a" }}>No courses found. Join some courses to see them here!</p>
+                !loading && <p style={{ color: "var(--text-secondary)" }}>No courses found. Join some courses to see them here!</p>
               )}
             </div>
           </>
@@ -645,7 +645,7 @@ export default function MyCourses() {
                         <h3 className="course-title">
                           {course.code}
                         </h3>
-                        <p style={{ color: '#ccc', fontSize: '14px', margin: '0 0 8px 0' }}>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: '0 0 8px 0' }}>
                           {course.title}
                         </p>
                         <div className="course-meta">
@@ -683,7 +683,7 @@ export default function MyCourses() {
               ) : (
                 !loading &&
                 hasSearched && (
-                  <p style={{ color: "#9a9a9a" }}>No results found.</p>
+                  <p style={{ color: "var(--text-secondary)" }}>No results found.</p>
                 )
               )}
             </div>

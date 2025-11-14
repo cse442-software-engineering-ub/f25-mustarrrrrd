@@ -4,16 +4,15 @@ import { Sun, Moon } from "lucide-react";
 export default function ThemeToggle() {
   const [theme, setTheme] = useState("light");
 
-  // When component mounts, read from localStorage or system preference
+  // When component mounts, read from localStorage or default to light mode
   useEffect(() => {
     const saved = localStorage.getItem("theme");
     if (saved) {
       setTheme(saved);
       applyTheme(saved);
     } else {
-      // Optionally, detect system preference
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      const defaultTheme = prefersDark ? "dark" : "light";
+      // Always default to light mode
+      const defaultTheme = "light";
       setTheme(defaultTheme);
       applyTheme(defaultTheme);
     }
@@ -39,20 +38,31 @@ export default function ThemeToggle() {
     <button
       onClick={toggleTheme}
       style={{
-        display: "none", // Hidden but functionality preserved
         position: "fixed",
-        top: "10px",
-        right: "10px",
+        top: "0.75rem",
+        right: "3.5rem",
         padding: "8px",
-        borderRadius: "6px",
-        border: "1px solid gray",
-        backgroundColor: "transparent",
+        borderRadius: "8px",
+        border: "1px solid var(--border-color)",
+        backgroundColor: "var(--card-bg)",
+        color: "var(--text-primary)",
         cursor: "pointer",
-        zIndex: 1000,
+        zIndex: 998,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        boxShadow: "0 2px 8px var(--card-shadow)",
+        transition: "all 0.3s ease",
       }}
       aria-label="Toggle theme"
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "scale(1.05)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "scale(1)";
+      }}
     >
-      {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+      {theme === "dark" ? <Sun size={20} color="var(--text-primary)" /> : <Moon size={20} color="var(--text-primary)" />}
     </button>
   );
 }
