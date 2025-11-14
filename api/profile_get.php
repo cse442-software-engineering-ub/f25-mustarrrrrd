@@ -11,7 +11,7 @@ set_cors_headers();
 $u = current_user();
 if (!$u) {
   http_response_code(401);
-  echo json_encode(['ok'=>false,'message'=>'Not signed in']);
+  echo json_encode(['ok' => false, 'message' => 'Not signed in']);
   exit;
 }
 
@@ -27,6 +27,7 @@ echo json_encode([
     'disabilities' => $u['disabilities'],
     'title' => $u['title'],
     'title_display_order' => $u['title_display_order'],
-    'role' => $u['role'], // already 'professor' in DB
+    'role' => $u['role'], 
+    'avatar_seed' => $u['avatar_seed'],
   ],
 ]);

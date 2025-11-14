@@ -5,6 +5,10 @@ import { Link } from "react-router-dom";
 const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
 const API_ROOT = new URL("../api/", ABS_BASE).pathname;
 
+// DiceBear URL helper — adventurer-neutral + cache buster
+const diceUrl = seed =>
+  `https://api.dicebear.com/7.x/adventurer-neutral/png?seed=${encodeURIComponent(seed)}&v=${Date.now()}`;
+
 const YEARS = ["Freshman","Sophomore","Junior","Senior","Masters Student","PhD Student","Faculty"];
 const PRONOUNS = ["he/him","she/her","they/them","he/they","she/they","ze/zir","prefer not to say"];
 
@@ -30,12 +34,21 @@ export default function ProfilePage() {
         const res = await fetch(`${API_ROOT}profile_get.php`, { credentials: "include" });
         if (!res.ok) { setProfile(null); return; }
         const data = await res.json();
-        if (data?.ok) { setProfile(data.profile); setDraft(data.profile); }
+        if (data?.ok) { 
+          setProfile(data.profile); 
+          setDraft(data.profile);
+        }
       } finally { setLoading(false); }
     })();
   }, []);
 
-  // Display name — PreferredName + LastName
+  // Randomize avatar — PREVIEW ONLY, no DB calls
+  function regenerateAvatar() {
+    const newSeed = crypto.randomUUID().replace(/-/g, "");
+    setDraft(d => ({ ...d, avatar_seed: newSeed }));
+  }
+
+  // Display name
   const displayName = useMemo(() => {
     if (!profile) return "";
     const nameParts = (profile.name || "").trim().split(/\s+/);
@@ -49,30 +62,34 @@ export default function ProfilePage() {
   // Dirty check
   const isDirty = useMemo(() => {
     if (!profile || !draft) return false;
-    const keys = ["name","preferred_name","pronouns","academic_year","major"];
+    const keys = ["name","preferred_name","pronouns","academic_year","major","avatar_seed"];
     return keys.some(k => (draft[k] || "") !== (profile[k] || ""));
   }, [profile, draft]);
 
   async function save() {
     setMsg("");
     try {
-      const { name, preferred_name, pronouns, academic_year, major } = draft;
       const res = await fetch(`${API_ROOT}profile_update.php`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, preferred_name, pronouns, academic_year, major }),
+        body: JSON.stringify(draft),
       });
+
       const data = await res.json();
+
       if (data?.ok) {
-        setProfile(draft);
+        setProfile(data.profile);
+        setDraft(data.profile);
         setEditing(false);
         setMsg("Saved.");
         setTimeout(() => setMsg(""), 2000);
       } else {
         setMsg(data?.message || "Save failed.");
       }
-    } catch { setMsg("Server error."); }
+    } catch {
+      setMsg("Server error.");
+    }
   }
 
   async function signOut() {
@@ -191,6 +208,7 @@ export default function ProfilePage() {
       {/* Fixed header */}
       <div style={topBar}>
         <div style={{ ...container, display:"flex", alignItems:"center", justifyContent:"space-between", gap:16 }}>
+          
           <div style={{ display:"flex", alignItems:"center", gap:14 }}>
             <Link
               to="/dashboard"
@@ -218,7 +236,7 @@ export default function ProfilePage() {
             ) : (
               <>
                 <button
-                  onClick={()=>{ setDraft(profile); setEditing(false); setMsg(""); }}
+                  onClick={() => { setDraft(profile); setEditing(false); setMsg(""); }}
                   style={{ background:"transparent", border:"1px solid #333", color:"#fff", padding:"10px 16px", borderRadius:12, fontSize:15, width: isMobile ? "100%" : "auto" }}
                 >
                   Cancel
@@ -238,38 +256,85 @@ export default function ProfilePage() {
               </>
             )}
           </div>
+
         </div>
       </div>
 
-      {/* Content */}
+      {/* Main content */}
       <div style={contentWrap}>
         <div style={grid}>
-          {/* LEFT: SUMMARY */}
+          
+          {/* LEFT SIDEBAR */}
           <aside style={{ ...card, padding:isMobile ? 20 : 24 }}>
-            <div style={{ display:"flex", flexDirection:isMobile ? "column" : "row", gap:18, alignItems:isMobile ? "center" : "center", marginBottom:16 }}>
-              <div style={{
-                width:120, height:120, borderRadius:"50%", background:"#222",
-                overflow:"hidden", display:"grid", placeItems:"center", fontWeight:800, fontSize:34,
-              }}>
-                {(profile.preferred_name || profile.name || "?")
-                  .split(" ").slice(0,2).map(p=>p[0]?.toUpperCase()).join("") || "?"}
+            <div style={{
+              display:"flex",
+              flexDirection:isMobile ? "column" : "row",
+              gap:18,
+              alignItems:"center",
+              marginBottom:16
+            }}>
+
+              {/* Avatar + Randomize Button */}
+              <div style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:10 }}>
+                <img
+                  src={diceUrl(draft?.avatar_seed || profile.avatar_seed || "default")}
+                  alt="Avatar"
+                  style={{
+                    width:120,
+                    height:120,
+                    borderRadius:"50%",
+                    objectFit:"cover",
+                    border:"2px solid #333",
+                    background:"#111",
+                  }}
+                />
+
+                {editing && (
+                  <button
+                    onClick={regenerateAvatar}
+                    style={{
+                      background:"#111",
+                      border:"1px solid #333",
+                      color:"#fff",
+                      padding:"6px 10px",
+                      borderRadius:8,
+                      cursor:"pointer",
+                      display:"flex",
+                      alignItems:"center",
+                      gap:6,
+                      fontSize:14
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                      <path d="M13.5 0h-11A1.5 1.5 0 0 0 1 1.5v11A1.5 1.5 0 0 0 2.5 14h11a1.5 1.5 0 0 0 1.5-1.5v-11A1.5 1.5 0 0 0 13.5 0zM4 5a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm4 4a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm4 4a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
+                    </svg>
+                    Randomize
+                  </button>
+                )}
               </div>
-              <div style={{ textAlign:isMobile?"center":"left" }}>
+
+              <div style={{ textAlign:isMobile ? "center" : "left" }}>
                 <div style={{ fontSize:28, lineHeight:1.2 }}>{displayName}</div>
               </div>
+
             </div>
 
             <div style={{ display:"grid", gap:10, fontSize:16, textAlign:isMobile?"center":"left" }}>
-              {profile.pronouns && <div style={{ color:"#bbb" }}>Pronouns: <span style={{ color:"#fff" }}>{profile.pronouns}</span></div>}
+              {profile.pronouns && (
+                <div style={{ color:"#bbb" }}>
+                  Pronouns: <span style={{ color:"#fff" }}>{profile.pronouns}</span>
+                </div>
+              )}
               <div style={{ color:"#bbb" }}>Year: <span style={{ color:"#fff" }}>{profile.academic_year || "—"}</span></div>
               <div style={{ color:"#bbb" }}>Major: <span style={{ color:"#fff" }}>{profile.major || "—"}</span></div>
               <div style={{ color:"#bbb" }}>Email: <span style={{ color:"#8ab4ff" }}>{profile.email}</span></div>
             </div>
           </aside>
 
-          {/* RIGHT: MAIN */}
+          {/* RIGHT SIDE */}
           <main style={{ display:"grid", gap:28, width:"100%" }}>
-            {/* IDENTITY */}
+
+            {/* IDENTITY SECTION */}
             <section style={card}>
               <div style={sectionHeader}><h3 style={{ margin:0, fontSize:20 }}>Identity</h3></div>
               {!editing ? (
@@ -282,21 +347,30 @@ export default function ProfilePage() {
                 <div style={{ ...sectionBody, display:"grid", gap:20 }}>
                   <div style={twoCol}>
                     {field("First Name", firstName, v => setDraft(d => ({...d, name: `${v} ${lastName}`.trim()})))}
-                    {field("Last Name",  lastName,  v => setDraft(d => ({...d, name: `${firstName} ${v}`.trim()})))}
-                    {field("Preferred Name", draft?.preferred_name || "", v => setDraft(d => ({...d, preferred_name: v})))}
-                    <label style={{ display:"grid", gap:8, minWidth:0 }}>
+                    {field("Last Name", lastName,  v => setDraft(d => ({...d, name: `${firstName} ${v}`.trim()})))}
+
+                    {field(
+                      "Preferred Name",
+                      draft?.preferred_name || "",
+                      v => setDraft(d => ({ ...d, preferred_name: v }))
+                    )}
+
+                    <label style={{ display:"grid", gap:8 }}>
                       <span style={{ fontSize:12, color:"#aaa", textTransform:"uppercase", letterSpacing:0.4 }}>Email</span>
                       <input value={profile.email} disabled style={{ ...inputBase, background:"#151515", color:"#aaa" }}/>
                     </label>
-                    <label style={{ display:"grid", gap:8, minWidth:0 }}>
+
+                    <label style={{ display:"grid", gap:8 }}>
                       <span style={{ fontSize:12, color:"#aaa", textTransform:"uppercase", letterSpacing:0.4 }}>Pronouns</span>
                       <select
                         value={draft?.pronouns || ""}
-                        onChange={e=> setDraft(d => ({...d, pronouns: e.target.value}))}
+                        onChange={e => setDraft(d => ({ ...d, pronouns: e.target.value }))}
                         style={selectBase}
                       >
                         <option value="">Select</option>
-                        {PRONOUNS.map(p => <option key={p} value={p}>{p}</option>)}
+                        {PRONOUNS.map(p => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
                       </select>
                     </label>
                   </div>
@@ -304,7 +378,7 @@ export default function ProfilePage() {
               )}
             </section>
 
-            {/* ACADEMIC */}
+            {/* ACADEMIC SECTION */}
             <section style={card}>
               <div style={sectionHeader}><h3 style={{ margin:0, fontSize:20 }}>Academic Information</h3></div>
               {!editing ? (
@@ -314,18 +388,21 @@ export default function ProfilePage() {
                 </div>
               ) : (
                 <div style={{ ...sectionBody, ...twoCol }}>
-                  <label style={{ display:"grid", gap:8, minWidth:0 }}>
+                  <label style={{ display:"grid", gap:8 }}>
                     <span style={{ fontSize:12, color:"#aaa", textTransform:"uppercase", letterSpacing:0.4 }}>Academic Year</span>
                     <select
                       value={draft?.academic_year || ""}
-                      onChange={e=> setDraft(d => ({...d, academic_year: e.target.value}))}
+                      onChange={e => setDraft(d => ({ ...d, academic_year: e.target.value }))}
                       style={selectBase}
                     >
                       <option value="">(select)</option>
-                      {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                      {YEARS.map(y => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
                     </select>
                   </label>
-                  {field("Major", draft?.major || "", v => setDraft(d => ({...d, major: v})))}
+
+                  {field("Major", draft?.major || "", v => setDraft(d => ({ ...d, major: v })))}
                 </div>
               )}
             </section>
@@ -334,13 +411,22 @@ export default function ProfilePage() {
             <div style={{ display:"flex", justifyContent:isMobile?"center":"flex-end", width:"100%" }}>
               <button
                 onClick={signOut}
-                style={{ background:"#b3261e", border:0, color:"#fff", padding:"12px 16px", borderRadius:10, fontSize:16, width:isMobile?"100%":"auto" }}
+                style={{
+                  background:"#b3261e",
+                  border:0,
+                  color:"#fff",
+                  padding:"12px 16px",
+                  borderRadius:10,
+                  fontSize:16,
+                  width:isMobile ? "100%" : "auto"
+                }}
               >
                 Sign Out
               </button>
             </div>
 
             {msg && <div style={{ color:"#9ad", fontSize:14 }}>{msg}</div>}
+
           </main>
         </div>
       </div>
