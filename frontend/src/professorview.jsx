@@ -680,64 +680,87 @@ export default function ProfessorView() {
           </p>
         </div>
 
-        {/* Hamburger Menu */}
-        <div style={{ position: "relative" }}>
-          <button
-            ref={btnRef}
-            onClick={() => setMenuOpen((v) => !v)}
-            aria-haspopup="menu"
-            aria-expanded={menuOpen}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 40,
-              height: 40,
-              borderRadius: 10,
-              border: "1px solid #e5e7eb",
-              background: "#fff",
-              cursor: "pointer",
-            }}
-            title="Menu"
-          >
-            <Menu size={20} />
-          </button>
+{/* Hamburger Menu */}
+<div style={{ position: "relative" }}>
+  <button
+    ref={btnRef}
+    onClick={() => setMenuOpen((v) => !v)}
+    aria-haspopup="menu"
+    aria-expanded={menuOpen}
+    style={{
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      width: 40,
+      height: 40,
+      borderRadius: 10,
+      border: "1px solid #e5e7eb",
+      background: "#fff",
+      cursor: "pointer",
+    }}
+    title="Menu"
+  >
+    <Menu size={20} />
+  </button>
 
-          {menuOpen && (
-            <div
-              ref={menuRef}
-              role="menu"
-              style={{
-                position: "absolute",
-                right: 0,
-                marginTop: 8,
-                width: 160,
-                background: "#fff",
-                border: "1px solid #e5e7eb",
-                borderRadius: 10,
-                boxShadow: "0 8px 20px rgba(0,0,0,0.08)",
-                overflow: "hidden",
-              }}
-            >
-              <button
-                onClick={handleSignOut}
-                style={{
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "10px 12px",
-                  background: "transparent",
-                  border: 0,
-                  cursor: "pointer",
-                  fontSize: 14,
-                  color: "#b3261e",
-                }}
-              >
-                Sign out
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+  {menuOpen && (
+    <div
+      ref={menuRef}
+      role="menu"
+      style={{
+        position: "absolute",
+        right: 0,
+        marginTop: 8,
+        width: 180,
+        background: "#fff",
+        border: "1px solid #e5e7eb",
+        borderRadius: 10,
+        boxShadow: "0 8px 20px rgba(0,0,0,0.08)",
+        overflow: "hidden",
+      }}
+    >
+      {/* NEW: Profile */}
+      <button
+        onClick={() => {
+          setMenuOpen(false);
+          navigate("/professor/profile");
+        }}
+        style={{
+          width: "100%",
+          textAlign: "left",
+          padding: "10px 12px",
+          background: "transparent",
+          border: 0,
+          cursor: "pointer",
+          fontSize: 14,
+          color: "#111",
+        }}
+      >
+        Profile
+      </button>
+
+      <div style={{ height: 1, background: "#e5e7eb" }} />
+
+      {/* Existing: Sign out */}
+      <button
+        onClick={handleSignOut}
+        style={{
+          width: "100%",
+          textAlign: "left",
+          padding: "10px 12px",
+          background: "transparent",
+          border: 0,
+          cursor: "pointer",
+          fontSize: 14,
+          color: "#b3261e",
+        }}
+      >
+        Sign out
+      </button>
+    </div>
+  )}
+</div>
+</div>
 
       {/* NEW: top-of-screen banner for notice */}
       {noticeMsg && (

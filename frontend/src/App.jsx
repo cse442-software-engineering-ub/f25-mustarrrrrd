@@ -12,6 +12,7 @@ import QueueDetails from "./QueueDetails";
 import StudentSessions from './StudentSessions';
 import SessionQueue from './SessionQueue';
 import Settings from "./Settings.jsx";
+import InstructorProfile from "./InstructorProfile.jsx";
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="/sessions/:courseId" element={<StudentSessions />} />
           <Route path="/session/:sessionId" element={<SessionQueue />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/professor/:profile" element={<InstructorProfile />} />
         </Routes>
       </HashRouter>
     </>
