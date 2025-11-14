@@ -24,13 +24,14 @@ try {
     exit;
   }
 
-  // Active queue entries, oldest first, with user name (include attendance)
+  // Active queue entries, oldest first, with user name (include attendance + avatar_seed)
   if ($session_id) {
     $sql = '
       SELECT 
         qe.user_email,
         qe.attendance,
         u.name AS display_name,
+        u.avatar_seed,
         qe.notes,
         qe.joined_at,
         qe.left_at
@@ -47,6 +48,7 @@ try {
         qe.user_email,
         qe.attendance,
         u.name AS display_name,
+        u.avatar_seed,
         qe.notes,
         qe.joined_at,
         qe.left_at
@@ -67,4 +69,3 @@ try {
   http_response_code(500);
   echo json_encode(['ok'=>false,'error'=>'Server error']);
 }
-
