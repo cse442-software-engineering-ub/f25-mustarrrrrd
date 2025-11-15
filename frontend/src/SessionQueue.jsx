@@ -43,9 +43,9 @@ export default function SessionQueue(){
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const pageStyle = { position: 'fixed', inset: 0, overflow: 'auto', background: '#f3f4f6', margin: 0, padding: 0, width: '100%', height: '100%', boxSizing: 'border-box' };
-  const headerStyle = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '16px' : '20px 24px', borderBottom: '1px solid #e5e7eb', background: '#fff', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 12 : 0 };
-  const backBtn = { background: '#fff', color: '#111827', border: '1px solid #e5e7eb', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 600, width: isMobile ? '100%' : 'auto' };
+  const pageStyle = { position: 'fixed', inset: 0, overflow: 'auto', background: 'var(--bg-secondary)', margin: 0, padding: 0, width: '100%', height: '100%', boxSizing: 'border-box' };
+  const headerStyle = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '16px' : '20px 24px', borderBottom: '1px solid var(--border-color)', background: 'var(--card-bg)', flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 12 : 0 };
+  const backBtn = { background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 600, width: isMobile ? '100%' : 'auto' };
 
   // Load queue list every 5 seconds
   useEffect(()=>{
@@ -235,10 +235,10 @@ export default function SessionQueue(){
     return (
       <div style={pageStyle}>
         <div style={headerStyle}>
-          <h1 style={{ margin: 0, fontSize: isMobile ? 22 : 28, fontWeight: 700, color: '#111827' }}>Office Hours • Session</h1>
+          <h1 style={{ margin: 0, fontSize: isMobile ? 22 : 28, fontWeight: 700, color: 'var(--text-primary)' }}>Office Hours • Session</h1>
         </div>
         <div style={{ maxWidth: '70rem', margin: '2rem auto', padding: '1.5rem' }}>
-          <div style={{ color: '#6b7280' }}>Loading session…</div>
+          <div style={{ color: 'var(--text-secondary)' }}>Loading session…</div>
         </div>
       </div>
     );
@@ -248,11 +248,11 @@ export default function SessionQueue(){
     return (
       <div style={pageStyle}>
         <div style={headerStyle}>
-          <h1 style={{ margin: 0, fontSize: isMobile ? 22 : 28, fontWeight: 700, color: '#111827' }}>Office Hours • Session</h1>
+          <h1 style={{ margin: 0, fontSize: isMobile ? 22 : 28, fontWeight: 700, color: 'var(--text-primary)' }}>Office Hours • Session</h1>
         </div>
         <div style={{ maxWidth: '70rem', margin: '2rem auto', padding: '1.5rem' }}>
-          <div style={{ color: '#b91c1c', fontWeight: 600 }}>Error loading session</div>
-          <div style={{ color: '#6b7280', marginTop: 8 }}>{String(error)}</div>
+          <div style={{ color: 'var(--error-color)', fontWeight: 600 }}>Error loading session</div>
+          <div style={{ color: 'var(--text-secondary)', marginTop: 8 }}>{String(error)}</div>
         </div>
       </div>
     );
@@ -266,13 +266,13 @@ export default function SessionQueue(){
     return (
       <div style={pageStyle}>
         <div style={headerStyle}>
-          <h1 style={{ margin: 0, fontSize: isMobile ? 22 : 28, fontWeight: 700, color: '#111827', width: isMobile ? '100%' : 'auto' }}>Session Queue • Professor View</h1>
+          <h1 style={{ margin: 0, fontSize: isMobile ? 22 : 28, fontWeight: 700, color: 'var(--text-primary)', width: isMobile ? '100%' : 'auto' }}>Session Queue • Professor View</h1>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={()=>{
               if(session){ setEditSessionData({ day_of_week: session.day_of_week || 'Monday', start_time: session.start_time || '12:00', end_time: session.end_time || '13:00', location: session.location || '' }); }
               setShowEditForm(true);
-            }} style={{ background: '#fff', color: '#111827', border: '1px solid #e5e7eb', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 600 }} onMouseOver={(e)=>e.currentTarget.style.background='#f9fafb'} onMouseOut={(e)=>e.currentTarget.style.background='#fff'}>Edit Session</button>
-            <button onClick={()=>navigate(-1)} style={backBtn} onMouseOver={(e)=>e.currentTarget.style.background='#f9fafb'} onMouseOut={(e)=>e.currentTarget.style.background='#fff'}>Back</button>
+            }} style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', fontSize: '0.95rem', fontWeight: 600 }} onMouseOver={(e)=>e.currentTarget.style.background='var(--bg-tertiary)'} onMouseOut={(e)=>e.currentTarget.style.background='var(--card-bg)'}>Edit Session</button>
+            <button onClick={()=>navigate(-1)} style={backBtn} onMouseOver={(e)=>e.currentTarget.style.background='var(--bg-tertiary)'} onMouseOut={(e)=>e.currentTarget.style.background='var(--card-bg)'}>Back</button>
           </div>
         </div>
 
@@ -282,24 +282,24 @@ export default function SessionQueue(){
               <div style={{ fontSize: 18, fontWeight: 700 }}>
                 {session ? `${session.day_of_week ?? ''} ${session.start_time ?? ''}${session.end_time ? '–' + session.end_time : ''}` : '—'}
               </div>
-              <div style={{ color: '#6b7280' }}>{session && session.location ? session.location : '—'}</div>
+              <div style={{ color: 'var(--text-secondary)' }}>{session && session.location ? session.location : '—'}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 20, fontWeight: 800 }}>{totalInQueue}</div>
-              <div style={{ color: '#6b7280' }}>Total in Queue</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)' }}>{totalInQueue}</div>
+              <div style={{ color: 'var(--text-secondary)' }}>Total in Queue</div>
             </div>
           </div>
 
           <div style={{ display: 'grid', gap: 8 }}>
 
-            {entries.length === 0 && <div style={{ color: '#6b7280' }}>No students in queue.</div>}
+            {entries.length === 0 && <div style={{ color: 'var(--text-secondary)' }}>No students in queue.</div>}
 
             {entries.map((e, idx) => (
               <div
                 key={idx}
                 style={{
-                  background: '#fff',
-                  border: '1px solid #e5e7eb',
+                  background: 'var(--card-bg)',
+                  border: '1px solid var(--border-color)',
                   borderRadius: 8,
                   padding: 12,
                   display: 'flex',
@@ -324,14 +324,14 @@ export default function SessionQueue(){
                   />
 
                   <div>
-                    <div style={{ fontWeight: 700 }}>{e.display_name || e.user_email}</div>
-                    <div style={{ color: '#6b7280' }}>{e.notes || '(no note provided)'}</div>
+                    <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{e.display_name || e.user_email}</div>
+                    <div style={{ color: 'var(--text-secondary)' }}>{e.notes || '(no note provided)'}</div>
                   </div>
                 </div>
 
                 {/* RIGHT SIDE: time + attendance buttons */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: isMobile ? '100%' : 'auto', flexWrap: 'wrap' }}>
-                  <div style={{ color: '#6b7280' }}>
+                  <div style={{ color: 'var(--text-secondary)' }}>
                     {new Date(e.joined_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
                   </div>
 
@@ -342,9 +342,9 @@ export default function SessionQueue(){
                       <button
                         onClick={() => initiateRemoveStudent(e.user_email, e.display_name || e.user_email)}
                         style={{
-                          background: '#fff',
-                          color: '#374151',
-                          border: '1px solid #d1d5db',
+                          background: 'var(--card-bg)',
+                          color: 'var(--text-primary)',
+                          border: '1px solid var(--border-color)',
                           padding: '0.5rem 0.75rem',
                           borderRadius: 8,
                           fontWeight: 600,
@@ -364,11 +364,11 @@ export default function SessionQueue(){
         {/* --- Edit Session --- */}
         {showEditForm && (
           <div style={{ maxWidth: '70rem', margin: '2rem auto', padding: 12 }}>
-            <div style={{ background: '#fff', border: '1px solid #e5e7eb', padding: 12, borderRadius: 8 }}>
-              <h2 style={{ marginTop: 0, marginBottom: 12 }}>Edit Session</h2>
+            <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', padding: 12, borderRadius: 8 }}>
+              <h2 style={{ marginTop: 0, marginBottom: 12, color: 'var(--text-primary)' }}>Edit Session</h2>
 
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
-                <select value={editSessionData.day_of_week} onChange={(e)=>setEditSessionData(s=>({...s, day_of_week: e.target.value}))} style={{ padding:8, borderRadius:8, border:'1px solid #e5e7eb', background:'#fff', minWidth: 120 }}>
+                <select value={editSessionData.day_of_week} onChange={(e)=>setEditSessionData(s=>({...s, day_of_week: e.target.value}))} style={{ padding:8, borderRadius:8, border:'1px solid var(--border-color)', background:'var(--input-bg)', color:'var(--text-primary)', minWidth: 120 }}>
                   <option>Monday</option>
                   <option>Tuesday</option>
                   <option>Wednesday</option>
@@ -378,10 +378,10 @@ export default function SessionQueue(){
                   <option>Sunday</option>
                 </select>
 
-                <input type='time' value={editSessionData.start_time} onChange={(e)=>setEditSessionData(s=>({...s, start_time: e.target.value}))} style={{ padding:8, borderRadius:8, border:'1px solid #e5e7eb', width:120 }} />
-                <input type='time' value={editSessionData.end_time} onChange={(e)=>setEditSessionData(s=>({...s, end_time: e.target.value}))} style={{ padding:8, borderRadius:8, border:'1px solid #e5e7eb', width:120 }} />
+                <input type='time' value={editSessionData.start_time} onChange={(e)=>setEditSessionData(s=>({...s, start_time: e.target.value}))} style={{ padding:8, borderRadius:8, border:'1px solid var(--border-color)', background:'var(--input-bg)', color:'var(--text-primary)', width:120 }} />
+                <input type='time' value={editSessionData.end_time} onChange={(e)=>setEditSessionData(s=>({...s, end_time: e.target.value}))} style={{ padding:8, borderRadius:8, border:'1px solid var(--border-color)', background:'var(--input-bg)', color:'var(--text-primary)', width:120 }} />
 
-                <input placeholder='Location' value={editSessionData.location} onChange={(e)=>setEditSessionData(s=>({...s, location: e.target.value}))} style={{ padding:8, borderRadius:8, border:'1px solid #e5e7eb', flex:1, minWidth: 200 }} />
+                <input placeholder='Location' value={editSessionData.location} onChange={(e)=>setEditSessionData(s=>({...s, location: e.target.value}))} style={{ padding:8, borderRadius:8, border:'1px solid var(--border-color)', background:'var(--input-bg)', color:'var(--text-primary)', flex:1, minWidth: 200 }} />
               </div>
 
               <div style={{ display:'flex', gap:8 }}>
@@ -397,7 +397,7 @@ export default function SessionQueue(){
                       setShowEditForm(false);
                     }
                   }catch(e){ console.error('Failed to update session', e); }
-                }} style={{ background:'#111827', color:'#fff', border:'none', padding:'8px 12px', borderRadius:8, fontWeight:600 }}>Save</button>
+                }} style={{ background:'var(--text-primary)', color:'var(--bg-primary)', border:'none', padding:'8px 12px', borderRadius:8, fontWeight:600 }}>Save</button>
 
                 <button onClick={async ()=>{
                   if(!window.confirm('Delete this session? This cannot be undone.')) return;
@@ -411,7 +411,7 @@ export default function SessionQueue(){
                   }catch(e){ console.error('Failed to delete session', e); }
                 }} style={{ background:'#fee2e2', color:'#991b1b', border:'1px solid #fecaca', padding:'8px 12px', borderRadius:8, fontWeight:600 }}>Delete</button>
 
-                <button onClick={()=>setShowEditForm(false)} style={{ background:'#fff', color:'#111827', border:'1px solid #e5e7eb', padding:'8px 12px', borderRadius:8, fontWeight:600 }}>Cancel</button>
+                <button onClick={()=>setShowEditForm(false)} style={{ background:'var(--card-bg)', color:'var(--text-primary)', border:'1px solid var(--border-color)', padding:'8px 12px', borderRadius:8, fontWeight:600 }}>Cancel</button>
               </div>
             </div>
           </div>
@@ -420,18 +420,18 @@ export default function SessionQueue(){
         {/* Remove confirmation modal */}
         {showRemoveModal && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }} onClick={cancelRemoveStudent}>
-            <div style={{ background: '#fff', borderRadius: 12, padding: '1.5rem', maxWidth: '400px', width: '100%', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }} onClick={(e) => e.stopPropagation()}>
-              <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1.25rem', fontWeight: 700, color: '#111827' }}>Remove Student from Queue?</h3>
-              <p style={{ margin: '0 0 1.5rem 0', color: '#6b7280', fontSize: '0.95rem' }}>
+            <div style={{ background: 'var(--card-bg)', borderRadius: 12, padding: '1.5rem', maxWidth: '400px', width: '100%', boxShadow: '0 20px 25px -5px var(--card-shadow)' }} onClick={(e) => e.stopPropagation()}>
+              <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)' }}>Remove Student from Queue?</h3>
+              <p style={{ margin: '0 0 1.5rem 0', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
                 Are you sure you want to remove <strong>{studentToRemove?.name}</strong> from the queue?
               </p>
               <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
                 <button
                   onClick={cancelRemoveStudent}
                   style={{
-                    background: '#fff',
-                    color: '#374151',
-                    border: '1px solid #d1d5db',
+                    background: 'var(--card-bg)',
+                    color: 'var(--text-primary)',
+                    border: '1px solid var(--border-color)',
                     borderRadius: 8,
                     padding: '0.625rem 1.25rem',
                     cursor: 'pointer',
@@ -471,12 +471,12 @@ export default function SessionQueue(){
 
   const containerStyle = { maxWidth: '70rem', margin: '0 auto', padding: isMobile ? '1rem' : '1.5rem' };
   const colGrid = { display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: isMobile ? 16 : 20 };
-  const panel = { background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: isMobile ? 16 : 20 };
+  const panel = { background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: 12, padding: isMobile ? 16 : 20 };
 
   return (
     <div style={pageStyle}>
       <div style={headerStyle}>
-        <h1 style={{ margin: 0, fontSize: isMobile ? 22 : 28, fontWeight: 700, color: '#111827', width: isMobile ? '100%' : 'auto' }}>Office Hours • Session</h1>
+        <h1 style={{ margin: 0, fontSize: isMobile ? 22 : 28, fontWeight: 700, color: 'var(--text-primary)', width: isMobile ? '100%' : 'auto' }}>Office Hours • Session</h1>
         <button onClick={()=>navigate(-1)} style={backBtn}>Back</button>
       </div>
 
@@ -485,29 +485,29 @@ export default function SessionQueue(){
 
           {/* Queue status */}
           <div style={panel}>
-            <h2 style={{ marginTop:0, marginBottom: 16, fontSize: '20px', fontWeight: 700, color: '#111827' }}>Queue Status</h2>
+            <h2 style={{ marginTop:0, marginBottom: 16, fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>Queue Status</h2>
             <div style={{ display:'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
               <div>
-                <div style={{ fontSize: 40, fontWeight: 800, color: '#111827' }}>{yourPosition ?? '-'}</div>
-                <div style={{ color: '#6b7280' }}>Your Position</div>
+                <div style={{ fontSize: 40, fontWeight: 800, color: 'var(--text-primary)' }}>{yourPosition ?? '-'}</div>
+                <div style={{ color: 'var(--text-secondary)' }}>Your Position</div>
               </div>
               <div>
-                <div style={{ fontSize: 40, fontWeight: 800, color: '#111827' }}>{totalInQueue}</div>
-                <div style={{ color: '#6b7280' }}>Total in Queue</div>
+                <div style={{ fontSize: 40, fontWeight: 800, color: 'var(--text-primary)' }}>{totalInQueue}</div>
+                <div style={{ color: 'var(--text-secondary)' }}>Total in Queue</div>
               </div>
             </div>
           </div>
 
           {/* Session details */}
           <div style={panel}>
-            <h2 style={{ marginTop:0, marginBottom: 16, fontSize: '20px', fontWeight: 700, color: '#111827' }}>Session Details</h2>
+            <h2 style={{ marginTop:0, marginBottom: 16, fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>Session Details</h2>
             <div style={{ display: 'grid', gap: 12 }}>
-              <div style={{ color: '#6b7280' }}>Time</div>
-              <div style={{ fontSize: '1rem', color: '#111827' }}>
+              <div style={{ color: 'var(--text-secondary)' }}>Time</div>
+              <div style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>
                 {session ? `${session.day_of_week ?? ''} ${session.start_time ?? ''}${session.end_time ? '–' + session.end_time : ''}` : '—'}
               </div>
-              <div style={{ color: '#6b7280' }}>Location</div>
-              <div style={{ fontSize:'1rem', color:'#111827' }}>
+              <div style={{ color: 'var(--text-secondary)' }}>Location</div>
+              <div style={{ fontSize:'1rem', color:'var(--text-primary)' }}>
                 {session?.location || '—'}
               </div>
             </div>
@@ -516,7 +516,7 @@ export default function SessionQueue(){
           {/* Notes */}
           { yourPosition !== null ? (
             <div style={panel}>
-              <h2 style={{ marginTop:0, marginBottom: 12, fontSize: '20px', fontWeight: 700, color: '#111827' }}>Your Notes</h2>
+              <h2 style={{ marginTop:0, marginBottom: 12, fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>Your Notes</h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
                 <textarea
                   value={notes}
@@ -527,9 +527,9 @@ export default function SessionQueue(){
                     minHeight:200,
                     borderRadius:10,
                     padding:12,
-                    background:'#fff',
-                    color:'#111827',
-                    border:'1px solid #e5e7eb',
+                    background:'var(--input-bg)',
+                    color:'var(--text-primary)',
+                    border:'1px solid var(--border-color)',
                     resize:'vertical',
                     boxSizing:'border-box'
                   }}
@@ -543,14 +543,14 @@ export default function SessionQueue(){
                 )}
 
                 <div style={{ display:'flex', gap:12, flexDirection: isMobile ? 'column' : 'row' }}>
-                  <button onClick={saveNotes} style={{ background: '#111827', color: '#fff', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', fontWeight: 600 }}>Save Notes</button>
-                  <button onClick={leaveQueue} style={{ background: '#fee2e2', color: '#991b1b', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', fontWeight: 600 }}>Leave Queue</button>
+                  <button onClick={saveNotes} style={{ background: 'var(--text-primary)', color: 'var(--bg-primary)', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', fontWeight: 600, border: 'none' }}>Save Notes</button>
+                  <button onClick={leaveQueue} style={{ background: '#fee2e2', color: '#991b1b', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', fontWeight: 600, border: '1px solid #fecaca' }}>Leave Queue</button>
                 </div>
               </div>
             </div>
           ) : (
             <div style={panel}>
-              <div style={{ color: '#6b7280' }}>You are not in the queue.</div>
+              <div style={{ color: 'var(--text-secondary)' }}>You are not in the queue.</div>
             </div>
           )}
 

@@ -139,3 +139,4 @@ ALTER TABLE users
   MODIFY role ENUM('student','ta','professor') NOT NULL;
 -- Drop professor column from courses table
 ALTER TABLE `courses` DROP COLUMN `professor`;
+ALTER TABLE users ADD COLUMN avatar_seed VARCHAR(64) NULL AFTER email;

@@ -666,7 +666,7 @@ export function Dashboard() {
           {loading ? (
             <p style={{ textAlign: "center", color: "var(--text-secondary)" }}>Loading sessions...</p>
           ) : reservedSessions.length === 0 ? (
-            <p style={{ textAlign: "center", color: "var(--text-secondary)", fontSize: "0.875rem", lineHeight: "1.5" }}>
+            <p style={{ textAlign: "center", color: "var(--text-primary)", fontSize: "0.875rem", lineHeight: "1.5" }}>
               Reserved office hour sessions will appear here. To reserve a session, click "View Sessions" for your course below, and reserve any session that is within 24 hours of your current time.
             </p>
           ) : (

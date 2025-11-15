@@ -8,17 +8,6 @@ const API_ROOT = new URL("../api/", ABS_BASE).pathname;
 const PRONOUNS = ["he/him","she/her","they/them","he/they","she/they","ze/zir","prefer not to say"];
 
 export default function InstructorProfile() {
-  // Force the whole app background to white while this page is mounted
-  useEffect(() => {
-    const prevHtmlBg = document.documentElement.style.backgroundColor;
-    const prevBodyBg = document.body.style.backgroundColor;
-    document.documentElement.style.backgroundColor = "#fff";
-    document.body.style.backgroundColor = "#fff";
-    return () => {
-      document.documentElement.style.backgroundColor = prevHtmlBg;
-      document.body.style.backgroundColor = prevBodyBg;
-    };
-  }, []);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [draft, setDraft] = useState(null);
@@ -84,14 +73,14 @@ export default function InstructorProfile() {
     window.location.href = new URL("", ABS_BASE).pathname;
   }
 
-  if (loading) return <div style={{color:"#000",padding:24,background:"#fff",minHeight:"100vh"}}>Loading…</div>;
+  if (loading) return <div style={{color:"var(--text-primary)",padding:24,background:"var(--bg-primary)",minHeight:"100vh"}}>Loading…</div>;
 
   if (!profile) {
     return (
-      <div style={{color:"#000",padding:24,background:"#fff",minHeight:"100vh"}}>
+      <div style={{color:"var(--text-primary)",padding:24,background:"var(--bg-primary)",minHeight:"100vh"}}>
         <h1>Profile</h1>
         <p>You're not signed in.</p>
-        <Link to="/" style={{ color:"#1f6feb" }}>Go to Login</Link>
+        <Link to="/" style={{ color:"var(--link-color)" }}>Go to Login</Link>
       </div>
     );
   }
@@ -107,8 +96,8 @@ export default function InstructorProfile() {
     minHeight: "100dvh",
     width: "100vw",
     margin: 0,
-    background: "#fff",
-    color: "#000",
+    background: "var(--bg-primary)",
+    color: "var(--text-primary)",
     fontFamily: "system-ui, sans-serif",
     overflowX: "hidden",
   };
@@ -118,8 +107,8 @@ export default function InstructorProfile() {
     left:0, right:0, top:0,
     height:HEADER_H, zIndex:3000,
     display:"flex", alignItems:"center",
-    borderBottom:"1px solid #ddd",
-    background:"#fff",
+    borderBottom:"1px solid var(--border-color)",
+    background:"var(--card-bg)",
   };
 
   const container = {
@@ -143,13 +132,13 @@ export default function InstructorProfile() {
     width:"100%",
   };
 
-  const card = { background:"#f9f9f9", border:"1px solid #ddd", borderRadius:16 };
-  const sectionHeader = { padding:24, borderBottom:"1px solid #ddd" };
+  const card = { background:"var(--card-bg)", border:"1px solid var(--border-color)", borderRadius:16 };
+  const sectionHeader = { padding:24, borderBottom:"1px solid var(--border-color)" };
   const sectionBody = { padding:24 };
 
   const inputBase = {
-    padding:12, borderRadius:10, border:"1px solid #ccc",
-    background:"#fff", color:"#000", fontSize:16, width:"100%", minWidth:0, boxSizing:"border-box",
+    padding:12, borderRadius:10, border:"1px solid var(--border-color)",
+    background:"var(--input-bg)", color:"var(--text-primary)", fontSize:16, width:"100%", minWidth:0, boxSizing:"border-box",
   };
 
   const selectBase = { ...inputBase, appearance:"none" };
@@ -162,7 +151,7 @@ export default function InstructorProfile() {
 
   const field = (label, value, onChange, props={}) => (
     <label style={{ display:"grid", gap:8, minWidth:0 }}>
-      <span style={{ fontSize:12, color:"#666", textTransform:"uppercase", letterSpacing:0.4 }}>{label}</span>
+      <span style={{ fontSize:12, color:"var(--text-secondary)", textTransform:"uppercase", letterSpacing:0.4 }}>{label}</span>
       <input value={value ?? ""} onChange={e=>onChange(e.target.value)} style={inputBase} {...props}/>
     </label>
   );
@@ -178,7 +167,7 @@ export default function InstructorProfile() {
               to="/professorview"
               style={{
                 display:"flex", alignItems:"center", justifyContent:"center",
-                background:"#f3f3f3", color:"#000", border:"1px solid #ddd",
+                background:"var(--bg-tertiary)", color:"var(--text-primary)", border:"1px solid var(--border-color)",
                 padding:"8px 12px", borderRadius:10, textDecoration:"none",
               }}
             >
@@ -201,7 +190,7 @@ export default function InstructorProfile() {
               <>
                 <button
                   onClick={()=>{ setDraft(profile); setEditing(false); setMsg(""); }}
-                  style={{ background:"transparent", border:"1px solid #ccc", color:"#000", padding:"10px 16px", borderRadius:12, fontSize:15, width: isMobile ? "100%" : "auto" }}
+                  style={{ background:"transparent", border:"1px solid var(--border-color)", color:"var(--text-primary)", padding:"10px 16px", borderRadius:12, fontSize:15, width: isMobile ? "100%" : "auto" }}
                 >
                   Cancel
                 </button>
@@ -228,16 +217,17 @@ export default function InstructorProfile() {
           <aside style={{ ...card, padding:isMobile ? 20 : 24 }}>
             <div style={{ display:"flex", flexDirection:isMobile ? "column" : "row", gap:18, alignItems:isMobile ? "center" : "center", marginBottom:16 }}>
               <div style={{
-                width:120, height:120, borderRadius:"50%", background:"#eee",
+                width:120, height:120, borderRadius:"50%", background:"var(--bg-tertiary)",
                 overflow:"hidden", display:"grid", placeItems:"center", fontWeight:800, fontSize:34,
+                border:"2px solid var(--border-color)", color:"var(--text-primary)",
               }}>
                 {(profile.preferred_name || profile.name || "?")
                   .split(" ").slice(0,2).map(p=>p[0]?.toUpperCase()).join("") || "?"}
               </div>
               <div style={{ textAlign:isMobile?"center":"left" }}>
-                <div style={{ fontSize:28, lineHeight:1.2 }}>{displayName}</div>
-                <div style={{ color:"#555", marginTop:6 }}>Role: <span style={{ color:"#000" }}>{profile.role || "—"}</span></div>
-                <div style={{ color:"#555" }}>Email: <span style={{ color:"#1f6feb" }}>{profile.email}</span></div>
+                <div style={{ fontSize:28, lineHeight:1.2, color:"var(--text-primary)" }}>{displayName}</div>
+                <div style={{ color:"var(--text-secondary)", marginTop:6 }}>Role: <span style={{ color:"var(--text-primary)" }}>{profile.role || "—"}</span></div>
+                <div style={{ color:"var(--text-secondary)" }}>Email: <span style={{ color:"var(--link-color)" }}>{profile.email}</span></div>
               </div>
             </div>
           </aside>
@@ -259,11 +249,11 @@ export default function InstructorProfile() {
                     {field("Last Name",  (lastName  || ""), v => setDraft(d => ({...d, name: `${firstName} ${v}`.trim()})))}
                     {field("Preferred Name", draft?.preferred_name || "", v => setDraft(d => ({...d, preferred_name: v})))}
                     <label style={{ display:"grid", gap:8, minWidth:0 }}>
-                      <span style={{ fontSize:12, color:"#666", textTransform:"uppercase", letterSpacing:0.4 }}>Email</span>
-                      <input value={profile.email} disabled style={{ ...inputBase, background:"#f5f5f5", color:"#777" }}/>
+                      <span style={{ fontSize:12, color:"var(--text-secondary)", textTransform:"uppercase", letterSpacing:0.4 }}>Email</span>
+                      <input value={profile.email} disabled style={{ ...inputBase, background:"var(--bg-tertiary)", color:"var(--text-secondary)" }}/>
                     </label>
                     <label style={{ display:"grid", gap:8, minWidth:0 }}>
-                      <span style={{ fontSize:12, color:"#666", textTransform:"uppercase", letterSpacing:0.4 }}>Pronouns</span>
+                      <span style={{ fontSize:12, color:"var(--text-secondary)", textTransform:"uppercase", letterSpacing:0.4 }}>Pronouns</span>
                       <select
                         value={draft?.pronouns || ""}
                         onChange={e=> setDraft(d => ({...d, pronouns: e.target.value}))}
@@ -274,7 +264,7 @@ export default function InstructorProfile() {
                       </select>
                     </label>
                     <label style={{ display:"grid", gap:8, minWidth:0 }}>
-                      <span style={{ fontSize:12, color:"#666", textTransform:"uppercase", letterSpacing:0.4 }}>Disabilities</span>
+                      <span style={{ fontSize:12, color:"var(--text-secondary)", textTransform:"uppercase", letterSpacing:0.4 }}>Disabilities</span>
                       <textarea
                         value={draft?.disabilities || ""}
                         onChange={e=> setDraft(d => ({...d, disabilities: e.target.value}))}
@@ -296,7 +286,7 @@ export default function InstructorProfile() {
               </button>
             </div>
 
-            {msg && <div style={{ color:"#333", fontSize:14 }}>{msg}</div>}
+            {msg && <div style={{ color:"var(--link-color)", fontSize:14 }}>{msg}</div>}
           </main>
         </div>
       </div>
@@ -307,8 +297,8 @@ export default function InstructorProfile() {
 function Labeled({ label, value }) {
   return (
     <div>
-      <div style={{ color:"#666", fontSize:12, textTransform:"uppercase", letterSpacing:0.4 }}>{label}</div>
-      <div style={{ fontSize:16 }}>{value}</div>
+      <div style={{ color:"var(--text-secondary)", fontSize:12, textTransform:"uppercase", letterSpacing:0.4 }}>{label}</div>
+      <div style={{ fontSize:16, color:"var(--text-primary)" }}>{value}</div>
     </div>
   );
 }

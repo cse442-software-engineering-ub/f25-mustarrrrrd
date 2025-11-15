@@ -218,7 +218,7 @@ export default function QueueDetails() {
         position: "fixed",
         inset: 0,
         overflow: "auto",
-        background: "#f3f4f6",
+        background: "var(--bg-secondary)",
         margin: 0,
         padding: 0,
         width: "100%",
@@ -233,8 +233,8 @@ export default function QueueDetails() {
           alignItems: "center",
           justifyContent: "space-between",
           padding: "20px 24px",
-          borderBottom: "1px solid #e5e7eb",
-          background: "#fff",
+          borderBottom: "1px solid var(--border-color)",
+          background: "var(--card-bg)",
         }}
       >
         <h1
@@ -242,7 +242,7 @@ export default function QueueDetails() {
             margin: 0,
             fontSize: "28px",
             fontWeight: 700,
-            color: "#111827",
+            color: "var(--text-primary)",
           }}
         >
           Office Hours • {course.title}
@@ -251,9 +251,9 @@ export default function QueueDetails() {
         <button
           onClick={() => navigate("/dashboard")}
           style={{
-            background: "#fff",
-            color: "#111827",
-            border: "1px solid #e5e7eb",
+            background: "var(--card-bg)",
+            color: "var(--text-primary)",
+            border: "1px solid var(--border-color)",
             borderRadius: 10,
             padding: "10px 14px",
             cursor: "pointer",
@@ -261,8 +261,8 @@ export default function QueueDetails() {
             fontWeight: 600,
             marginRight: 56,
           }}
-          onMouseOver={(e) => (e.currentTarget.style.background = "#f9fafb")}
-          onMouseOut={(e) => (e.currentTarget.style.background = "#fff")}
+          onMouseOver={(e) => (e.currentTarget.style.background = "var(--bg-tertiary)")}
+          onMouseOut={(e) => (e.currentTarget.style.background = "var(--card-bg)")}
         >
           Back to Dashboard
         </button>
@@ -271,8 +271,8 @@ export default function QueueDetails() {
       {/* Status pill */}
       <div
         style={{
-          background: "#fff",
-          border: "1px solid #e5e7eb",
+          background: "var(--card-bg)",
+          border: "1px solid var(--border-color)",
           borderRadius: 12,
           padding: "12px 16px",
           margin: "16px 24px",
@@ -307,8 +307,8 @@ export default function QueueDetails() {
         {/* Queue Status */}
         <div
           style={{
-            background: "#fff",
-            border: "1px solid #e5e7eb",
+            background: "var(--card-bg)",
+            border: "1px solid var(--border-color)",
             borderRadius: 12,
             padding: 20,
           }}
@@ -319,7 +319,7 @@ export default function QueueDetails() {
               marginBottom: 16,
               fontSize: "20px",
               fontWeight: 700,
-              color: "#111827",
+              color: "var(--text-primary)",
             }}
           >
             Queue Status
@@ -334,25 +334,25 @@ export default function QueueDetails() {
             }}
           >
             <div>
-              <div style={{ fontSize: 40, fontWeight: 800, color: "#111827", lineHeight: 1 }}>
+              <div style={{ fontSize: 40, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1 }}>
                 {course.yourPosition ?? "-"}
               </div>
-              <div style={{ color: "#6b7280" }}>Your Position</div>
+              <div style={{ color: "var(--text-secondary)" }}>Your Position</div>
             </div>
             <div>
-              <div style={{ fontSize: 40, fontWeight: 800, color: "#111827", lineHeight: 1 }}>
+              <div style={{ fontSize: 40, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1 }}>
                 {course.totalInQueue}
               </div>
-              <div style={{ color: "#6b7280" }}>Total in Queue</div>
+              <div style={{ color: "var(--text-secondary)" }}>Total in Queue</div>
             </div>
           </div>
 
-          <div style={{ color: "#6b7280", marginBottom: 8 }}>Queue Progress</div>
+          <div style={{ color: "var(--text-secondary)", marginBottom: 8 }}>Queue Progress</div>
           <div
             style={{
               height: 8,
               width: "100%",
-              background: "#e5e7eb",
+              background: "var(--bg-tertiary)",
               borderRadius: 999,
               overflow: "hidden",
             }}
@@ -361,7 +361,7 @@ export default function QueueDetails() {
               style={{
                 height: "100%",
                 width: `${progressPct}%`,
-                background: "#111827",
+                background: "var(--text-primary)",
                 transition: "width 200ms ease",
               }}
             />
@@ -371,8 +371,8 @@ export default function QueueDetails() {
         {/* Session Details */}
         <div
           style={{
-            background: "#fff",
-            border: "1px solid #e5e7eb",
+            background: "var(--card-bg)",
+            border: "1px solid var(--border-color)",
             borderRadius: 12,
             padding: 20,
           }}
@@ -383,7 +383,7 @@ export default function QueueDetails() {
               marginBottom: 16,
               fontSize: "20px",
               fontWeight: 700,
-              color: "#111827",
+              color: "var(--text-primary)",
             }}
           >
             Session Details
@@ -402,8 +402,8 @@ export default function QueueDetails() {
         {/* Notes */}
         <div
           style={{
-            background: "#fff",
-            border: "1px solid #e5e7eb",
+            background: "var(--card-bg)",
+            border: "1px solid var(--border-color)",
             borderRadius: 12,
             padding: 20,
             display: "flex",
@@ -416,7 +416,7 @@ export default function QueueDetails() {
               marginBottom: 12,
               fontSize: "20px",
               fontWeight: 700,
-              color: "#111827",
+              color: "var(--text-primary)",
             }}
           >
             Your Notes
@@ -436,13 +436,13 @@ export default function QueueDetails() {
                 minHeight: 140,
                 resize: "vertical",
                 borderRadius: 10,
-                border: "1px solid #e5e7eb",
+                border: "1px solid var(--border-color)",
                 padding: 12,
                 fontSize: "1rem",
-                color: "#111827",
+                color: "var(--text-primary)",
                 outline: "none",
                 boxSizing: "border-box",
-                background: saved ? "#f3f4f6" : "#fff",
+                background: saved ? "var(--bg-tertiary)" : "var(--input-bg)",
                 opacity: saved ? 0.9 : 1,
               }}
             />
@@ -474,17 +474,17 @@ export default function QueueDetails() {
             <button
               onClick={saveNotes}
               style={{
-                background: "#111827",
-                color: "#fff",
-                border: "1px solid #111827",
+                background: "var(--text-primary)",
+                color: "var(--bg-primary)",
+                border: "1px solid var(--text-primary)",
                 borderRadius: 10,
                 padding: "10px 14px",
                 cursor: "pointer",
                 fontSize: "1rem",
                 fontWeight: 600,
               }}
-              onMouseOver={(e) => (e.currentTarget.style.background = "#1f2937")}
-              onMouseOut={(e) => (e.currentTarget.style.background = "#111827")}
+              onMouseOver={(e) => (e.currentTarget.style.opacity = "0.8")}
+              onMouseOut={(e) => (e.currentTarget.style.opacity = "1")}
             >
               Save Notes
             </button>
@@ -515,8 +515,8 @@ export default function QueueDetails() {
 
 function DetailRow({ icon, text }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#111827" }}>
-      <span style={{ color: "#6b7280" }}>{icon}</span>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--text-primary)" }}>
+      <span style={{ color: "var(--text-secondary)" }}>{icon}</span>
       <span style={{ fontSize: "1rem" }}>{text}</span>
     </div>
   );
