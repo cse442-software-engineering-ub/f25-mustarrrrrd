@@ -44,6 +44,20 @@ try {
   if ($start && strlen($start) === 5) $start .= ':00';
   if ($end && strlen($end) === 5) $end .= ':00';
 
+  // If both start and end are provided, ensure end is after start
+  if ($start && $end) {
+    // $start/$end are HH:MM or HH:MM:SS; take first two parts
+    $sparts = explode(':', $start);
+    $eparts = explode(':', $end);
+    $startMinutes = ((int)$sparts[0]) * 60 + ((int)$sparts[1]);
+    $endMinutes = ((int)$eparts[0]) * 60 + ((int)$eparts[1]);
+    if ($endMinutes <= $startMinutes) {
+      http_response_code(400);
+      echo json_encode(['ok'=>false,'error'=>'invalid_time_range','message'=>'end time must be after start time']);
+      exit;
+    }
+  }
+
   $upd = $pdo->prepare('UPDATE office_hours_sessions SET day_of_week = ?, start_time = ?, end_time = ?, location = ? WHERE id = ?');
   $upd->execute([$day, $start, $end, $location, $sessionId]);
 

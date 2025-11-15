@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Menu, Search, Plus, MoreVertical, X } from "lucide-react";
+import { Menu, Search, Plus, MoreVertical, X, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ViewSwitcher } from "./ViewSwitcher";
 
@@ -12,6 +12,7 @@ export default function TADashboard() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [newSession, setNewSession] = useState({ day_of_week: 'Monday', start_time: '12:00', end_time: '13:00', location: '' });
+  const [scheduleError, setScheduleError] = useState("");
   const [editSessionId, setEditSessionId] = useState(null);
   const [editSessionData, setEditSessionData] = useState({ day_of_week: 'Monday', start_time: '12:00', end_time: '13:00', location: '' });
   const [taName, setTAName] = useState('TA');
@@ -232,6 +233,17 @@ export default function TADashboard() {
   }
 
   async function createSession(){
+    // client-side validation
+    setScheduleError("");
+    const [sh, sm] = (newSession.start_time || "").split(':').map(n=>parseInt(n||'0',10));
+    const [eh, em] = (newSession.end_time || "").split(':').map(n=>parseInt(n||'0',10));
+    const smin = (sh||0)*60 + (sm||0);
+    const emin = (eh||0)*60 + (em||0);
+    if (emin <= smin) {
+      setScheduleError('End time must be after start time');
+      return;
+    }
+
     try{
       const res = await fetch(`${API_ROOT}create_office_hours_session.php`,{
         method: 'POST', credentials:'include', headers:{'Content-Type':'application/json', Accept:'application/json'},
@@ -1098,24 +1110,50 @@ export default function TADashboard() {
                     const common = { padding: 8, borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-primary)' };
                     return (
                       <>
-                        <select value={newSession.day_of_week} onChange={(e)=>setNewSession(s=>({...s, day_of_week: e.target.value}))} style={{ ...common, minWidth: 120 }}>
-                          <option>Monday</option>
-                          <option>Tuesday</option>
-                          <option>Wednesday</option>
-                          <option>Thursday</option>
-                          <option>Friday</option>
-                          <option>Saturday</option>
-                          <option>Sunday</option>
-                        </select>
-                        <input type="time" value={newSession.start_time} onChange={(e)=>setNewSession(s=>({...s, start_time: e.target.value}))} style={{ ...common, width: 120 }} />
-                        <input type="time" value={newSession.end_time} onChange={(e)=>setNewSession(s=>({...s, end_time: e.target.value}))} style={{ ...common, width: 120 }} />
-                        <input placeholder="Location" value={newSession.location} onChange={(e)=>setNewSession(s=>({...s, location: e.target.value}))} style={{ ...common, flex: 1, minWidth: 200 }} />
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 140 }}>
+                            <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Day</label>
+                            <select value={newSession.day_of_week} onChange={(e)=>setNewSession(s=>({...s, day_of_week: e.target.value}))} style={{ padding: 10, borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--card-bg)', fontWeight: 600 }}>
+                              <option>Monday</option>
+                              <option>Tuesday</option>
+                              <option>Wednesday</option>
+                              <option>Thursday</option>
+                              <option>Friday</option>
+                              <option>Saturday</option>
+                              <option>Sunday</option>
+                            </select>
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 120 }}>
+                            <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Start</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--card-bg)' }}>
+                              <Clock size={16} />
+                              <input type="time" value={newSession.start_time} onChange={(e)=>setNewSession(s=>({...s, start_time: e.target.value}))} style={{ border: 'none', outline: 'none', fontWeight: 700, fontSize: 14, background: 'transparent' }} />
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 120 }}>
+                            <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>End</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--card-bg)' }}>
+                              <Clock size={16} />
+                              <input type="time" value={newSession.end_time} onChange={(e)=>setNewSession(s=>({...s, end_time: e.target.value}))} style={{ border: 'none', outline: 'none', fontWeight: 700, fontSize: 14, background: 'transparent' }} />
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 200 }}>
+                            <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Location</label>
+                            <input placeholder="Where (optional)" value={newSession.location} onChange={(e)=>setNewSession(s=>({...s, location: e.target.value}))} style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--card-bg)' }} />
+                          </div>
+                        </div>
                       </>
                     );
                   })()}
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={createSession} style={{ background: 'var(--button-bg)', color: 'var(--button-text)', border: 'none', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Save</button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <button onClick={createSession} disabled={!!scheduleError} style={{ background: scheduleError ? '#94a3b8' : 'var(--button-bg)', color: 'var(--button-text)', border: 'none', padding: '8px 12px', borderRadius: 8, fontWeight: 600, cursor: scheduleError ? 'not-allowed' : 'pointer' }}>Save</button>
+                    {scheduleError && <div style={{ color: '#92400e', background: '#fffbeb', padding: '6px 8px', borderRadius: 6, fontSize: '0.85rem' }}>{scheduleError}</div>}
+                  </div>
                   <button onClick={()=>setShowScheduleForm(false)} style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Cancel</button>
                 </div>
               </div>
@@ -1127,28 +1165,57 @@ export default function TADashboard() {
                 <h3 style={{ marginTop: 0, marginBottom: 8, color: 'var(--text-primary)' }}>Edit Session</h3>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
                   {(() => {
-                    const common = { padding: 8, borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-primary)' };
                     return (
                       <>
-                        <select value={editSessionData.day_of_week} onChange={(e)=>setEditSessionData(s=>({...s, day_of_week: e.target.value}))} style={{ ...common, minWidth: 120 }}>
-                          <option>Monday</option>
-                          <option>Tuesday</option>
-                          <option>Wednesday</option>
-                          <option>Thursday</option>
-                          <option>Friday</option>
-                          <option>Saturday</option>
-                          <option>Sunday</option>
-                        </select>
-                        <input type="time" value={editSessionData.start_time} onChange={(e)=>setEditSessionData(s=>({...s, start_time: e.target.value}))} style={{ ...common, width: 120 }} />
-                        <input type="time" value={editSessionData.end_time} onChange={(e)=>setEditSessionData(s=>({...s, end_time: e.target.value}))} style={{ ...common, width: 120 }} />
-                        <input placeholder="Location" value={editSessionData.location} onChange={(e)=>setEditSessionData(s=>({...s, location: e.target.value}))} style={{ ...common, flex: 1, minWidth: 200 }} />
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 140 }}>
+                            <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Day</label>
+                            <select value={editSessionData.day_of_week} onChange={(e)=>setEditSessionData(s=>({...s, day_of_week: e.target.value}))} style={{ padding: 10, borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--card-bg)', fontWeight: 600 }}>
+                              <option>Monday</option>
+                              <option>Tuesday</option>
+                              <option>Wednesday</option>
+                              <option>Thursday</option>
+                              <option>Friday</option>
+                              <option>Saturday</option>
+                              <option>Sunday</option>
+                            </select>
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 120 }}>
+                            <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Start</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--card-bg)' }}>
+                              <Clock size={16} />
+                              <input type="time" value={editSessionData.start_time} onChange={(e)=>setEditSessionData(s=>({...s, start_time: e.target.value}))} style={{ border: 'none', outline: 'none', fontWeight: 700, fontSize: 14, background: 'transparent' }} />
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 120 }}>
+                            <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>End</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--card-bg)' }}>
+                              <Clock size={16} />
+                              <input type="time" value={editSessionData.end_time} onChange={(e)=>setEditSessionData(s=>({...s, end_time: e.target.value}))} style={{ border: 'none', outline: 'none', fontWeight: 700, fontSize: 14, background: 'transparent' }} />
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 200 }}>
+                            <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Location</label>
+                            <input placeholder="Where (optional)" value={editSessionData.location} onChange={(e)=>setEditSessionData(s=>({...s, location: e.target.value}))} style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--card-bg)' }} />
+                          </div>
+                        </div>
                       </>
                     );
                   })()}
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button onClick={async ()=>{
+                    // client-side validation for edit
                     try{
+                      const [sh, sm] = (editSessionData.start_time || '').split(':').map(n=>parseInt(n||'0',10));
+                      const [eh, em] = (editSessionData.end_time || '').split(':').map(n=>parseInt(n||'0',10));
+                      const smin = (sh||0)*60 + (sm||0);
+                      const emin = (eh||0)*60 + (em||0);
+                      if (emin <= smin) { alert('End time must be after start time'); return; }
+
                       const body = { session_id: editSessionId, ...editSessionData };
                       const res = await fetch(`${API_ROOT}update_office_hours_session.php`, { method:'POST', credentials:'include', headers:{'Content-Type':'application/json', Accept:'application/json'}, body: JSON.stringify(body) });
                       if(!res.ok) throw new Error('update failed');
