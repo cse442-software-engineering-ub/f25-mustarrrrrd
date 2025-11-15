@@ -85,8 +85,8 @@ export default function SignUp() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: "black",
-        color: "white",
+        backgroundColor: "var(--bg-primary)",
+        color: "var(--text-primary)",
         fontFamily: "system-ui, sans-serif",
       }}
     >
@@ -106,9 +106,9 @@ export default function SignUp() {
               padding: "12px",
               fontSize: "1.1rem",
               borderRadius: 8,
-              border: "1px solid #444",
-              background: "#222",
-              color: "white"
+              border: "1px solid var(--input-border)",
+              background: "var(--input-bg)",
+              color: "var(--text-primary)"
             }}
           />
 
@@ -122,9 +122,9 @@ export default function SignUp() {
               padding: "12px",
               fontSize: "1.1rem",
               borderRadius: 8,
-              border: "1px solid #444",
-              background: "#222",
-              color: "white"
+              border: "1px solid var(--input-border)",
+              background: "var(--input-bg)",
+              color: "var(--text-primary)"
             }}
           />
 
@@ -138,9 +138,9 @@ export default function SignUp() {
               padding: "12px",
               fontSize: "1.1rem",
               borderRadius: 8,
-              border: "1px solid #444",
-              background: "#222",
-              color: "white"
+              border: "1px solid var(--input-border)",
+              background: "var(--input-bg)",
+              color: "var(--text-primary)"
             }}
           />
 
@@ -154,9 +154,9 @@ export default function SignUp() {
               padding: "12px",
               fontSize: "1.1rem",
               borderRadius: 8,
-              border: "1px solid #444",
-              background: "#222",
-              color: "white"
+              border: "1px solid var(--input-border)",
+              background: "var(--input-bg)",
+              color: "var(--text-primary)"
             }}
           />
 
@@ -170,9 +170,9 @@ export default function SignUp() {
               padding: "12px",
               fontSize: "1.1rem",
               borderRadius: 8,
-              border: "1px solid #444",
-              background: "#222",
-              color: "white"
+              border: "1px solid var(--input-border)",
+              background: "var(--input-bg)",
+              color: "var(--text-primary)"
             }}
           />
 
@@ -184,9 +184,9 @@ export default function SignUp() {
               padding: "12px",
               fontSize: "1.1rem",
               borderRadius: 8,
-              border: "1px solid #444",
-              background: "#222",
-              color: "white"
+              border: "1px solid var(--input-border)",
+              background: "var(--input-bg)",
+              color: "var(--text-primary)"
             }}
           >
             <option value="">Select your role</option>
@@ -202,13 +202,16 @@ export default function SignUp() {
               padding: "14px",
               fontSize: "1.2rem",
               fontWeight: "bold",
-              background: "#444",
-              color: "white",
+              background: "var(--button-bg)",
+              color: "var(--button-text)",
               border: "none",
               borderRadius: 8,
               cursor: "pointer",
               opacity: submitting ? 0.7 : 1,
+              transition: "all 0.2s ease-in-out",
             }}
+            onMouseEnter={(e) => !submitting && (e.target.style.background = "var(--button-hover)")}
+            onMouseLeave={(e) => !submitting && (e.target.style.background = "var(--button-bg)")}
           >
             {submitting ? "Signing Up..." : "Sign Up"}
           </button>
@@ -216,7 +219,7 @@ export default function SignUp() {
 
         <p style={{ marginTop: 24, textAlign: "center", fontSize: "1.1rem" }}>
           Already have an account?{" "}
-          <a href="#/" style={{ color: "#4ea1ff" }}>
+          <a href="#/" style={{ color: "var(--link-color)" }}>
             Log in
           </a>
         </p>

@@ -11,7 +11,7 @@ export function ViewSwitcher({ activeView, onViewChange }) {
       style={{
         display: "flex",
         gap: "0.25rem",
-        background: "#f3f4f6",
+        background: "var(--bg-tertiary)",
         padding: "0.25rem",
         borderRadius: "0.5rem",
         width: "fit-content",
@@ -31,18 +31,18 @@ export function ViewSwitcher({ activeView, onViewChange }) {
               borderRadius: "0.375rem",
               cursor: "pointer",
               transition: "all 0.2s ease",
-              background: isActive ? "#fff" : "transparent",
-              color: isActive ? "#111" : "#6b7280",
-              boxShadow: isActive ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+              background: isActive ? "var(--card-bg)" : "transparent",
+              color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
+              boxShadow: isActive ? "0 1px 3px var(--card-shadow)" : "none",
             }}
             onMouseEnter={(e) => {
               if (!isActive) {
-                e.currentTarget.style.color = "#111";
+                e.currentTarget.style.color = "var(--text-primary)";
               }
             }}
             onMouseLeave={(e) => {
               if (!isActive) {
-                e.currentTarget.style.color = "#6b7280";
+                e.currentTarget.style.color = "var(--text-secondary)";
               }
             }}
           >

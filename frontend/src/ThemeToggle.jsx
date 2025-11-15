@@ -3,20 +3,30 @@ import { Sun, Moon } from "lucide-react";
 
 export default function ThemeToggle() {
   const [theme, setTheme] = useState("light");
+  const [isMobile, setIsMobile] = useState(false);
 
-  // When component mounts, read from localStorage or system preference
+  // When component mounts, read from localStorage or default to light mode
   useEffect(() => {
     const saved = localStorage.getItem("theme");
     if (saved) {
       setTheme(saved);
       applyTheme(saved);
     } else {
-      // Optionally, detect system preference
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      const defaultTheme = prefersDark ? "dark" : "light";
+      // Always default to light mode
+      const defaultTheme = "light";
       setTheme(defaultTheme);
       applyTheme(defaultTheme);
     }
+
+    // Check for mobile screen size
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
   function applyTheme(themeName) {
@@ -39,20 +49,39 @@ export default function ThemeToggle() {
     <button
       onClick={toggleTheme}
       style={{
-        display: "none", // Hidden but functionality preserved
         position: "fixed",
-        top: "10px",
-        right: "10px",
-        padding: "8px",
-        borderRadius: "6px",
-        border: "1px solid gray",
-        backgroundColor: "transparent",
+        bottom: isMobile ? "1rem" : "1.5rem",
+        right: isMobile ? "1rem" : "1.5rem",
+        padding: isMobile ? "10px" : "12px",
+        borderRadius: "50%",
+        border: "1px solid var(--border-color)",
+        backgroundColor: "var(--card-bg)",
+        color: "var(--text-primary)",
         cursor: "pointer",
-        zIndex: 1000,
+        zIndex: 999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        boxShadow: "0 2px 8px var(--card-shadow)",
+        transition: "all 0.3s ease",
+        width: isMobile ? "44px" : "48px",
+        height: isMobile ? "44px" : "48px",
       }}
       aria-label="Toggle theme"
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "scale(1.1)";
+        e.currentTarget.style.boxShadow = "0 4px 12px var(--card-shadow)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "scale(1)";
+        e.currentTarget.style.boxShadow = "0 2px 8px var(--card-shadow)";
+      }}
     >
-      {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+      {theme === "dark" ? (
+        <Sun size={isMobile ? 20 : 22} color="var(--text-primary)" />
+      ) : (
+        <Moon size={isMobile ? 20 : 22} color="var(--text-primary)" />
+      )}
     </button>
   );
 }

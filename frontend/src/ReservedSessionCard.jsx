@@ -20,23 +20,23 @@ export function ReservedSessionCard({ session, onCancel }) {
     <div
       onClick={handleCardClick}
       style={{
-        background: "white",
-        border: "1px solid #e5e7eb",
+        background: "var(--card-bg)",
+        border: "1px solid var(--border-color)",
         borderRadius: "0.5rem",
         padding: "1rem",
-        boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+        boxShadow: "0 1px 2px var(--card-shadow)",
         cursor: "pointer",
         transition: "all 0.15s",
         minWidth: "280px",
         position: "relative",
       }}
       onMouseOver={(e) => {
-        e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.1)";
-        e.currentTarget.style.borderColor = "#d1d5db";
+        e.currentTarget.style.boxShadow = "0 4px 6px var(--card-shadow)";
+        e.currentTarget.style.borderColor = "var(--text-secondary)";
       }}
       onMouseOut={(e) => {
-        e.currentTarget.style.boxShadow = "0 1px 2px 0 rgba(0, 0, 0, 0.05)";
-        e.currentTarget.style.borderColor = "#e5e7eb";
+        e.currentTarget.style.boxShadow = "0 1px 2px var(--card-shadow)";
+        e.currentTarget.style.borderColor = "var(--border-color)";
       }}
     >
       {/* Cancel Button */}
@@ -71,7 +71,7 @@ export function ReservedSessionCard({ session, onCancel }) {
         <h3
           style={{
             fontWeight: 600,
-            color: "#111",
+            color: "var(--text-primary)",
             margin: "0 0 0.25rem 0",
             fontSize: "0.95rem",
             paddingRight: "1.5rem",
@@ -82,7 +82,7 @@ export function ReservedSessionCard({ session, onCancel }) {
         <p
           style={{
             fontSize: "0.8rem",
-            color: "#6b7280",
+            color: "var(--text-secondary)",
             margin: 0,
           }}
         >
@@ -99,10 +99,10 @@ export function ReservedSessionCard({ session, onCancel }) {
             alignItems: "center",
             gap: "0.5rem",
             fontSize: "0.85rem",
-            color: "#374151",
+            color: "var(--text-primary)",
           }}
         >
-          <Calendar size={14} color="#6b7280" />
+          <Calendar size={14} color="var(--text-secondary)" />
           <span style={{ fontWeight: 500 }}>{session.dayOfWeek}</span>
         </div>
 
@@ -112,10 +112,10 @@ export function ReservedSessionCard({ session, onCancel }) {
             alignItems: "center",
             gap: "0.5rem",
             fontSize: "0.85rem",
-            color: "#374151",
+            color: "var(--text-primary)",
           }}
         >
-          <Clock size={14} color="#6b7280" />
+          <Clock size={14} color="var(--text-secondary)" />
           <span>
             {session.startTime} - {session.endTime}
           </span>
@@ -128,10 +128,10 @@ export function ReservedSessionCard({ session, onCancel }) {
             alignItems: "center",
             gap: "0.5rem",
             fontSize: "0.85rem",
-            color: "#374151",
+            color: "var(--text-primary)",
           }}
         >
-          <MapPin size={14} color="#6b7280" />
+          <MapPin size={14} color="var(--text-secondary)" />
           <span>{session.location}</span>
         </div>
       </div>

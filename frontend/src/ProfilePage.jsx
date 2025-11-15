@@ -97,14 +97,14 @@ export default function ProfilePage() {
     window.location.href = new URL("", ABS_BASE).pathname;
   }
 
-  if (loading) return <div style={{color:"#fff",padding:24,background:"#000",minHeight:"100vh"}}>Loading…</div>;
+  if (loading) return <div style={{color:"var(--text-primary)",padding:24,background:"var(--bg-primary)",minHeight:"100vh"}}>Loading…</div>;
 
   if (!profile) {
     return (
-      <div style={{color:"#fff",padding:24,background:"#000",minHeight:"100vh"}}>
+      <div style={{color:"var(--text-primary)",padding:24,background:"var(--bg-primary)",minHeight:"100vh"}}>
         <h1>Profile</h1>
         <p>You're not signed in.</p>
-        <Link to="/" style={{ color:"#8ab4ff" }}>Go to Login</Link>
+        <Link to="/" style={{ color:"var(--link-color)" }}>Go to Login</Link>
       </div>
     );
   }
@@ -120,8 +120,8 @@ export default function ProfilePage() {
   const page = {
     minHeight:"100vh",
     width:"100%",
-    background:"#000",
-    color:"#fff",
+    background:"var(--bg-primary)",
+    color:"var(--text-primary)",
     fontFamily:"system-ui, sans-serif",
     overflowX:"hidden",
   };
@@ -135,8 +135,8 @@ export default function ProfilePage() {
     zIndex:3000,
     display:"flex",
     alignItems:"center",
-    borderBottom:"1px solid #222",
-    background:"rgba(18,18,18,0.98)",
+    borderBottom:"1px solid var(--border-color)",
+    background:"var(--card-bg)",
     backdropFilter:"blur(2px)",
   };
 
@@ -163,20 +163,20 @@ export default function ProfilePage() {
   };
 
   const card = {
-    background:"#0f0f0f",
-    border:"1px solid #222",
+    background:"var(--card-bg)",
+    border:"1px solid var(--border-color)",
     borderRadius:16,
   };
 
-  const sectionHeader = { padding:24, borderBottom:"1px solid #222" };
+  const sectionHeader = { padding:24, borderBottom:"1px solid var(--border-color)" };
   const sectionBody = { padding:24 };
 
   const inputBase = {
     padding:12,
     borderRadius:10,
-    border:"1px solid #333",
-    background:"#111",
-    color:"#fff",
+    border:"1px solid var(--border-color)",
+    background:"var(--input-bg)",
+    color:"var(--text-primary)",
     fontSize:16,
     width:"100%",
     minWidth:0,
@@ -194,7 +194,7 @@ export default function ProfilePage() {
 
   const field = (label, value, onChange, props={}) => (
     <label style={{ display:"grid", gap:8, minWidth:0 }}>
-      <span style={{ fontSize:12, color:"#aaa", textTransform:"uppercase", letterSpacing:0.4 }}>{label}</span>
+      <span style={{ fontSize:12, color:"var(--text-secondary)", textTransform:"uppercase", letterSpacing:0.4 }}>{label}</span>
       <input value={value ?? ""} onChange={e=>onChange(e.target.value)} style={inputBase} {...props}/>
     </label>
   );
@@ -214,7 +214,7 @@ export default function ProfilePage() {
               to="/dashboard"
               style={{
                 display:"flex", alignItems:"center", justifyContent:"center",
-                background:"#111", color:"#fff", border:"1px solid #222",
+                background:"var(--bg-tertiary)", color:"var(--text-primary)", border:"1px solid var(--border-color)",
                 padding:"8px 12px", borderRadius:10, textDecoration:"none",
               }}
             >
@@ -237,7 +237,7 @@ export default function ProfilePage() {
               <>
                 <button
                   onClick={() => { setDraft(profile); setEditing(false); setMsg(""); }}
-                  style={{ background:"transparent", border:"1px solid #333", color:"#fff", padding:"10px 16px", borderRadius:12, fontSize:15, width: isMobile ? "100%" : "auto" }}
+                  style={{ background:"transparent", border:"1px solid var(--border-color)", color:"var(--text-primary)", padding:"10px 16px", borderRadius:12, fontSize:15, width: isMobile ? "100%" : "auto" }}
                 >
                   Cancel
                 </button>
@@ -284,8 +284,8 @@ export default function ProfilePage() {
                     height:120,
                     borderRadius:"50%",
                     objectFit:"cover",
-                    border:"2px solid #333",
-                    background:"#111",
+                    border:"2px solid var(--border-color)",
+                    background:"var(--bg-tertiary)",
                   }}
                 />
 
@@ -293,9 +293,9 @@ export default function ProfilePage() {
                   <button
                     onClick={regenerateAvatar}
                     style={{
-                      background:"#111",
-                      border:"1px solid #333",
-                      color:"#fff",
+                      background:"var(--bg-tertiary)",
+                      border:"1px solid var(--border-color)",
+                      color:"var(--text-primary)",
                       padding:"6px 10px",
                       borderRadius:8,
                       cursor:"pointer",
@@ -321,13 +321,13 @@ export default function ProfilePage() {
 
             <div style={{ display:"grid", gap:10, fontSize:16, textAlign:isMobile?"center":"left" }}>
               {profile.pronouns && (
-                <div style={{ color:"#bbb" }}>
-                  Pronouns: <span style={{ color:"#fff" }}>{profile.pronouns}</span>
+                <div style={{ color:"var(--text-secondary)" }}>
+                  Pronouns: <span style={{ color:"var(--text-primary)" }}>{profile.pronouns}</span>
                 </div>
               )}
-              <div style={{ color:"#bbb" }}>Year: <span style={{ color:"#fff" }}>{profile.academic_year || "—"}</span></div>
-              <div style={{ color:"#bbb" }}>Major: <span style={{ color:"#fff" }}>{profile.major || "—"}</span></div>
-              <div style={{ color:"#bbb" }}>Email: <span style={{ color:"#8ab4ff" }}>{profile.email}</span></div>
+              <div style={{ color:"var(--text-secondary)" }}>Year: <span style={{ color:"var(--text-primary)" }}>{profile.academic_year || "—"}</span></div>
+              <div style={{ color:"var(--text-secondary)" }}>Major: <span style={{ color:"var(--text-primary)" }}>{profile.major || "—"}</span></div>
+              <div style={{ color:"var(--text-secondary)" }}>Email: <span style={{ color:"var(--link-color)" }}>{profile.email}</span></div>
             </div>
           </aside>
 
@@ -356,12 +356,12 @@ export default function ProfilePage() {
                     )}
 
                     <label style={{ display:"grid", gap:8 }}>
-                      <span style={{ fontSize:12, color:"#aaa", textTransform:"uppercase", letterSpacing:0.4 }}>Email</span>
-                      <input value={profile.email} disabled style={{ ...inputBase, background:"#151515", color:"#aaa" }}/>
+                      <span style={{ fontSize:12, color:"var(--text-secondary)", textTransform:"uppercase", letterSpacing:0.4 }}>Email</span>
+                      <input value={profile.email} disabled style={{ ...inputBase, background:"var(--bg-tertiary)", color:"var(--text-secondary)" }}/>
                     </label>
 
                     <label style={{ display:"grid", gap:8 }}>
-                      <span style={{ fontSize:12, color:"#aaa", textTransform:"uppercase", letterSpacing:0.4 }}>Pronouns</span>
+                      <span style={{ fontSize:12, color:"var(--text-secondary)", textTransform:"uppercase", letterSpacing:0.4 }}>Pronouns</span>
                       <select
                         value={draft?.pronouns || ""}
                         onChange={e => setDraft(d => ({ ...d, pronouns: e.target.value }))}
@@ -389,7 +389,7 @@ export default function ProfilePage() {
               ) : (
                 <div style={{ ...sectionBody, ...twoCol }}>
                   <label style={{ display:"grid", gap:8 }}>
-                    <span style={{ fontSize:12, color:"#aaa", textTransform:"uppercase", letterSpacing:0.4 }}>Academic Year</span>
+                    <span style={{ fontSize:12, color:"var(--text-secondary)", textTransform:"uppercase", letterSpacing:0.4 }}>Academic Year</span>
                     <select
                       value={draft?.academic_year || ""}
                       onChange={e => setDraft(d => ({ ...d, academic_year: e.target.value }))}
@@ -425,7 +425,7 @@ export default function ProfilePage() {
               </button>
             </div>
 
-            {msg && <div style={{ color:"#9ad", fontSize:14 }}>{msg}</div>}
+            {msg && <div style={{ color:"var(--link-color)", fontSize:14 }}>{msg}</div>}
 
           </main>
         </div>
@@ -437,8 +437,8 @@ export default function ProfilePage() {
 function Labeled({ label, value }) {
   return (
     <div>
-      <div style={{ color:"#aaa", fontSize:12, textTransform:"uppercase", letterSpacing:0.4 }}>{label}</div>
-      <div style={{ fontSize:16 }}>{value}</div>
+      <div style={{ color:"var(--text-secondary)", fontSize:12, textTransform:"uppercase", letterSpacing:0.4 }}>{label}</div>
+      <div style={{ fontSize:16, color:"var(--text-primary)" }}>{value}</div>
     </div>
   );
 }
