@@ -44,6 +44,15 @@ try {
     exit;
   }
 
+  // Ensure end time is after start time
+  $startMinutes = ((int)$start_h) * 60 + ((int)$start_m);
+  $endMinutes = ((int)$end_h) * 60 + ((int)$end_m);
+  if ($endMinutes <= $startMinutes) {
+    http_response_code(400);
+    echo json_encode(['ok'=>false,'error'=>'invalid_time_range','message'=>'end time must be after start time']);
+    exit;
+  }
+
   $course_id = canonical_course_id($pdo, $courseKey);
 
   // Insert

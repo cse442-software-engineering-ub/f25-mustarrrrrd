@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Menu, Search, Plus, MoreVertical, X } from "lucide-react";
+import { Menu, Search, Plus, MoreVertical, X, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function ProfessorView() {
@@ -16,6 +16,7 @@ export default function ProfessorView() {
     end_time: "13:00",
     location: "",
   });
+  const [scheduleError, setScheduleError] = useState("");
   const [showCreateCourse, setShowCreateCourse] = useState(false);
   const [newCourse, setNewCourse] = useState({ code: "", title: "" });
   const [professorName, setProfessorName] = useState("Professor");
@@ -285,6 +286,17 @@ export default function ProfessorView() {
   }
 
   async function createSession() {
+    // client-side validation
+    setScheduleError("");
+    const [sh, sm] = (newSession.start_time || "").split(':').map(n=>parseInt(n||'0',10));
+    const [eh, em] = (newSession.end_time || "").split(':').map(n=>parseInt(n||'0',10));
+    const smin = (sh||0)*60 + (sm||0);
+    const emin = (eh||0)*60 + (em||0);
+    if (emin <= smin) {
+      setScheduleError('End time must be after start time');
+      return;
+    }
+
     try {
       const res = await fetch(`${API_ROOT}create_office_hours_session.php`, {
         method: "POST",
@@ -1882,96 +1894,62 @@ export default function ProfessorView() {
                   marginBottom: 12,
                 }}
               >
-                {/* compact, consistent input styles */}
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 8,
-                    alignItems: "center",
-                    marginBottom: 8,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  {(() => {
-                    const common = {
-                      padding: 8,
-                      borderRadius: 8,
-                      border: "1px solid var(--border-color)",
-                      background: "var(--input-bg)",
-                      color: "var(--text-primary)",
-                    };
-                    return (
-                      <>
-                        <select
-                          value={newSession.day_of_week}
-                          onChange={(e) =>
-                            setNewSession((s) => ({
-                              ...s,
-                              day_of_week: e.target.value,
-                            }))
-                          }
-                          style={{ ...common, minWidth: 120 }}
-                        >
-                          <option>Monday</option>
-                          <option>Tuesday</option>
-                          <option>Wednesday</option>
-                          <option>Thursday</option>
-                          <option>Friday</option>
-                          <option>Saturday</option>
-                          <option>Sunday</option>
-                        </select>
-                        <input
-                          type="time"
-                          value={newSession.start_time}
-                          onChange={(e) =>
-                            setNewSession((s) => ({
-                              ...s,
-                              start_time: e.target.value,
-                            }))
-                          }
-                          style={{ ...common, width: 120 }}
-                        />
-                        <input
-                          type="time"
-                          value={newSession.end_time}
-                          onChange={(e) =>
-                            setNewSession((s) => ({
-                              ...s,
-                              end_time: e.target.value,
-                            }))
-                          }
-                          style={{ ...common, width: 120 }}
-                        />
-                        <input
-                          placeholder="Location"
-                          value={newSession.location}
-                          onChange={(e) =>
-                            setNewSession((s) => ({
-                              ...s,
-                              location: e.target.value,
-                            }))
-                          }
-                          style={{ ...common, flex: 1, minWidth: 200 }}
-                        />
-                      </>
-                    );
-                  })()}
+                {/* modern, compact schedule controls */}
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', minWidth: 140 }}>
+                    <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Day</label>
+                    <select value={newSession.day_of_week} onChange={(e)=>setNewSession(s=>({...s, day_of_week: e.target.value}))} style={{ padding: 10, borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--input-bg)', fontWeight: 600 }}>
+                      <option>Monday</option>
+                      <option>Tuesday</option>
+                      <option>Wednesday</option>
+                      <option>Thursday</option>
+                      <option>Friday</option>
+                      <option>Saturday</option>
+                      <option>Sunday</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', minWidth: 120 }}>
+                    <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Start</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--input-bg)' }}>
+                      <Clock size={16} />
+                      <input type="time" value={newSession.start_time} onChange={(e)=>setNewSession(s=>({...s, start_time: e.target.value}))} style={{ border: 'none', outline: 'none', fontWeight: 700, fontSize: 14, background: 'transparent' }} />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', minWidth: 120 }}>
+                    <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>End</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--input-bg)' }}>
+                      <Clock size={16} />
+                      <input type="time" value={newSession.end_time} onChange={(e)=>setNewSession(s=>({...s, end_time: e.target.value}))} style={{ border: 'none', outline: 'none', fontWeight: 700, fontSize: 14, background: 'transparent' }} />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 200 }}>
+                    <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Location</label>
+                    <input placeholder="Where (optional)" value={newSession.location} onChange={(e)=>setNewSession(s=>({...s, location: e.target.value}))} style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--input-bg)' }} />
+                  </div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button
-                    onClick={createSession}
-                    style={{
-                      background: "var(--text-primary)",
-                      color: "var(--bg-primary)",
-                      border: "none",
-                      padding: "8px 12px",
-                      borderRadius: 8,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Save
-                  </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <button
+                      onClick={createSession}
+                      disabled={!!scheduleError}
+                      style={{
+                        background: scheduleError ? '#94a3b8' : 'var(--text-primary)',
+                        color: 'var(--bg-primary)',
+                        border: 'none',
+                        padding: '8px 16px',
+                        borderRadius: 10,
+                        fontWeight: 700,
+                        cursor: scheduleError ? 'not-allowed' : 'pointer',
+                        boxShadow: scheduleError ? 'none' : '0 6px 18px rgba(17,24,39,0.08)'
+                      }}
+                    >
+                      Save
+                    </button>
+                    {scheduleError && <div style={{ color: '#92400e', background: '#fffbeb', padding: '6px 8px', borderRadius: 6, fontSize: '0.85rem' }}>{scheduleError}</div>}
+                  </div>
                   <button
                     onClick={() => setShowScheduleForm(false)}
                     style={{

@@ -81,10 +81,11 @@ export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFa
         boxShadow: course.activeSession
           ? "0 4px 12px rgba(16, 185, 129, 0.15)"
           : "0 1px 2px var(--card-shadow)",
-        position: "relative",
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
+  position: "relative",
+  display: "flex",
+  flexDirection: "column",
+  /* allow natural height to avoid overlap in small screens */
+  /* height: 100% removed to prevent overlap in mobile grid */
       }}
     >
       {/* Active Session Banner */}
