@@ -1898,7 +1898,7 @@ export default function ProfessorView() {
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', minWidth: 140 }}>
                     <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Day</label>
-                    <select value={newSession.day_of_week} onChange={(e)=>setNewSession(s=>({...s, day_of_week: e.target.value}))} style={{ padding: 10, borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--input-bg)', fontWeight: 600 }}>
+                    <select value={newSession.day_of_week} onChange={(e)=>setNewSession(s=>({...s, day_of_week: e.target.value}))} style={{ padding: 10, borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--input-bg)', color: 'var(--text-primary)', fontWeight: 600 }}>
                       <option>Monday</option>
                       <option>Tuesday</option>
                       <option>Wednesday</option>
@@ -1912,22 +1912,22 @@ export default function ProfessorView() {
                   <div style={{ display: 'flex', flexDirection: 'column', minWidth: 120 }}>
                     <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Start</label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--input-bg)' }}>
-                      <Clock size={16} />
-                      <input type="time" value={newSession.start_time} onChange={(e)=>setNewSession(s=>({...s, start_time: e.target.value}))} style={{ border: 'none', outline: 'none', fontWeight: 700, fontSize: 14, background: 'transparent' }} />
+                      <Clock size={16} color="var(--text-primary)" />
+                      <input type="time" value={newSession.start_time} onChange={(e)=>setNewSession(s=>({...s, start_time: e.target.value}))} style={{ border: 'none', outline: 'none', fontWeight: 700, fontSize: 14, background: 'transparent', color: 'var(--text-primary)' }} />
                     </div>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', minWidth: 120 }}>
                     <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>End</label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--input-bg)' }}>
-                      <Clock size={16} />
-                      <input type="time" value={newSession.end_time} onChange={(e)=>setNewSession(s=>({...s, end_time: e.target.value}))} style={{ border: 'none', outline: 'none', fontWeight: 700, fontSize: 14, background: 'transparent' }} />
+                      <Clock size={16} color="var(--text-primary)" />
+                      <input type="time" value={newSession.end_time} onChange={(e)=>setNewSession(s=>({...s, end_time: e.target.value}))} style={{ border: 'none', outline: 'none', fontWeight: 700, fontSize: 14, background: 'transparent', color: 'var(--text-primary)' }} />
                     </div>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 200 }}>
                     <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Location</label>
-                    <input placeholder="Where (optional)" value={newSession.location} onChange={(e)=>setNewSession(s=>({...s, location: e.target.value}))} style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--input-bg)' }} />
+                    <input placeholder="Where (optional)" value={newSession.location} onChange={(e)=>setNewSession(s=>({...s, location: e.target.value}))} style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--input-bg)', color: 'var(--text-primary)' }} />
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
