@@ -461,7 +461,7 @@ export default function TADashboard() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#f9fafb",
+        background: "var(--bg-secondary)",
         margin: 0,
         padding: 0,
         position: "fixed",
@@ -475,8 +475,8 @@ export default function TADashboard() {
       {/* Header */}
       <div
         style={{
-          background: "white",
-          borderBottom: "1px solid #e5e7eb",
+          background: "var(--card-bg)",
+          borderBottom: "1px solid var(--border-color)",
           padding: "0.75rem 1rem",
           position: "sticky",
           top: 0,
@@ -499,12 +499,12 @@ export default function TADashboard() {
                 fontSize: "1.5rem",
                 fontWeight: "500",
                 margin: 0,
-                color: "#111",
+                color: "var(--text-primary)",
               }}
             >
               TA Dashboard
             </h1>
-            <p style={{ fontSize: "0.9rem", color: "#555", margin: 0 }}>
+            <p style={{ fontSize: "0.9rem", color: "var(--text-secondary)", margin: 0 }}>
               {taName}
             </p>
           </div>
@@ -530,13 +530,13 @@ export default function TADashboard() {
       width: 40,
       height: 40,
       borderRadius: 10,
-      border: "1px solid #e5e7eb",
-      background: "#fff",
+      border: "1px solid var(--border-color)",
+      background: "var(--card-bg)",
       cursor: "pointer",
     }}
     title="Menu"
   >
-    <Menu size={20} />
+    <Menu size={20} color="var(--text-primary)" />
   </button>
 
   {menuOpen && (
@@ -548,10 +548,10 @@ export default function TADashboard() {
         right: 0,
         marginTop: 8,
         width: 180,
-        background: "#fff",
-        border: "1px solid #e5e7eb",
+        background: "var(--card-bg)",
+        border: "1px solid var(--border-color)",
         borderRadius: 10,
-        boxShadow: "0 8px 20px rgba(0,0,0,0.08)",
+        boxShadow: "0 8px 20px var(--card-shadow)",
         overflow: "hidden",
       }}
     >
@@ -569,7 +569,7 @@ export default function TADashboard() {
           border: 0,
           cursor: "pointer",
           fontSize: 14,
-          color: "#111",
+          color: "var(--text-primary)",
           textDecoration: "none",
         }}
       >
@@ -577,7 +577,7 @@ export default function TADashboard() {
       </Link>
 
       {/* Divider */}
-      <div style={{ height: 1, background: "#f1f5f9" }} />
+      <div style={{ height: 1, background: "var(--border-color)" }} />
 
       {/* Sign out */}
       <button
@@ -694,7 +694,7 @@ export default function TADashboard() {
           }}
         >
           {courses.length === 0 && (
-            <p style={{ color: "#555" }}>
+            <p style={{ color: "var(--text-secondary)" }}>
               You have no assigned courses yet. Please join one first.
             </p>
           )}
@@ -713,16 +713,16 @@ export default function TADashboard() {
                 <button
                   onClick={() => setActiveCourse(course.code)}
                   style={{
-                    background: isActive ? "#111" : "#fff",
-                    color: isActive ? "#fff" : "#333",
-                    border: isActive ? "none" : "1px solid #ddd",
+                    background: isActive ? "var(--text-primary)" : "var(--card-bg)",
+                    color: isActive ? "var(--bg-primary)" : "var(--text-primary)",
+                    border: isActive ? "none" : "1px solid var(--border-color)",
                     borderRadius: "0.5rem",
                     padding: "0.75rem 1rem",
                     paddingRight: "2.5rem",
                     textAlign: "left",
                     boxShadow: isActive
-                      ? "0 2px 6px rgba(0,0,0,0.2)"
-                      : "0 1px 3px rgba(0,0,0,0.1)",
+                      ? "0 2px 6px var(--card-shadow)"
+                      : "0 1px 3px var(--card-shadow)",
                     cursor: "pointer",
                     width: "100%",
                   }}
@@ -759,10 +759,10 @@ export default function TADashboard() {
                     alignItems: "center",
                     justifyContent: "center",
                     borderRadius: "0.25rem",
-                    color: isActive ? "#fff" : "#666",
+                    color: isActive ? "var(--bg-primary)" : "var(--text-secondary)",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = isActive ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)";
+                    e.currentTarget.style.background = isActive ? "rgba(128,128,128,0.2)" : "var(--bg-tertiary)";
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = "transparent";
@@ -780,10 +780,10 @@ export default function TADashboard() {
                       top: "100%",
                       right: 0,
                       marginTop: "0.25rem",
-                      background: "#fff",
-                      border: "1px solid #e5e7eb",
+                      background: "var(--card-bg)",
+                      border: "1px solid var(--border-color)",
                       borderRadius: "0.375rem",
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                      boxShadow: "0 4px 12px var(--card-shadow)",
                       zIndex: 100,
                       minWidth: "120px",
                     }}
@@ -805,7 +805,7 @@ export default function TADashboard() {
                         fontWeight: "500",
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "#fef2f2";
+                        e.currentTarget.style.background = "var(--bg-tertiary)";
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.background = "transparent";
@@ -843,12 +843,12 @@ export default function TADashboard() {
         {showJoinCourse && (
           <div
             style={{
-              background: "white",
+              background: "var(--card-bg)",
               border: "2px solid #93c5fd",
               borderRadius: "0.5rem",
               padding: "1rem",
               marginBottom: "1.5rem",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+              boxShadow: "0 2px 8px var(--card-shadow)",
             }}
           >
             <h3
@@ -868,14 +868,14 @@ export default function TADashboard() {
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  background: "white",
-                  border: "2px solid #e5e7eb",
+                  background: "var(--input-bg)",
+                  border: "2px solid var(--border-color)",
                   borderRadius: "0.5rem",
                   padding: "0.75rem 1rem",
                   gap: "0.5rem",
                 }}
               >
-                <Search size={20} color="#6b7280" />
+                <Search size={20} color="var(--text-secondary)" />
                 <input
                   type="text"
                   placeholder="Search by course code, title... (e.g., 'CSE 442' or just '442')"
@@ -886,12 +886,12 @@ export default function TADashboard() {
                     border: "none",
                     outline: "none",
                     fontSize: "0.875rem",
-                    color: "#111",
+                    color: "var(--text-primary)",
                     background: "transparent",
                   }}
                 />
                 {joinSearchLoading && (
-                  <div style={{ color: "#6b7280", fontSize: "0.875rem" }}>
+                  <div style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}>
                     Searching...
                   </div>
                 )}
@@ -905,10 +905,10 @@ export default function TADashboard() {
                     top: "calc(100% + 0.5rem)",
                     left: 0,
                     right: 0,
-                    background: "white",
-                    border: "1px solid #e5e7eb",
+                    background: "var(--card-bg)",
+                    border: "1px solid var(--border-color)",
                     borderRadius: "0.5rem",
-                    boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+                    boxShadow: "0 10px 25px var(--card-shadow)",
                     maxHeight: "300px",
                     overflowY: "auto",
                     zIndex: 50,
@@ -919,7 +919,7 @@ export default function TADashboard() {
                       key={course.id}
                       style={{
                         padding: "0.75rem 1rem",
-                        borderBottom: "1px solid #f3f4f6",
+                        borderBottom: "1px solid var(--border-color)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
@@ -927,18 +927,18 @@ export default function TADashboard() {
                         transition: "background 0.15s",
                         cursor: "pointer",
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "#f9fafb")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = "white")}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-tertiary)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                     >
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "#111" }}>
+                        <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "var(--text-primary)" }}>
                           {course.code}
                         </div>
-                        <div style={{ fontSize: "0.75rem", color: "#6b7280", marginTop: "0.125rem" }}>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.125rem" }}>
                           {course.title}
                         </div>
                         {course.professor && (
-                          <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: "0.125rem" }}>
+                          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.125rem" }}>
                             {course.professor}
                           </div>
                         )}
@@ -986,9 +986,9 @@ export default function TADashboard() {
                   setJoinSearchResults([]);
                 }}
                 style={{
-                  background: "#fff",
-                  color: "#666",
-                  border: "1px solid #d1d5db",
+                  background: "var(--card-bg)",
+                  color: "var(--text-secondary)",
+                  border: "1px solid var(--border-color)",
                   borderRadius: "0.375rem",
                   padding: "0.5rem 1rem",
                   cursor: "pointer",
@@ -1001,7 +1001,7 @@ export default function TADashboard() {
             <p
               style={{
                 fontSize: "0.75rem",
-                color: "#666",
+                color: "var(--text-secondary)",
                 marginTop: "0.5rem",
                 marginBottom: 0,
               }}
@@ -1015,11 +1015,11 @@ export default function TADashboard() {
         {activeCourse && (
           <div
             style={{
-              background: "white",
-              border: "1px solid #e5e7eb",
+              background: "var(--card-bg)",
+              border: "1px solid var(--border-color)",
               borderRadius: "0.5rem",
               padding: "1rem",
-              boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
+              boxShadow: "0 1px 4px var(--card-shadow)",
             }}
           >
             <div
@@ -1034,6 +1034,7 @@ export default function TADashboard() {
                   fontSize: "1rem",
                   fontWeight: "600",
                   margin: 0,
+                  color: "var(--text-primary)",
                 }}
               >
                 {activeCourse} —{" "}
@@ -1061,7 +1062,7 @@ export default function TADashboard() {
               </div>
             </div>
 
-            {loading && <p style={{ color: "#666" }}>Loading queue...</p>}
+            {loading && <p style={{ color: "var(--text-secondary)" }}>Loading queue...</p>}
             {/* Sessions list for this course */}
             {sessions.length > 0 && (
               <div style={{ marginBottom: 12 }}>
@@ -1083,14 +1084,14 @@ export default function TADashboard() {
                           noticeTimerRef.current = window.setTimeout(() => setNoticeMsg(""), 4000);
                         }
                       }}
-                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f9fafb', border: '1px solid #e5e7eb', padding: 10, borderRadius: 8, marginBottom: 8, cursor: taCanOpen ? 'pointer' : 'not-allowed', opacity: taCanOpen ? 1 : 0.6 }}
+                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', padding: 10, borderRadius: 8, marginBottom: 8, cursor: taCanOpen ? 'pointer' : 'not-allowed', opacity: taCanOpen ? 1 : 0.6 }}
                     >
                         <div>
-                        <div style={{ fontWeight: 700 }}>{s.day_of_week} • {s.start_time}–{s.end_time}</div>
-                        <div style={{ fontSize: '0.9rem', color: '#555' }}>{s.location || '(no location)'}</div>
+                        <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{s.day_of_week} • {s.start_time}–{s.end_time}</div>
+                        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{s.location || '(no location)'}</div>
                         {/* Owner tag: show who created the session when available */}
                         {(s.created_by || s.professor_email || s.instructor_email || s.owner_email) && (
-                          <div style={{ fontSize: '0.75rem', color: '#777' }}>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                             Owner: {s.created_by || s.professor_email || s.instructor_email || s.owner_email}
                           </div>
                         )}
@@ -1116,11 +1117,11 @@ export default function TADashboard() {
 
             {/* Schedule form */}
             {showScheduleForm && (
-              <div style={{ background: '#fff', border: '1px solid #e5e7eb', padding: 12, borderRadius: 8, marginBottom: 12 }}>
+              <div style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', padding: 12, borderRadius: 8, marginBottom: 12 }}>
                 {/* compact, consistent input styles */}
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
                   {(() => {
-                    const common = { padding: 8, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff' };
+                    const common = { padding: 8, borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--input-bg)', color: 'var(--text-primary)' };
                     return (
                       <>
                         <select value={newSession.day_of_week} onChange={(e)=>setNewSession(s=>({...s, day_of_week: e.target.value}))} style={{ ...common, minWidth: 120 }}>
@@ -1140,19 +1141,19 @@ export default function TADashboard() {
                   })()}
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={createSession} style={{ background: '#111827', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Save</button>
-                  <button onClick={()=>setShowScheduleForm(false)} style={{ background: '#fff', color: '#111827', border: '1px solid #e5e7eb', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Cancel</button>
+                  <button onClick={createSession} style={{ background: 'var(--text-primary)', color: 'var(--bg-primary)', border: 'none', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Save</button>
+                  <button onClick={()=>setShowScheduleForm(false)} style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Cancel</button>
                 </div>
               </div>
             )}
 
             {/* Edit session form (for TAs) */}
             {editSessionId && (
-              <div style={{ background: '#fff', border: '1px solid #e5e7eb', padding: 12, borderRadius: 8, marginBottom: 12 }}>
-                <h3 style={{ marginTop: 0, marginBottom: 8 }}>Edit Session</h3>
+              <div style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', padding: 12, borderRadius: 8, marginBottom: 12 }}>
+                <h3 style={{ marginTop: 0, marginBottom: 8, color: 'var(--text-primary)' }}>Edit Session</h3>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
                   {(() => {
-                    const common = { padding: 8, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff' };
+                    const common = { padding: 8, borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--input-bg)', color: 'var(--text-primary)' };
                     return (
                       <>
                         <select value={editSessionData.day_of_week} onChange={(e)=>setEditSessionData(s=>({...s, day_of_week: e.target.value}))} style={{ ...common, minWidth: 120 }}>
@@ -1180,8 +1181,8 @@ export default function TADashboard() {
                       const d = await res.json().catch(()=>null);
                       if(d && d.ok){ setEditSessionId(null); fetchSessions(); }
                     }catch(e){ console.error('Failed to update session', e); alert('Failed to update session'); }
-                  }} style={{ background: '#111827', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Save</button>
-                  <button onClick={()=>setEditSessionId(null)} style={{ background: '#fff', color: '#111827', border: '1px solid #e5e7eb', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Cancel</button>
+                  }} style={{ background: 'var(--text-primary)', color: 'var(--bg-primary)', border: 'none', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Save</button>
+                  <button onClick={()=>setEditSessionId(null)} style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Cancel</button>
                 </div>
               </div>
             )}
@@ -1194,8 +1195,8 @@ export default function TADashboard() {
                 <div
                   key={idx}
                   style={{
-                    background: "#f9fafb",
-                    border: "1px solid #e5e7eb",
+                    background: "var(--bg-tertiary)",
+                    border: "1px solid var(--border-color)",
                     borderRadius: "0.5rem",
                     padding: "0.75rem",
                     marginBottom: "0.75rem",
@@ -1208,13 +1209,13 @@ export default function TADashboard() {
                       marginBottom: "0.5rem",
                     }}
                   >
-                    <p style={{ fontWeight: "600", margin: 0 }}>
+                    <p style={{ fontWeight: "600", margin: 0, color: "var(--text-primary)" }}>
                       {entry.user_email}
                     </p>
                     <p
                       style={{
                         fontSize: "0.8rem",
-                        color: "#777",
+                        color: "var(--text-secondary)",
                         margin: 0,
                       }}
                     >
@@ -1228,7 +1229,7 @@ export default function TADashboard() {
                   <p
                     style={{
                       fontSize: "0.85rem",
-                      color: "#444",
+                      color: "var(--text-secondary)",
                       margin: 0,
                     }}
                   >
