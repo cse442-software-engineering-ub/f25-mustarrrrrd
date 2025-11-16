@@ -49,7 +49,6 @@ export default function SessionQueue(){
   const [speedBoost, setSpeedBoost] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [highScore, setHighScore] = useState(0);
-  const [showTutorial, setShowTutorial] = useState(true);
   const [particles, setParticles] = useState([]);
   const [milestone, setMilestone] = useState(null);
   const gameLoopRef = useRef(null);
@@ -179,9 +178,7 @@ export default function SessionQueue(){
     try {
       const saved = localStorage.getItem('dino_high_score');
       if (saved) setHighScore(parseInt(saved, 10));
-    
-      const tutorialSeen = localStorage.getItem('dino_tutorial_seen');
-      if (tutorialSeen) setShowTutorial(false);
+  
     } catch (e) {}
   }, []);
 
@@ -469,14 +466,6 @@ export default function SessionQueue(){
     setSpeedBoost(false);
     setMilestone(null);
     frameCountRef.current = 0;
-  
-    // Mark tutorial as seen
-    if (showTutorial) {
-      setShowTutorial(false);
-      try {
-        localStorage.setItem('dino_tutorial_seen', 'true');
-      } catch (e) {}
-    }
   
     // 🔥 ADD THIS: Auto-focus the game container so spacebar works immediately
     setTimeout(() => {
@@ -1072,27 +1061,6 @@ export default function SessionQueue(){
                     Resume
                   </button>
                   <div style={{ fontSize: 14, color: '#ccc' }}>Press P or ESC to resume</div>
-                </div>
-              )}
-
-              {/* Tutorial overlay */}
-              {showTutorial && !gameActive && (
-                <div style={{
-                  position: 'absolute',
-                  top: 20,
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  background: 'rgba(0, 0, 0, 0.8)',
-                  color: '#fff',
-                  padding: '12px 20px',
-                  borderRadius: 8,
-                  fontSize: '16px',
-                  fontWeight: 600,
-                  textAlign: 'center',
-                  pointerEvents: 'none',
-                  zIndex: 10
-                }}>
-                  👆 Press SPACE to Jump!
                 </div>
               )}
 
