@@ -1,6 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
+import characterImg from './assets/character.png';
+import goatImg from './assets/goat.png';
+import carImg from './assets/car.png';
+import noEntryImg from './assets/minus.png';
+
 // --- Avatar Generator (Adventure Neutral) ---
 const diceUrl = seed =>
   `https://api.dicebear.com/7.x/adventurer-neutral/png?seed=${encodeURIComponent(seed)}&size=64`;
@@ -32,6 +37,25 @@ export default function SessionQueue(){
   const pollTimer = useRef(null);
   const notesRef = useRef(notes);
   const [attendanceMsg, setAttendanceMsg] = useState(null);
+
+  // Dino game state
+  const [gameActive, setGameActive] = useState(false);
+  const [dinoY, setDinoY] = useState(0);
+  const [obstacles, setObstacles] = useState([]);
+  const [powerUps, setPowerUps] = useState([]);
+  const [gameScore, setGameScore] = useState(0);
+  const [gameOver, setGameOver] = useState(false);
+  const [isInvincible, setIsInvincible] = useState(false);
+  const [speedBoost, setSpeedBoost] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [highScore, setHighScore] = useState(0);
+  const [particles, setParticles] = useState([]);
+  const [milestone, setMilestone] = useState(null);
+  const gameLoopRef = useRef(null);
+  const frameCountRef = useRef(0);
+  const gameContainerRef = useRef(null);
+  const dinoVelocityRef = useRef(0);
+  const audioContextRef = useRef(null);
 
   const ABS_BASE = new URL(import.meta.env.BASE_URL || '/', window.location.origin);
   const API_ROOT = new URL('../api/', ABS_BASE).pathname;
@@ -148,6 +172,308 @@ export default function SessionQueue(){
     bootstrap();
     return ()=>{ if(pollTimer.current) clearInterval(pollTimer.current); cancelled=true; }
   },[sessionId, navigate, API_ROOT]);
+
+  // Load high score on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('dino_high_score');
+      if (saved) setHighScore(parseInt(saved, 10));
+  
+    } catch (e) {}
+  }, []);
+
+  // Dino game logic
+  useEffect(() => {
+    if (!gameActive || gameOver || isPaused) return;
+  
+    const GRAVITY = 0.6;
+    const GROUND = 0;
+    const DINO_WIDTH = 35;
+    const DINO_HEIGHT = 35;
+    const OBSTACLE_WIDTH = 15;
+    const POWERUP_SIZE = 30;
+  
+    const containerWidth = gameContainerRef.current?.offsetWidth || 600;
+
+    const gameLoop = () => {
+      frameCountRef.current += 1;
+    
+      const scoreLevel = Math.floor(gameScore / 1000);
+      const speedIncrease = scoreLevel * 0.5;
+      const baseSpeed = (speedBoost ? 6 : 4) + speedIncrease;
+    
+      dinoVelocityRef.current -= GRAVITY;
+    
+      setDinoY(prevY => {
+        const newY = prevY + dinoVelocityRef.current;
+        if (newY <= GROUND) {
+          dinoVelocityRef.current = 0;
+          return GROUND;
+        }
+        return newY;
+      });
+
+      setObstacles(obs => {
+        const updated = obs.map(o => ({ ...o, x: o.x - baseSpeed }))
+          .filter(o => o.x > -50);
+      
+        const randomInterval = 60 + Math.floor(Math.random() * 40);
+        if (frameCountRef.current % randomInterval === 0 && Math.random() > 0.3) {
+          const obstacleType = Math.random() > 0.7 ? 'tall' : 'cactus';
+          const height = obstacleType === 'tall' ? 60 : 40;
+          updated.push({ 
+            x: containerWidth, 
+            y: GROUND, 
+            width: OBSTACLE_WIDTH, 
+            height,
+            type: obstacleType 
+          });
+        }
+      
+        const birdInterval = 100 + Math.floor(Math.random() * 60);
+        if (frameCountRef.current % birdInterval === 0 && Math.random() > 0.7) {
+          const minSafeDistance = baseSpeed * 60 * 2.5;
+          const hasNearbyObstacle = updated.some(o => 
+            o.type !== 'bird' && Math.abs(o.x - containerWidth) < minSafeDistance
+          );
+        
+          if (!hasNearbyObstacle) {
+            updated.push({ 
+              x: containerWidth, 
+              y: 60, 
+              width: 25,
+              height: 25,
+              type: 'bird' 
+            });
+          }
+        }
+      
+        return updated;
+      });
+
+      setPowerUps(pups => {
+        const updated = pups.map(p => ({ ...p, x: p.x - baseSpeed }))
+          .filter(p => p.x > -POWERUP_SIZE && !p.collected);
+      
+        if (frameCountRef.current % 250 === 0 && Math.random() > 0.4) {
+          const powerUpType = Math.random() > 0.5 ? 'invincible' : 'speed';
+          updated.push({ 
+            x: containerWidth, 
+            y: 40 + Math.random() * 60, 
+            size: POWERUP_SIZE,
+            type: powerUpType,
+            collected: false
+          });
+        }
+      
+        return updated;
+      });
+
+      // Update particles
+      setParticles(prev => prev.map(p => ({
+        ...p,
+        x: p.x + p.vx,
+        y: p.y + p.vy,
+        life: p.life - 1
+      })).filter(p => p.life > 0));
+
+      setGameScore(s => {
+        const newScore = s + (speedBoost ? 2 : 1);
+        const displayScore = Math.floor(newScore / 10);
+      
+        // Check for milestones
+        if (displayScore > 0 && displayScore % 100 === 0 && Math.floor(s / 10) !== displayScore) {
+          setMilestone(displayScore);
+          setTimeout(() => setMilestone(null), 2000);
+          playSound('milestone');
+        }
+      
+        return newScore;
+      });
+    };
+
+    gameLoopRef.current = setInterval(gameLoop, 1000 / 60);
+  
+    return () => {
+      if (gameLoopRef.current) clearInterval(gameLoopRef.current);
+    };
+  }, [gameActive, gameOver, isPaused, isInvincible, speedBoost, gameScore]);
+
+  // Collision detection
+  useEffect(() => {
+    if (!gameActive || gameOver || isPaused) return;
+  
+    const DINO_WIDTH = 35;
+    const DINO_HEIGHT = 35;
+  
+    const collisionCheck = setInterval(() => {
+      const padding = 3;
+      const dinoLeft = 50 + padding;
+      const dinoRight = 50 + DINO_WIDTH - padding;
+      const dinoTop = dinoY + DINO_HEIGHT - padding;
+      const dinoBottom = dinoY + padding;
+    
+      setPowerUps(pups => {
+        return pups.map(pup => {
+          if (pup.collected) return pup;
+        
+          const pupLeft = pup.x;
+          const pupRight = pup.x + pup.size;
+          const pupTop = pup.y + pup.size;
+          const pupBottom = pup.y;
+
+          if (dinoRight > pupLeft && dinoLeft < pupRight && 
+              dinoTop > pupBottom && dinoBottom < pupTop) {
+          
+            // Create particles
+            createParticles(pup.x + pup.size/2, pup.y + pup.size/2, pup.type);
+            playSound('powerup');
+          
+            if (pup.type === 'invincible') {
+              setIsInvincible(true);
+              setTimeout(() => setIsInvincible(false), 3000);
+            } else if (pup.type === 'speed') {
+              setSpeedBoost(true);
+              setTimeout(() => setSpeedBoost(false), 4000);
+            }
+          
+            return { ...pup, collected: true };
+          }
+          return pup;
+        });
+      });
+    
+      if (!isInvincible) {
+        setObstacles(obs => {
+          for (const obstacle of obs) {
+            const obsPadding = obstacle.type === 'bird' ? 2 : 3;
+            const obsLeft = obstacle.x + obsPadding;
+            const obsRight = obstacle.x + obstacle.width - obsPadding;
+            const obsTop = obstacle.y + obstacle.height - obsPadding;
+            const obsBottom = obstacle.y + obsPadding;
+
+            if (dinoRight > obsLeft && dinoLeft < obsRight && 
+                dinoTop > obsBottom && dinoBottom < obsTop) {
+              setGameOver(true);
+              setGameActive(false);
+              playSound('gameover');
+            
+              // Save high score
+              setGameScore(score => {
+                const finalScore = Math.floor(score / 10);
+                if (finalScore > highScore) {
+                  setHighScore(finalScore);
+                  try {
+                    localStorage.setItem('dino_high_score', finalScore.toString());
+                  } catch (e) {}
+                }
+                return score;
+              });
+              break;
+            }
+          }
+          return obs;
+        });
+      }
+    }, 1000 / 60);
+  
+    return () => clearInterval(collisionCheck);
+  }, [gameActive, gameOver, isPaused, dinoY, isInvincible, highScore]);
+
+  const createParticles = (x, y, type) => {
+    const color = type === 'invincible' ? '#fbbf24' : '#3b82f6';
+    const newParticles = [];
+    for (let i = 0; i < 8; i++) {
+      const angle = (Math.PI * 2 * i) / 8;
+      newParticles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * 2,
+        vy: Math.sin(angle) * 2,
+        life: 20,
+        color
+      });
+    }
+    setParticles(prev => [...prev, ...newParticles]);
+  };
+
+  const playSound = (type) => {
+    try {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      const ctx = audioContextRef.current;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+    
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+    
+      if (type === 'jump') {
+        osc.frequency.value = 400;
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.1);
+      } else if (type === 'powerup') {
+        osc.frequency.value = 600;
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.15);
+      } else if (type === 'gameover') {
+        osc.frequency.value = 200;
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.3);
+      } else if (type === 'milestone') {
+        osc.frequency.value = 800;
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.2);
+      }
+    } catch (e) {
+      // Audio not supported
+    }
+  };
+
+  const handleJump = () => {
+    if (dinoY === 0 && gameActive && !gameOver && !isPaused) {
+      dinoVelocityRef.current = 12;
+      playSound('jump');
+    }
+  };
+
+  const togglePause = () => {
+    if (gameActive && !gameOver) {
+      setIsPaused(prev => !prev);
+    }
+  };
+
+  const startGame = () => {
+    setGameActive(true);
+    setGameOver(false);
+    setIsPaused(false);
+    setDinoY(0);
+    dinoVelocityRef.current = 0;
+    setObstacles([]);
+    setPowerUps([]);
+    setParticles([]);
+    setGameScore(0);
+    setIsInvincible(false);
+    setSpeedBoost(false);
+    setMilestone(null);
+    frameCountRef.current = 0;
+  
+    // 🔥 ADD THIS: Auto-focus the game container so spacebar works immediately
+    setTimeout(() => {
+      if (gameContainerRef.current) {
+        gameContainerRef.current.focus();
+      }
+    }, 0);
+  };
 
   async function saveNotes(){
     const key = `queue_notes_session_${sessionId}`;
@@ -555,6 +881,262 @@ export default function SessionQueue(){
           )}
 
         </div>
+
+        {/* Dino Game - Only show if in queue */}
+        {yourPosition !== null && (
+          <div style={{ ...panel, marginTop: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>Waiting Game</h2>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                {isInvincible && (
+                  <div style={{ background: '#fef3c7', color: '#92400e', padding: '4px 8px', borderRadius: 6, fontSize: '14px', fontWeight: 600 }}>
+                    🐐 Invincible
+                  </div>
+                )}
+                {speedBoost && (
+                  <div style={{ background: '#dbeafe', color: '#1e40af', padding: '4px 8px', borderRadius: 6, fontSize: '14px', fontWeight: 600 }}>
+                    🏎️ Speed Boost
+                  </div>
+                )}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                  <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    Score: {Math.floor(gameScore / 10)}
+                  </div>
+                  {highScore > 0 && (
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                      Best: {highScore}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <div 
+              ref={gameContainerRef}
+              onClick={handleJump}
+              onKeyDown={(e) => { 
+                if (e.code === 'Space' || e.code === 'ArrowUp') { 
+                  e.preventDefault(); 
+                  handleJump(); 
+                } else if (e.code === 'KeyP' || e.code === 'Escape') {
+                  e.preventDefault();
+                  togglePause();
+                }
+              }}
+              tabIndex={0}
+              style={{ 
+                position: 'relative', 
+                width: '100%', 
+                height: isMobile ? 200 : 250, 
+                background: '#f7f7f7', 
+                border: '2px solid #535353', 
+                borderRadius: 8, 
+                overflow: 'hidden', 
+                cursor: 'pointer', 
+                outline: 'none' 
+              }}
+            >
+              {/* Ground line */}
+              <div style={{ 
+                position: 'absolute', 
+                bottom: 0, 
+                left: 0, 
+                right: 0, 
+                height: 2, 
+                background: '#535353' 
+              }} />
+
+              {/* Character */}
+              <img
+                src={characterImg}
+                alt="character"
+                style={{ 
+                  position: 'absolute', 
+                  left: 50, 
+                  bottom: dinoY, 
+                  width: 40, 
+                  height: 40,
+                  objectFit: 'cover',
+                  borderRadius: '50%',
+                  boxShadow: isInvincible ? '0 0 15px #fbbf24' : 'none',
+                  filter: isInvincible ? 'brightness(1.3) saturate(1.5)' : 'none'
+                }}
+              />
+
+              {/* Obstacles */}
+              {obstacles.map((obs, idx) => (
+                <div
+                  key={`obs-${idx}`}
+                  style={{
+                    position: 'absolute',
+                    left: obs.x,
+                    bottom: obs.y,
+                    width: obs.width,
+                    height: obs.height,
+                    transition: 'none'
+                  }}
+                >
+                  {obs.type === 'bird' ? (
+                    <img src={noEntryImg} alt="obstacle" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', background: '#535353', borderRadius: 2 }} />
+                  )}
+                </div>
+              ))}
+
+              {/* Power-ups */}
+              {powerUps.map((pup, idx) => (
+                !pup.collected && (
+                  <div key={`pup-${idx}`} style={{ position: 'absolute', left: pup.x, bottom: pup.y, width: pup.size, height: pup.size, transition: 'none' }}>
+                    <img 
+                      src={pup.type === 'invincible' ? goatImg : carImg} 
+                      alt="powerup" 
+                      style={{ width: '100%', height: '100%', objectFit: 'contain', filter: `drop-shadow(0 0 8px ${pup.type === 'invincible' ? 'rgba(251,191,36,0.6)' : 'rgba(59,130,246,0.6)'})` }} 
+                    />
+                  </div>
+                )
+              ))}
+
+              {/* Particles */}
+              {particles.map((p, idx) => (
+                <div
+                  key={`particle-${idx}`}
+                  style={{
+                    position: 'absolute',
+                    left: p.x,
+                    bottom: p.y,
+                    width: 4,
+                    height: 4,
+                    background: p.color,
+                    borderRadius: '50%',
+                    opacity: p.life / 20
+                  }}
+                />
+              ))}
+
+              {/* Milestone notification */}
+              {milestone && (
+                <div style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  fontSize: '36px',
+                  fontWeight: 800,
+                  color: '#fbbf24',
+                  textShadow: '0 0 10px rgba(0,0,0,0.5)',
+                  animation: 'pulse 0.5s ease-in-out',
+                  pointerEvents: 'none'
+                }}>
+                  {milestone}! 🎉
+                </div>
+              )}
+
+              {/* Pause overlay */}
+              {isPaused && gameActive && !gameOver && (
+                <div style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'rgba(0, 0, 0, 0.7)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 16
+                }}>
+                  <div style={{ fontSize: 32, fontWeight: 700, color: '#fff' }}>PAUSED</div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); togglePause(); }}
+                    style={{
+                      background: '#535353',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 8,
+                      padding: '12px 24px',
+                      fontSize: '16px',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Resume
+                  </button>
+                  <div style={{ fontSize: 14, color: '#ccc' }}>Press P or ESC to resume</div>
+                </div>
+              )}
+
+              {/* Start/Game Over overlay */}
+              {(!gameActive || gameOver) && (
+                <div style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'rgba(247, 247, 247, 0.95)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 12
+                }}>
+                  {gameOver && (
+                    <>
+                      <div style={{ fontSize: 24, fontWeight: 700, color: '#535353' }}>GAME OVER</div>
+                      <div style={{ fontSize: 18, color: '#535353' }}>Score: {Math.floor(gameScore / 10)}</div>
+                      {Math.floor(gameScore / 10) > highScore && (
+                        <div style={{ fontSize: 16, fontWeight: 600, color: '#16a34a' }}>🎉 New Record!</div>
+                      )}
+                      {highScore > 0 && Math.floor(gameScore / 10) <= highScore && (
+                        <div style={{ fontSize: 14, color: '#737373' }}>Best: {highScore}</div>
+                      )}
+                    </>
+                  )}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); startGame(); }}
+                    style={{
+                      background: '#535353',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 8,
+                      padding: '12px 24px',
+                      fontSize: '16px',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {gameOver ? 'Play Again' : 'Start Game'}
+                  </button>
+                  <div style={{ fontSize: 14, color: '#535353', textAlign: 'center', maxWidth: '90%' }}>
+                    <div>Space/Click/↑ to jump • P to pause</div>
+                    <div style={{ marginTop: 8, fontSize: 12, color: '#737373' }}>
+                      🐐 Invincibility • 🏎️ Speed Boost
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Pause button (visible during active game) */}
+              {gameActive && !gameOver && !isPaused && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); togglePause(); }}
+                  style={{
+                    position: 'absolute',
+                    top: 10,
+                    right: 10,
+                    background: 'rgba(83, 83, 83, 0.8)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 6,
+                    padding: '8px 12px',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    zIndex: 10
+                  }}
+                >
+                  ⏸ Pause
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
