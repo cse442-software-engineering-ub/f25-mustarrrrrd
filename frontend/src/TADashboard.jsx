@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Menu, Search, Plus, MoreVertical, X, Clock } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Menu, Search, Plus, MoreVertical, X } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
 import { ViewSwitcher } from "./ViewSwitcher";
 
 export default function TADashboard() {
@@ -12,7 +12,6 @@ export default function TADashboard() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [newSession, setNewSession] = useState({ day_of_week: 'Monday', start_time: '12:00', end_time: '13:00', location: '' });
-  const [scheduleError, setScheduleError] = useState("");
   const [editSessionId, setEditSessionId] = useState(null);
   const [editSessionData, setEditSessionData] = useState({ day_of_week: 'Monday', start_time: '12:00', end_time: '13:00', location: '' });
   const [taName, setTAName] = useState('TA');
@@ -233,17 +232,6 @@ export default function TADashboard() {
   }
 
   async function createSession(){
-    // client-side validation
-    setScheduleError("");
-    const [sh, sm] = (newSession.start_time || "").split(':').map(n=>parseInt(n||'0',10));
-    const [eh, em] = (newSession.end_time || "").split(':').map(n=>parseInt(n||'0',10));
-    const smin = (sh||0)*60 + (sm||0);
-    const emin = (eh||0)*60 + (em||0);
-    if (emin <= smin) {
-      setScheduleError('End time must be after start time');
-      return;
-    }
-
     try{
       const res = await fetch(`${API_ROOT}create_office_hours_session.php`,{
         method: 'POST', credentials:'include', headers:{'Content-Type':'application/json', Accept:'application/json'},
@@ -473,7 +461,7 @@ export default function TADashboard() {
     <div
       style={{
         minHeight: "100vh",
-        background: "var(--bg-secondary)",
+        background: "#f9fafb",
         margin: 0,
         padding: 0,
         position: "fixed",
@@ -487,8 +475,8 @@ export default function TADashboard() {
       {/* Header */}
       <div
         style={{
-          background: "var(--card-bg)",
-          borderBottom: "1px solid var(--border-color)",
+          background: "white",
+          borderBottom: "1px solid #e5e7eb",
           padding: "0.75rem 1rem",
           position: "sticky",
           top: 0,
@@ -511,82 +499,108 @@ export default function TADashboard() {
                 fontSize: "1.5rem",
                 fontWeight: "500",
                 margin: 0,
-                color: "var(--text-primary)",
+                color: "#111",
               }}
             >
               TA Dashboard
             </h1>
-            <p style={{ fontSize: "0.9rem", color: "var(--text-secondary)", margin: 0 }}>
+            <p style={{ fontSize: "0.9rem", color: "#555", margin: 0 }}>
               {taName}
             </p>
           </div>
 
-          {/* View Switcher (only for TAs, not professors) */}
+ {/* View Switcher (only for TAs, not professors) */}
           {currentUserRole === "ta" && (
             <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)" }}>
               <ViewSwitcher activeView={activeView} onViewChange={handleViewChange} />
             </div>
           )}
 
-          {/* Hamburger Menu */}
-          <div style={{ position: "relative" }}>
-            <button
-              ref={btnRef}
-              onClick={() => setMenuOpen((v) => !v)}
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-                border: "1px solid var(--border-color)",
-                background: "var(--card-bg)",
-                cursor: "pointer",
-              }}
-              title="Menu"
-            >
-              <Menu size={20} color="var(--text-primary)" />
-            </button>
+ {/* Hamburger Menu */}
+<div style={{ position: "relative" }}>
+  <button
+    ref={btnRef}
+    onClick={() => setMenuOpen((v) => !v)}
+    aria-haspopup="menu"
+    aria-expanded={menuOpen}
+    style={{
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      width: 40,
+      height: 40,
+      borderRadius: 10,
+      border: "1px solid #e5e7eb",
+      background: "#fff",
+      cursor: "pointer",
+    }}
+    title="Menu"
+  >
+    <Menu size={20} />
+  </button>
 
-            {menuOpen && (
-              <div
-                ref={menuRef}
-                role="menu"
-                style={{
-                  position: "absolute",
-                  right: 0,
-                  marginTop: 8,
-                  width: 160,
-                  background: "var(--card-bg)",
-                  border: "1px solid var(--border-color)",
-                  borderRadius: 10,
-                  boxShadow: "0 8px 20px var(--card-shadow)",
-                  overflow: "hidden",
-                }}
-              >
-                <button
-                  onClick={handleSignOut}
-                  style={{
-                    width: "100%",
-                    textAlign: "left",
-                    padding: "10px 12px",
-                    background: "transparent",
-                    border: 0,
-                    cursor: "pointer",
-                    fontSize: 14,
-                    color: "var(--error-color)",
-                  }}
-                >
-                  Sign out
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+  {menuOpen && (
+    <div
+      ref={menuRef}
+      role="menu"
+      style={{
+        position: "absolute",
+        right: 0,
+        marginTop: 8,
+        width: 180,
+        background: "#fff",
+        border: "1px solid #e5e7eb",
+        borderRadius: 10,
+        boxShadow: "0 8px 20px rgba(0,0,0,0.08)",
+        overflow: "hidden",
+      }}
+    >
+      {/* Profile (routes to the same page students use) */}
+      <Link
+        to="/profile"
+        role="menuitem"
+        onClick={() => setMenuOpen(false)}
+        style={{
+          display: "block",
+          width: "100%",
+          textAlign: "left",
+          padding: "10px 12px",
+          background: "transparent",
+          border: 0,
+          cursor: "pointer",
+          fontSize: 14,
+          color: "#111",
+          textDecoration: "none",
+        }}
+      >
+        Profile
+      </Link>
+
+      {/* Divider */}
+      <div style={{ height: 1, background: "#f1f5f9" }} />
+
+      {/* Sign out */}
+      <button
+        onClick={handleSignOut}
+        role="menuitem"
+        style={{
+          width: "100%",
+          textAlign: "left",
+          padding: "10px 12px",
+          background: "transparent",
+          border: 0,
+          cursor: "pointer",
+          fontSize: 14,
+          color: "#b3261e",
+        }}
+      >
+        Sign out
+      </button>
+    </div>
+  )}
+</div>
+</div>
+</div>
 
       {/* Custom Error Banner */}
       {errorMessage && (
@@ -680,7 +694,7 @@ export default function TADashboard() {
           }}
         >
           {courses.length === 0 && (
-            <p style={{ color: "var(--text-secondary)" }}>
+            <p style={{ color: "#555" }}>
               You have no assigned courses yet. Please join one first.
             </p>
           )}
@@ -699,16 +713,16 @@ export default function TADashboard() {
                 <button
                   onClick={() => setActiveCourse(course.code)}
                   style={{
-                    background: isActive ? "var(--button-bg)" : "var(--card-bg)",
-                    color: isActive ? "var(--button-text)" : "var(--text-primary)",
-                    border: isActive ? "none" : "1px solid var(--border-color)",
+                    background: isActive ? "#111" : "#fff",
+                    color: isActive ? "#fff" : "#333",
+                    border: isActive ? "none" : "1px solid #ddd",
                     borderRadius: "0.5rem",
                     padding: "0.75rem 1rem",
                     paddingRight: "2.5rem",
                     textAlign: "left",
                     boxShadow: isActive
-                      ? "0 2px 6px var(--card-shadow)"
-                      : "0 1px 3px var(--card-shadow)",
+                      ? "0 2px 6px rgba(0,0,0,0.2)"
+                      : "0 1px 3px rgba(0,0,0,0.1)",
                     cursor: "pointer",
                     width: "100%",
                   }}
@@ -745,10 +759,10 @@ export default function TADashboard() {
                     alignItems: "center",
                     justifyContent: "center",
                     borderRadius: "0.25rem",
-                    color: isActive ? "var(--button-text)" : "var(--text-secondary)",
+                    color: isActive ? "#fff" : "#666",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = isActive ? "var(--bg-tertiary)" : "var(--bg-tertiary)";
+                    e.currentTarget.style.background = isActive ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)";
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = "transparent";
@@ -766,10 +780,10 @@ export default function TADashboard() {
                       top: "100%",
                       right: 0,
                       marginTop: "0.25rem",
-                      background: "var(--card-bg)",
-                      border: "1px solid var(--border-color)",
+                      background: "#fff",
+                      border: "1px solid #e5e7eb",
                       borderRadius: "0.375rem",
-                      boxShadow: "0 4px 12px var(--card-shadow)",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
                       zIndex: 100,
                       minWidth: "120px",
                     }}
@@ -829,12 +843,12 @@ export default function TADashboard() {
         {showJoinCourse && (
           <div
             style={{
-              background: "var(--card-bg)",
+              background: "white",
               border: "2px solid #93c5fd",
               borderRadius: "0.5rem",
               padding: "1rem",
               marginBottom: "1.5rem",
-              boxShadow: "0 2px 8px var(--card-shadow)",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
             }}
           >
             <h3
@@ -854,14 +868,14 @@ export default function TADashboard() {
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  background: "var(--card-bg)",
-                  border: "2px solid var(--border-color)",
+                  background: "white",
+                  border: "2px solid #e5e7eb",
                   borderRadius: "0.5rem",
                   padding: "0.75rem 1rem",
                   gap: "0.5rem",
                 }}
               >
-                <Search size={20} color="var(--text-secondary)" />
+                <Search size={20} color="#6b7280" />
                 <input
                   type="text"
                   placeholder="Search by course code, title... (e.g., 'CSE 442' or just '442')"
@@ -872,12 +886,12 @@ export default function TADashboard() {
                     border: "none",
                     outline: "none",
                     fontSize: "0.875rem",
-                    color: "var(--text-primary)",
+                    color: "#111",
                     background: "transparent",
                   }}
                 />
                 {joinSearchLoading && (
-                  <div style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}>
+                  <div style={{ color: "#6b7280", fontSize: "0.875rem" }}>
                     Searching...
                   </div>
                 )}
@@ -891,10 +905,10 @@ export default function TADashboard() {
                     top: "calc(100% + 0.5rem)",
                     left: 0,
                     right: 0,
-                    background: "var(--card-bg)",
-                    border: "1px solid var(--border-color)",
+                    background: "white",
+                    border: "1px solid #e5e7eb",
                     borderRadius: "0.5rem",
-                    boxShadow: "0 10px 25px var(--card-shadow)",
+                    boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
                     maxHeight: "300px",
                     overflowY: "auto",
                     zIndex: 50,
@@ -905,7 +919,7 @@ export default function TADashboard() {
                       key={course.id}
                       style={{
                         padding: "0.75rem 1rem",
-                        borderBottom: "1px solid var(--border-color)",
+                        borderBottom: "1px solid #f3f4f6",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
@@ -913,18 +927,18 @@ export default function TADashboard() {
                         transition: "background 0.15s",
                         cursor: "pointer",
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-tertiary)")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "#f9fafb")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "white")}
                     >
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "var(--text-primary)" }}>
+                        <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "#111" }}>
                           {course.code}
                         </div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.125rem" }}>
+                        <div style={{ fontSize: "0.75rem", color: "#6b7280", marginTop: "0.125rem" }}>
                           {course.title}
                         </div>
                         {course.professor && (
-                          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.125rem" }}>
+                          <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: "0.125rem" }}>
                             {course.professor}
                           </div>
                         )}
@@ -972,9 +986,9 @@ export default function TADashboard() {
                   setJoinSearchResults([]);
                 }}
                 style={{
-                  background: "var(--card-bg)",
-                  color: "var(--text-secondary)",
-                  border: "1px solid var(--border-color)",
+                  background: "#fff",
+                  color: "#666",
+                  border: "1px solid #d1d5db",
                   borderRadius: "0.375rem",
                   padding: "0.5rem 1rem",
                   cursor: "pointer",
@@ -987,7 +1001,7 @@ export default function TADashboard() {
             <p
               style={{
                 fontSize: "0.75rem",
-                color: "var(--text-secondary)",
+                color: "#666",
                 marginTop: "0.5rem",
                 marginBottom: 0,
               }}
@@ -1001,11 +1015,11 @@ export default function TADashboard() {
         {activeCourse && (
           <div
             style={{
-              background: "var(--card-bg)",
-              border: "1px solid var(--border-color)",
+              background: "white",
+              border: "1px solid #e5e7eb",
               borderRadius: "0.5rem",
               padding: "1rem",
-              boxShadow: "0 1px 4px var(--card-shadow)",
+              boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
             }}
           >
             <div
@@ -1020,7 +1034,6 @@ export default function TADashboard() {
                   fontSize: "1rem",
                   fontWeight: "600",
                   margin: 0,
-                  color: "var(--text-primary)",
                 }}
               >
                 {activeCourse} —{" "}
@@ -1048,7 +1061,7 @@ export default function TADashboard() {
               </div>
             </div>
 
-            {loading && <p style={{ color: "var(--text-secondary)" }}>Loading queue...</p>}
+            {loading && <p style={{ color: "#666" }}>Loading queue...</p>}
             {/* Sessions list for this course */}
             {sessions.length > 0 && (
               <div style={{ marginBottom: 12 }}>
@@ -1070,14 +1083,14 @@ export default function TADashboard() {
                           noticeTimerRef.current = window.setTimeout(() => setNoticeMsg(""), 4000);
                         }
                       }}
-                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', padding: 10, borderRadius: 8, marginBottom: 8, cursor: taCanOpen ? 'pointer' : 'not-allowed', opacity: taCanOpen ? 1 : 0.6 }}
+                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f9fafb', border: '1px solid #e5e7eb', padding: 10, borderRadius: 8, marginBottom: 8, cursor: taCanOpen ? 'pointer' : 'not-allowed', opacity: taCanOpen ? 1 : 0.6 }}
                     >
                         <div>
-                        <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{s.day_of_week} • {s.start_time}–{s.end_time}</div>
-                        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{s.location || '(no location)'}</div>
+                        <div style={{ fontWeight: 700 }}>{s.day_of_week} • {s.start_time}–{s.end_time}</div>
+                        <div style={{ fontSize: '0.9rem', color: '#555' }}>{s.location || '(no location)'}</div>
                         {/* Owner tag: show who created the session when available */}
                         {(s.created_by || s.professor_email || s.instructor_email || s.owner_email) && (
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                          <div style={{ fontSize: '0.75rem', color: '#777' }}>
                             Owner: {s.created_by || s.professor_email || s.instructor_email || s.owner_email}
                           </div>
                         )}
@@ -1090,7 +1103,7 @@ export default function TADashboard() {
                         )}
                         {(currentUserRole === 'professor' || Number(currentUserId) === Number(s.instructor_id)) && (
                           <>
-                            <button onClick={(e) => { e.stopPropagation(); setEditSessionId(s.id); setEditSessionData({ day_of_week: s.day_of_week || 'Monday', start_time: s.start_time || '12:00', end_time: s.end_time || '13:00', location: s.location || '' }); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '6px 10px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Edit</button>
+                            <button onClick={(e) => { e.stopPropagation(); setEditSessionId(s.id); setEditSessionData({ day_of_week: s.day_of_week || 'Monday', start_time: s.start_time || '12:00', end_time: s.end_time || '13:00', location: s.location || '' }); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ background: '#fff', color: '#111827', border: '1px solid #e5e7eb', padding: '6px 10px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Edit</button>
                             <button onClick={async (e) => { e.stopPropagation(); if(!window.confirm('Delete this session?')) return; try{ const res = await fetch(`${API_ROOT}delete_office_hours_session.php`, { method:'POST', credentials:'include', headers:{'Content-Type':'application/json', Accept:'application/json'}, body: JSON.stringify({ session_id: s.id }) }); if(!res.ok) throw new Error('delete failed'); const d = await res.json().catch(()=>null); if(d && d.ok){ fetchSessions(); } }catch(err){ console.error('Failed to delete session', err); alert('Failed to delete session'); } }} style={{ background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', padding: '6px 10px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Delete</button>
                           </>
                         )}
@@ -1103,127 +1116,72 @@ export default function TADashboard() {
 
             {/* Schedule form */}
             {showScheduleForm && (
-              <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', padding: 12, borderRadius: 8, marginBottom: 12 }}>
+              <div style={{ background: '#fff', border: '1px solid #e5e7eb', padding: 12, borderRadius: 8, marginBottom: 12 }}>
                 {/* compact, consistent input styles */}
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
                   {(() => {
-                    const common = { padding: 8, borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-primary)' };
+                    const common = { padding: 8, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff' };
                     return (
                       <>
-                        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 140 }}>
-                            <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Day</label>
-                            <select value={newSession.day_of_week} onChange={(e)=>setNewSession(s=>({...s, day_of_week: e.target.value}))} style={{ padding: 10, borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--card-bg)', fontWeight: 600 }}>
-                              <option>Monday</option>
-                              <option>Tuesday</option>
-                              <option>Wednesday</option>
-                              <option>Thursday</option>
-                              <option>Friday</option>
-                              <option>Saturday</option>
-                              <option>Sunday</option>
-                            </select>
-                          </div>
-
-                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 120 }}>
-                            <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Start</label>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--card-bg)' }}>
-                              <Clock size={16} />
-                              <input type="time" value={newSession.start_time} onChange={(e)=>setNewSession(s=>({...s, start_time: e.target.value}))} style={{ border: 'none', outline: 'none', fontWeight: 700, fontSize: 14, background: 'transparent' }} />
-                            </div>
-                          </div>
-
-                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 120 }}>
-                            <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>End</label>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--card-bg)' }}>
-                              <Clock size={16} />
-                              <input type="time" value={newSession.end_time} onChange={(e)=>setNewSession(s=>({...s, end_time: e.target.value}))} style={{ border: 'none', outline: 'none', fontWeight: 700, fontSize: 14, background: 'transparent' }} />
-                            </div>
-                          </div>
-
-                          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 200 }}>
-                            <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Location</label>
-                            <input placeholder="Where (optional)" value={newSession.location} onChange={(e)=>setNewSession(s=>({...s, location: e.target.value}))} style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--card-bg)' }} />
-                          </div>
-                        </div>
+                        <select value={newSession.day_of_week} onChange={(e)=>setNewSession(s=>({...s, day_of_week: e.target.value}))} style={{ ...common, minWidth: 120 }}>
+                          <option>Monday</option>
+                          <option>Tuesday</option>
+                          <option>Wednesday</option>
+                          <option>Thursday</option>
+                          <option>Friday</option>
+                          <option>Saturday</option>
+                          <option>Sunday</option>
+                        </select>
+                        <input type="time" value={newSession.start_time} onChange={(e)=>setNewSession(s=>({...s, start_time: e.target.value}))} style={{ ...common, width: 120 }} />
+                        <input type="time" value={newSession.end_time} onChange={(e)=>setNewSession(s=>({...s, end_time: e.target.value}))} style={{ ...common, width: 120 }} />
+                        <input placeholder="Location" value={newSession.location} onChange={(e)=>setNewSession(s=>({...s, location: e.target.value}))} style={{ ...common, flex: 1, minWidth: 200 }} />
                       </>
                     );
                   })()}
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <button onClick={createSession} disabled={!!scheduleError} style={{ background: scheduleError ? '#94a3b8' : 'var(--button-bg)', color: 'var(--button-text)', border: 'none', padding: '8px 12px', borderRadius: 8, fontWeight: 600, cursor: scheduleError ? 'not-allowed' : 'pointer' }}>Save</button>
-                    {scheduleError && <div style={{ color: '#92400e', background: '#fffbeb', padding: '6px 8px', borderRadius: 6, fontSize: '0.85rem' }}>{scheduleError}</div>}
-                  </div>
-                  <button onClick={()=>setShowScheduleForm(false)} style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Cancel</button>
+                  <button onClick={createSession} style={{ background: '#111827', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Save</button>
+                  <button onClick={()=>setShowScheduleForm(false)} style={{ background: '#fff', color: '#111827', border: '1px solid #e5e7eb', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Cancel</button>
                 </div>
               </div>
             )}
 
             {/* Edit session form (for TAs) */}
             {editSessionId && (
-              <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', padding: 12, borderRadius: 8, marginBottom: 12 }}>
-                <h3 style={{ marginTop: 0, marginBottom: 8, color: 'var(--text-primary)' }}>Edit Session</h3>
+              <div style={{ background: '#fff', border: '1px solid #e5e7eb', padding: 12, borderRadius: 8, marginBottom: 12 }}>
+                <h3 style={{ marginTop: 0, marginBottom: 8 }}>Edit Session</h3>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
                   {(() => {
+                    const common = { padding: 8, borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff' };
                     return (
                       <>
-                        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 140 }}>
-                            <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Day</label>
-                            <select value={editSessionData.day_of_week} onChange={(e)=>setEditSessionData(s=>({...s, day_of_week: e.target.value}))} style={{ padding: 10, borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--card-bg)', fontWeight: 600 }}>
-                              <option>Monday</option>
-                              <option>Tuesday</option>
-                              <option>Wednesday</option>
-                              <option>Thursday</option>
-                              <option>Friday</option>
-                              <option>Saturday</option>
-                              <option>Sunday</option>
-                            </select>
-                          </div>
-
-                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 120 }}>
-                            <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Start</label>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--card-bg)' }}>
-                              <Clock size={16} />
-                              <input type="time" value={editSessionData.start_time} onChange={(e)=>setEditSessionData(s=>({...s, start_time: e.target.value}))} style={{ border: 'none', outline: 'none', fontWeight: 700, fontSize: 14, background: 'transparent' }} />
-                            </div>
-                          </div>
-
-                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 120 }}>
-                            <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>End</label>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--card-bg)' }}>
-                              <Clock size={16} />
-                              <input type="time" value={editSessionData.end_time} onChange={(e)=>setEditSessionData(s=>({...s, end_time: e.target.value}))} style={{ border: 'none', outline: 'none', fontWeight: 700, fontSize: 14, background: 'transparent' }} />
-                            </div>
-                          </div>
-
-                          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 200 }}>
-                            <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Location</label>
-                            <input placeholder="Where (optional)" value={editSessionData.location} onChange={(e)=>setEditSessionData(s=>({...s, location: e.target.value}))} style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--card-bg)' }} />
-                          </div>
-                        </div>
+                        <select value={editSessionData.day_of_week} onChange={(e)=>setEditSessionData(s=>({...s, day_of_week: e.target.value}))} style={{ ...common, minWidth: 120 }}>
+                          <option>Monday</option>
+                          <option>Tuesday</option>
+                          <option>Wednesday</option>
+                          <option>Thursday</option>
+                          <option>Friday</option>
+                          <option>Saturday</option>
+                          <option>Sunday</option>
+                        </select>
+                        <input type="time" value={editSessionData.start_time} onChange={(e)=>setEditSessionData(s=>({...s, start_time: e.target.value}))} style={{ ...common, width: 120 }} />
+                        <input type="time" value={editSessionData.end_time} onChange={(e)=>setEditSessionData(s=>({...s, end_time: e.target.value}))} style={{ ...common, width: 120 }} />
+                        <input placeholder="Location" value={editSessionData.location} onChange={(e)=>setEditSessionData(s=>({...s, location: e.target.value}))} style={{ ...common, flex: 1, minWidth: 200 }} />
                       </>
                     );
                   })()}
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button onClick={async ()=>{
-                    // client-side validation for edit
                     try{
-                      const [sh, sm] = (editSessionData.start_time || '').split(':').map(n=>parseInt(n||'0',10));
-                      const [eh, em] = (editSessionData.end_time || '').split(':').map(n=>parseInt(n||'0',10));
-                      const smin = (sh||0)*60 + (sm||0);
-                      const emin = (eh||0)*60 + (em||0);
-                      if (emin <= smin) { alert('End time must be after start time'); return; }
-
                       const body = { session_id: editSessionId, ...editSessionData };
                       const res = await fetch(`${API_ROOT}update_office_hours_session.php`, { method:'POST', credentials:'include', headers:{'Content-Type':'application/json', Accept:'application/json'}, body: JSON.stringify(body) });
                       if(!res.ok) throw new Error('update failed');
                       const d = await res.json().catch(()=>null);
                       if(d && d.ok){ setEditSessionId(null); fetchSessions(); }
                     }catch(e){ console.error('Failed to update session', e); alert('Failed to update session'); }
-                  }} style={{ background: 'var(--button-bg)', color: 'var(--button-text)', border: 'none', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Save</button>
-                  <button onClick={()=>setEditSessionId(null)} style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Cancel</button>
+                  }} style={{ background: '#111827', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Save</button>
+                  <button onClick={()=>setEditSessionId(null)} style={{ background: '#fff', color: '#111827', border: '1px solid #e5e7eb', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Cancel</button>
                 </div>
               </div>
             )}
@@ -1236,8 +1194,8 @@ export default function TADashboard() {
                 <div
                   key={idx}
                   style={{
-                    background: "var(--bg-tertiary)",
-                    border: "1px solid var(--border-color)",
+                    background: "#f9fafb",
+                    border: "1px solid #e5e7eb",
                     borderRadius: "0.5rem",
                     padding: "0.75rem",
                     marginBottom: "0.75rem",
@@ -1250,13 +1208,13 @@ export default function TADashboard() {
                       marginBottom: "0.5rem",
                     }}
                   >
-                    <p style={{ fontWeight: "600", margin: 0, color: "var(--text-primary)" }}>
+                    <p style={{ fontWeight: "600", margin: 0 }}>
                       {entry.user_email}
                     </p>
                     <p
                       style={{
                         fontSize: "0.8rem",
-                        color: "var(--text-secondary)",
+                        color: "#777",
                         margin: 0,
                       }}
                     >
@@ -1270,7 +1228,7 @@ export default function TADashboard() {
                   <p
                     style={{
                       fontSize: "0.85rem",
-                      color: "var(--text-primary)",
+                      color: "#444",
                       margin: 0,
                     }}
                   >
