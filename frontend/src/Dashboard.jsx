@@ -434,7 +434,7 @@ export function Dashboard() {
             </div>
           )}
 
-          {/* Hamburger */}
+        {/* Hamburger */}
           <div style={{ position: "relative" }}>
             <button
               ref={btnRef}
@@ -474,10 +474,21 @@ export function Dashboard() {
                   overflow: "hidden",
                 }}
               >
-                {/* Dev routes preserved */}
-                <MenuItem label="Profile" onClick={() => go("/profile")} />
-                <MenuItem label="Settings" onClick={() => go("/settings")} />
-                <div style={{ height: 1, background: "var(--border-color)", margin: "4px 0" }} />
+                {/* Profile only (no Settings) */}
+                <MenuItem
+                  label="Profile"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    navigate("/profile");
+                  }}
+                />
+                <div
+                  style={{
+                    height: 1,
+                    background: "var(--border-color)",
+                    margin: "4px 0",
+                  }}
+                />
                 <MenuItem label="Sign out" danger onClick={handleSignOut} />
               </div>
             )}
