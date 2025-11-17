@@ -403,96 +403,108 @@ export function Dashboard() {
       >
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
             maxWidth: "64rem",
             margin: "0 auto",
           }}
         >
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <h1
-              style={{
-                fontSize: "1.5rem",
-                fontWeight: "500",
-                margin: 0,
-                color: "var(--text-primary)",
-              }}
-            >
-              Student Dashboard
-            </h1>
-            <p style={{ fontSize: "0.9rem", color: "var(--text-secondary)", margin: 0 }}>
-              {userName}
-            </p>
+          {/* Top row with title and hamburger */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+            }}
+          >
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <h1
+                style={{
+                  fontSize: "1.5rem",
+                  fontWeight: "500",
+                  margin: 0,
+                  color: "var(--text-primary)",
+                }}
+              >
+                Student Dashboard
+              </h1>
+              <p style={{ fontSize: "0.9rem", color: "var(--text-secondary)", margin: 0 }}>
+                {userName}
+              </p>
+            </div>
+
+            {/* Hamburger */}
+            <div style={{ position: "relative" }}>
+              <button
+                ref={btnRef}
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 40,
+                  height: 40,
+                  borderRadius: 10,
+                  border: "1px solid var(--border-color)",
+                  background: "var(--card-bg)",
+                  color: "var(--text-primary)",
+                  cursor: "pointer",
+                }}
+                title="Menu"
+              >
+                <Menu size={20} color="var(--text-primary)" />
+              </button>
+
+              {menuOpen && (
+                <div
+                  ref={menuRef}
+                  role="menu"
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    marginTop: 8,
+                    width: 220,
+                    background: "var(--card-bg)",
+                    border: "1px solid var(--border-color)",
+                    borderRadius: 12,
+                    boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
+                    overflow: "hidden",
+                  }}
+                >
+                  {/* Profile only (no Settings) */}
+                  <MenuItem
+                    label="Profile"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      navigate("/profile");
+                    }}
+                  />
+                  <div
+                    style={{
+                      height: 1,
+                      background: "var(--border-color)",
+                      margin: "4px 0",
+                    }}
+                  />
+                  <MenuItem label="Sign out" danger onClick={handleSignOut} />
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* View Switcher (only for TAs) */}
+          {/* View Switcher row (only for TAs) - placed below title */}
           {userRole === "ta" && (
-            <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                marginTop: "0.75rem",
+              }}
+            >
               <ViewSwitcher activeView={activeView} onViewChange={handleViewChange} />
             </div>
           )}
-
-        {/* Hamburger */}
-          <div style={{ position: "relative" }}>
-            <button
-              ref={btnRef}
-              onClick={() => setMenuOpen((v) => !v)}
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-                border: "1px solid var(--border-color)",
-                background: "var(--card-bg)",
-                color: "var(--text-primary)",
-                cursor: "pointer",
-              }}
-              title="Menu"
-            >
-              <Menu size={20} color="var(--text-primary)" />
-            </button>
-
-            {menuOpen && (
-              <div
-                ref={menuRef}
-                role="menu"
-                style={{
-                  position: "absolute",
-                  right: 0,
-                  marginTop: 8,
-                  width: 220,
-                  background: "var(--card-bg)",
-                  border: "1px solid var(--border-color)",
-                  borderRadius: 12,
-                  boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-                  overflow: "hidden",
-                }}
-              >
-                {/* Profile only (no Settings) */}
-                <MenuItem
-                  label="Profile"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    navigate("/profile");
-                  }}
-                />
-                <div
-                  style={{
-                    height: 1,
-                    background: "var(--border-color)",
-                    margin: "4px 0",
-                  }}
-                />
-                <MenuItem label="Sign out" danger onClick={handleSignOut} />
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
