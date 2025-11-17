@@ -7,24 +7,22 @@ const vapidKeys = {
   privateKey: "RY_YNLVWhhTSt4cIpmRoAVrnwTf1O7zAUEioCTVcJdc",
 };
 
-// Configure VAPID
 webpush.setVapidDetails(
-  "mailto:your-email@buffalo.edu", // or any email
+  "mailto:your-email@buffalo.edu",
   vapidKeys.publicKey,
   vapidKeys.privateKey
 );
 
-// Connect to MySQL (update credentials if needed)
+// Connect to DB
 const db = await mysql.createConnection({
   host: "localhost",
   user: "root",
-  password: "", // your MySQL password if set
+  password: "",
   database: "cse442_2025_fall_team_ai_db",
 });
 
 console.log("✅ Connected to MySQL");
 
-// Get all users who subscribed
 const [rows] = await db.query("SELECT id, email, push_sub FROM users WHERE push_sub IS NOT NULL");
 
 if (rows.length === 0) {
@@ -43,7 +41,11 @@ for (const row of rows) {
       JSON.stringify({
         title: "Office Hours Reminder",
         body: "Your office hours start in 10 minutes!",
-        icon: "/app/assets/icon-192.png", // optional
+        icon: "/app/assets/icon-192.png",
+
+        // *** IMPORTANT ***
+        // Always provide a URL so the SW can redirect properly
+        url: `${process.env.PUSH_BASE || "http://localhost/f25-mustarrrrrd/app"}/#/dashboard`
       })
     );
 
