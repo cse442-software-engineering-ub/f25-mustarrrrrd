@@ -485,122 +485,134 @@ export default function TADashboard() {
       >
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
             maxWidth: "64rem",
             margin: "0 auto",
           }}
         >
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <h1
-              style={{
-                fontSize: "1.5rem",
-                fontWeight: "500",
-                margin: 0,
-                color: "var(--text-primary)",
-              }}
-            >
-              TA Dashboard
-            </h1>
-            <p style={{ fontSize: "0.9rem", color: "var(--text-secondary)", margin: 0 }}>
-              {taName}
-            </p>
+          {/* Top row with title and hamburger */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+            }}
+          >
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <h1
+                style={{
+                  fontSize: "1.5rem",
+                  fontWeight: "500",
+                  margin: 0,
+                  color: "var(--text-primary)",
+                }}
+              >
+                TA Dashboard
+              </h1>
+              <p style={{ fontSize: "0.9rem", color: "var(--text-secondary)", margin: 0 }}>
+                {taName}
+              </p>
+            </div>
+
+            {/* Hamburger Menu */}
+            <div style={{ position: "relative" }}>
+              <button
+                ref={btnRef}
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 40,
+                  height: 40,
+                  borderRadius: 10,
+                  border: "1px solid var(--border-color)",
+                  background: "var(--card-bg)",
+                  cursor: "pointer",
+                }}
+                title="Menu"
+              >
+                <Menu size={20} color="var(--text-primary)" />
+              </button>
+
+              {menuOpen && (
+                <div
+                  ref={menuRef}
+                  role="menu"
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    marginTop: 8,
+                    width: 180,
+                    background: "var(--card-bg)",
+                    border: "1px solid var(--border-color)",
+                    borderRadius: 10,
+                    boxShadow: "0 8px 20px var(--card-shadow)",
+                    overflow: "hidden",
+                  }}
+                >
+                  {/* Profile (routes to the same page students use) */}
+                  <Link
+                    to="/profile"
+                    role="menuitem"
+                    onClick={() => setMenuOpen(false)}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "10px 12px",
+                      background: "transparent",
+                      border: 0,
+                      cursor: "pointer",
+                      fontSize: 14,
+                      color: "var(--text-primary)",
+                      textDecoration: "none",
+                    }}
+                  >
+                    Profile
+                  </Link>
+
+                  {/* Divider */}
+                  <div style={{ height: 1, background: "var(--border-color)" }} />
+
+                  {/* Sign out */}
+                  <button
+                    onClick={handleSignOut}
+                    role="menuitem"
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "10px 12px",
+                      background: "transparent",
+                      border: 0,
+                      cursor: "pointer",
+                      fontSize: 14,
+                      color: "#b3261e",
+                    }}
+                  >
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
- {/* View Switcher (only for TAs, not professors) */}
+          {/* View Switcher row (only for TAs, not professors) - placed below title */}
           {currentUserRole === "ta" && (
-            <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                marginTop: "0.75rem",
+              }}
+            >
               <ViewSwitcher activeView={activeView} onViewChange={handleViewChange} />
             </div>
           )}
-
- {/* Hamburger Menu */}
-<div style={{ position: "relative" }}>
-  <button
-    ref={btnRef}
-    onClick={() => setMenuOpen((v) => !v)}
-    aria-haspopup="menu"
-    aria-expanded={menuOpen}
-    style={{
-      display: "inline-flex",
-      alignItems: "center",
-      justifyContent: "center",
-      width: 40,
-      height: 40,
-      borderRadius: 10,
-      border: "1px solid var(--border-color)",
-      background: "var(--card-bg)",
-      cursor: "pointer",
-    }}
-    title="Menu"
-  >
-    <Menu size={20} color="var(--text-primary)" />
-  </button>
-
-  {menuOpen && (
-    <div
-      ref={menuRef}
-      role="menu"
-      style={{
-        position: "absolute",
-        right: 0,
-        marginTop: 8,
-        width: 180,
-        background: "var(--card-bg)",
-        border: "1px solid var(--border-color)",
-        borderRadius: 10,
-        boxShadow: "0 8px 20px var(--card-shadow)",
-        overflow: "hidden",
-      }}
-    >
-      {/* Profile (routes to the same page students use) */}
-      <Link
-        to="/profile"
-        role="menuitem"
-        onClick={() => setMenuOpen(false)}
-        style={{
-          display: "block",
-          width: "100%",
-          textAlign: "left",
-          padding: "10px 12px",
-          background: "transparent",
-          border: 0,
-          cursor: "pointer",
-          fontSize: 14,
-          color: "var(--text-primary)",
-          textDecoration: "none",
-        }}
-      >
-        Profile
-      </Link>
-
-      {/* Divider */}
-      <div style={{ height: 1, background: "var(--border-color)" }} />
-
-      {/* Sign out */}
-      <button
-        onClick={handleSignOut}
-        role="menuitem"
-        style={{
-          width: "100%",
-          textAlign: "left",
-          padding: "10px 12px",
-          background: "transparent",
-          border: 0,
-          cursor: "pointer",
-          fontSize: 14,
-          color: "#b3261e",
-        }}
-      >
-        Sign out
-      </button>
-    </div>
-  )}
-</div>
-</div>
-</div>
+        </div>
+      </div>
 
       {/* Custom Error Banner */}
       {errorMessage && (
