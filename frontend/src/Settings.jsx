@@ -28,9 +28,23 @@ export default function Settings() {
   const btnRef = useRef(null);
   const menuRef = useRef(null);
 
-  const [theme, setTheme] = useState("system");
+  // Settings state
+  const [theme, setTheme] = useState("light");
   const [pushNotif, setPushNotif] = useState(false);
   const [msg, setMsg] = useState("");
+
+  // Load theme from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("theme");
+    if (saved && (saved === "light" || saved === "dark")) {
+      setTheme(saved);
+    }
+  }, []);
+
+  // Apply theme whenever it changes
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
 
   /* ------------------------- Close dropdown on blur ------------------------ */
   useEffect(() => {
@@ -50,6 +64,20 @@ export default function Settings() {
       document.removeEventListener("keydown", onKey);
     };
   }, [menuOpen]);
+
+  function applyTheme(themeName) {
+    document.documentElement.classList.remove("light-mode", "dark-mode");
+    if (themeName === "dark") {
+      document.documentElement.classList.add("dark-mode");
+    } else {
+      document.documentElement.classList.add("light-mode");
+    }
+  }
+
+  function handleThemeChange(newTheme) {
+    setTheme(newTheme);
+    localStorage.setItem("theme", newTheme);
+  }
 
   const go = (to) => {
     setMenuOpen(false);
@@ -128,6 +156,8 @@ export default function Settings() {
       style={{
         minHeight: "100vh",
         background: "#f9fafb",
+        margin: 0,
+        padding: 0,
         position: "fixed",
         inset: 0,
         overflow: "auto",
@@ -136,8 +166,8 @@ export default function Settings() {
       {/* Header */}
       <div
         style={{
-          background: "white",
-          borderBottom: "1px solid #e5e7eb",
+          background: "var(--card-bg)",
+          borderBottom: "1px solid var(--border-color)",
           padding: "0.75rem 1rem",
           position: "sticky",
           top: 0,
@@ -159,7 +189,7 @@ export default function Settings() {
               fontSize: "1.25rem",
               fontWeight: 600,
               margin: 0,
-              color: "#111",
+              color: "var(--text-primary)",
             }}
           >
             Settings
@@ -178,13 +208,14 @@ export default function Settings() {
                 width: 40,
                 height: 40,
                 borderRadius: 10,
-                border: "1px solid #e5e7eb",
-                background: "#fff",
+                border: "1px solid var(--border-color)",
+                background: "var(--card-bg)",
+                color: "var(--text-primary)",
                 cursor: "pointer",
               }}
               title="Menu"
             >
-              <Menu size={20} />
+              <Menu size={20} color="var(--text-primary)" />
             </button>
 
             {menuOpen && (
@@ -196,22 +227,16 @@ export default function Settings() {
                   right: 0,
                   marginTop: 8,
                   width: 220,
-                  background: "#fff",
-                  border: "1px solid #e5e7eb",
+                  background: "var(--card-bg)",
+                  border: "1px solid var(--border-color)",
                   borderRadius: 12,
-                  boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
+                  boxShadow: "0 10px 25px var(--card-shadow)",
                   overflow: "hidden",
                 }}
               >
                 <MenuItem label="Profile" onClick={() => go("/profile")} />
                 <MenuItem label="Settings" onClick={() => go("/settings")} />
-                <div
-                  style={{
-                    height: 1,
-                    background: "#f1f5f9",
-                    margin: "4px 0",
-                  }}
-                />
+                <div style={{ height: 1, background: "#f1f5f9", margin: "4px 0" }} />
                 <MenuItem label="Sign out" danger onClick={handleSignOut} />
               </div>
             )}
@@ -227,10 +252,9 @@ export default function Settings() {
               <label style={label}>Theme</label>
               <select
                 value={theme}
-                onChange={(e) => setTheme(e.target.value)}
+                onChange={(e) => handleThemeChange(e.target.value)}
                 style={select}
               >
-                <option value="system">System</option>
                 <option value="light">Light</option>
                 <option value="dark">Dark</option>
               </select>
@@ -258,7 +282,7 @@ export default function Settings() {
                 Sign out
               </button>
             </div>
-            {msg && <div style={{ marginTop: 10, color: "#0f766e" }}>{msg}</div>}
+            {msg && <div style={{ marginTop: 10, color: "var(--link-color)" }}>{msg}</div>}
           </Card>
         </form>
       </div>
@@ -281,7 +305,7 @@ function MenuItem({ label, onClick, danger }) {
         border: 0,
         cursor: "pointer",
         fontSize: 14,
-        color: danger ? "#b3261e" : "#111827",
+        color: danger ? "var(--error-color)" : "var(--text-primary)",
       }}
     >
       {label}
@@ -293,21 +317,13 @@ function Card({ title, children }) {
   return (
     <section
       style={{
-        background: "#ffffff",
-        border: "1px solid #e5e7eb",
+        background: "var(--card-bg)",
+        border: "1px solid var(--border-color)",
         borderRadius: 12,
         padding: 16,
       }}
     >
-      <h3
-        style={{
-          margin: 0,
-          marginBottom: 12,
-          fontSize: 16,
-          fontWeight: 600,
-          color: "#111",
-        }}
-      >
+      <h3 style={{ margin: 0, marginBottom: 12, fontSize: 16, fontWeight: 600, color: "#111" }}>
         {title}
       </h3>
       <div style={{ display: "grid", gap: 12 }}>{children}</div>
@@ -326,9 +342,9 @@ function ToggleRow({ title, description, checked, onChange }) {
       }}
     >
       <div>
-        <div style={{ fontWeight: 500, color: "#111" }}>{title}</div>
+        <div style={{ fontWeight: 500, color: "var(--text-primary)" }}>{title}</div>
         {description && (
-          <div style={{ color: "#6b7280", fontSize: 14 }}>{description}</div>
+          <div style={{ color: "var(--text-secondary)", fontSize: 14 }}>{description}</div>
         )}
       </div>
       <label
@@ -359,19 +375,21 @@ const row = {
   gap: 12,
   alignItems: "center",
 };
+
 const label = { color: "#374151", fontSize: 14 };
+
 const input = {
   padding: "10px 12px",
-  border: "1px solid #d1d5db",
+  border: "1px solid var(--border-color)",
   borderRadius: 10,
-  background: "#fff",
+  background: "var(--input-bg)",
   fontSize: 14,
-  color: "#111",
+  color: "var(--text-primary)",
 };
 const select = { ...input, appearance: "none" };
 const primaryBtn = {
-  background: "#1f6feb",
-  color: "#fff",
+  background: "var(--button-bg)",
+  color: "var(--button-text)",
   border: 0,
   borderRadius: 10,
   padding: "10px 14px",
@@ -379,8 +397,8 @@ const primaryBtn = {
   cursor: "pointer",
 };
 const dangerBtn = {
-  background: "#b3261e",
-  color: "#fff",
+  background: "var(--error-color)",
+  color: "var(--button-text)",
   border: 0,
   borderRadius: 10,
   padding: "10px 14px",

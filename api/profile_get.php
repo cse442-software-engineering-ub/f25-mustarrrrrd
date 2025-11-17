@@ -4,23 +4,14 @@ require_once __DIR__ . '/auth.php';
 
 header('Content-Type: application/json');
 
-// CORS (optional to match others)
-if (isset($_SERVER['HTTP_ORIGIN'])) {
-  header('Access-Control-Allow-Origin: ' . $_SERVER['HTTP_ORIGIN']);
-  header('Access-Control-Allow-Credentials: true');
-}
-
-header('Content-Type: application/json');
-if (isset($_SERVER['HTTP_ORIGIN'])) {
-  header('Access-Control-Allow-Origin: ' . $_SERVER['HTTP_ORIGIN']);
-  header('Access-Control-Allow-Credentials: true');
-}
+// CORS (with whitelist validation)
+set_cors_headers();
 
 // Must be signed in
 $u = current_user();
 if (!$u) {
   http_response_code(401);
-  echo json_encode(['ok'=>false,'message'=>'Not signed in']);
+  echo json_encode(['ok' => false, 'message' => 'Not signed in']);
   exit;
 }
 
@@ -36,6 +27,7 @@ echo json_encode([
     'disabilities' => $u['disabilities'],
     'title' => $u['title'],
     'title_display_order' => $u['title_display_order'],
-    'role' => $u['role'], // already 'professor' in DB
+    'role' => $u['role'], 
+    'avatar_seed' => $u['avatar_seed'],
   ],
 ]);

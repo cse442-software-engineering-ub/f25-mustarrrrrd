@@ -1,9 +1,11 @@
 // src/Dashboard.jsx
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Star, Menu, Search, Plus, Calendar } from "lucide-react";
+import { Star, Menu, Search, Plus, Calendar, X } from "lucide-react";
 import { CourseCardDashboard } from "./CourseCardDashboard";
 import { ReservedSessionCard } from "./ReservedSessionCard";
+import { AbsenceNotice } from "./AbsenceNotice"; // ⬅️ add banner
+import { ViewSwitcher } from "./ViewSwitcher";
 
 // Build absolute base from Vite base (ends with /), safe in subfolders
 const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
@@ -20,9 +22,55 @@ export function Dashboard() {
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [userRole, setUserRole] = useState(null); // User's account role
+  const [activeView, setActiveView] = useState("student"); // Current view: "student" or "ta"
+  const [userName, setUserName] = useState(""); // User's name for display
+  const [errorMessage, setErrorMessage] = useState(""); // Custom error message
   const btnRef = useRef(null);
   const menuRef = useRef(null);
   const searchRef = useRef(null);
+  const errorTimerRef = useRef(null);
+
+  // Check authentication status on mount - redirect if not logged in
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const res = await fetch(`${API_ROOT}check_session.php`, {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          navigate("/");
+          return;
+        }
+
+        const data = await res.json();
+
+        if (!data.loggedIn) {
+          navigate("/");
+          return;
+        }
+
+        // Store user role and name for view switching
+        setUserRole(data.role);
+        if (data.name) setUserName(data.name);
+
+        // If professor (not TA), route to professor view
+        if (data.role === "professor") {
+          navigate("/professorview");
+          return;
+        }
+
+        // TAs can stay here and switch views
+      } catch (err) {
+        console.error("Auth check failed:", err);
+        navigate("/");
+      }
+    }
+
+    checkAuth();
+  }, [navigate]);
 
   // Fetch enrolled courses and reserved sessions on mount
   useEffect(() => {
@@ -34,8 +82,9 @@ export function Dashboard() {
     setLoading(true);
     try {
       // Fetch both enrolled courses and favorites
+      // Filter by role_in_course = 'student' to only show student courses
       const [coursesRes, favoritesRes] = await Promise.all([
-        fetch(`${API_ROOT}my_courses.php`, {
+        fetch(`${API_ROOT}my_courses.php?role_in_course=student`, {
           method: "GET",
           credentials: "include",
         }),
@@ -49,39 +98,33 @@ export function Dashboard() {
       const favoritesData = await favoritesRes.json();
 
       if (coursesData.courses) {
-        const favoriteIds = new Set(favoritesData.favorites?.map(f => f.id) || []);
+        const favoriteIds = new Set(favoritesData.favorites?.map((f) => f.id) || []);
 
-        // Transform API data to match expected course format
-        const formattedCourses = coursesData.courses.map(course => ({
+        // Normalize to course cards the dev dashboard expects
+        const formattedCourses = coursesData.courses.map((course) => ({
           id: course.id,
           code: course.code,
           name: course.title,
-          professor: course.professor || "Professor",
           time: course.lecture_times,
           location: course.room,
           studentsInQueue: 0,
           status: "upcoming",
           is_favorited: favoriteIds.has(course.id),
-          // Pass through active session data if it exists
           activeSession: course.activeSession || null,
         }));
 
-        // For courses with active sessions, check if user is in queue
+        // If a course has an active session, compute user's queue status
         const coursesWithQueueStatus = await Promise.all(
           formattedCourses.map(async (course) => {
             if (course.activeSession && course.activeSession.id) {
               try {
                 const queueRes = await fetch(
                   `${API_ROOT}queue_status.php?session_id=${course.activeSession.id}`,
-                  {
-                    method: "GET",
-                    credentials: "include",
-                  }
+                  { method: "GET", credentials: "include" }
                 );
                 const queueData = await queueRes.json();
 
                 if (queueData.ok && queueData.position) {
-                  // User is in queue, add position info
                   return {
                     ...course,
                     activeSession: {
@@ -134,8 +177,7 @@ export function Dashboard() {
         body: JSON.stringify({ session_id: sessionId }),
       });
 
-      // Remove from local state
-      setReservedSessions(reservedSessions.filter(s => s.sessionId !== sessionId));
+      setReservedSessions((prev) => prev.filter((s) => s.sessionId !== sessionId));
     } catch (err) {
       console.error("Error canceling reservation:", err);
     }
@@ -151,12 +193,11 @@ export function Dashboard() {
         body: JSON.stringify({ course_id: courseId }),
       });
 
-      // Update local state
-      setAllCourses(allCourses.map(course =>
-        course.id === courseId
-          ? { ...course, is_favorited: !currentlyFavorited }
-          : course
-      ));
+      setAllCourses((prev) =>
+        prev.map((course) =>
+          course.id === courseId ? { ...course, is_favorited: !currentlyFavorited } : course
+        )
+      );
     } catch (err) {
       console.error("Error toggling favorite:", err);
     }
@@ -174,8 +215,7 @@ export function Dashboard() {
       const data = await res.json();
 
       if (data.success) {
-        // Remove the course from the list entirely
-        setAllCourses(allCourses.filter(course => course.id !== courseId));
+        setAllCourses((prev) => prev.filter((course) => course.id !== courseId));
       } else if (data.error) {
         console.error("Unenroll error:", data.error);
       }
@@ -184,7 +224,7 @@ export function Dashboard() {
     }
   }
 
-  // Dynamic search as user types
+  // Dynamic search as user types (dev behavior)
   useEffect(() => {
     if (!searchTerm.trim()) {
       setSearchResults([]);
@@ -194,7 +234,7 @@ export function Dashboard() {
 
     const delayDebounce = setTimeout(() => {
       performSearch();
-    }, 300); // Debounce for 300ms
+    }, 300);
 
     return () => clearTimeout(delayDebounce);
   }, [searchTerm]);
@@ -213,11 +253,14 @@ export function Dashboard() {
       const data = await res.json();
 
       if (data.courses) {
-        // Filter out already enrolled courses
-        const enrolledIds = new Set(allCourses.map(c => c.id));
-        const filteredResults = data.courses.filter(c => !enrolledIds.has(c.id));
-        setSearchResults(filteredResults);
-        setShowDropdown(filteredResults.length > 0);
+        const enrolledIds = new Set(allCourses.map((c) => c.id));
+        // Mark courses as already enrolled instead of filtering them out
+        const resultsWithEnrollmentStatus = data.courses.map((c) => ({
+          ...c,
+          alreadyEnrolled: enrolledIds.has(c.id),
+        }));
+        setSearchResults(resultsWithEnrollmentStatus);
+        setShowDropdown(resultsWithEnrollmentStatus.length > 0);
       } else {
         setSearchResults([]);
         setShowDropdown(false);
@@ -233,7 +276,7 @@ export function Dashboard() {
 
   async function enrollAndFavorite(courseId) {
     try {
-      // First enroll in the course
+      // Enroll
       const enrollRes = await fetch(`${API_ROOT}enroll.php`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -244,7 +287,7 @@ export function Dashboard() {
       const enrollData = await enrollRes.json();
 
       if (enrollData.success) {
-        // Then auto-favorite it
+        // Favorite
         await fetch(`${API_ROOT}favorites.php`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -252,18 +295,23 @@ export function Dashboard() {
           body: JSON.stringify({ course_id: courseId }),
         });
 
-        // Refetch all courses to get active session data and queue status
         await fetchEnrolledCourses();
-        // Also refetch reserved sessions in case this course has reserved sessions
         await fetchReservedSessions();
 
-        // Clear search
         setSearchTerm("");
         setSearchResults([]);
         setShowDropdown(false);
+      } else if (enrollData.error) {
+        // Show custom error message (e.g., when TA tries to join as student)
+        setErrorMessage(enrollData.error);
+        if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+        errorTimerRef.current = setTimeout(() => setErrorMessage(""), 5000);
       }
     } catch (err) {
       console.error("Error enrolling and favoriting:", err);
+      setErrorMessage("Failed to enroll in course");
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+      errorTimerRef.current = setTimeout(() => setErrorMessage(""), 5000);
     }
   }
 
@@ -274,7 +322,6 @@ export function Dashboard() {
         setShowDropdown(false);
       }
     }
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
@@ -316,15 +363,23 @@ export function Dashboard() {
     navigate(to);
   };
 
+  function handleViewChange(newView) {
+    if (newView === "ta") {
+      navigate("/tadashboard");
+    } else {
+      setActiveView(newView);
+    }
+  }
+
   // Separate courses into favorites and enrolled
-  const favoriteCourses = allCourses.filter(c => c.is_favorited);
-  const enrolledCourses = allCourses.filter(c => !c.is_favorited);
+  const favoriteCourses = allCourses.filter((c) => c.is_favorited);
+  const enrolledCourses = allCourses.filter((c) => !c.is_favorited);
 
   return (
     <div
       style={{
         minHeight: "100vh",
-        background: "#f9fafb",
+        background: "var(--bg-secondary)",
         margin: 0,
         padding: 0,
         position: "fixed",
@@ -338,8 +393,8 @@ export function Dashboard() {
       {/* Header */}
       <div
         style={{
-          background: "white",
-          borderBottom: "1px solid #e5e7eb",
+          background: "var(--card-bg)",
+          borderBottom: "1px solid var(--border-color)",
           padding: "0.75rem 1rem",
           position: "sticky",
           top: 0,
@@ -356,18 +411,30 @@ export function Dashboard() {
             margin: "0 auto",
           }}
         >
-          <h1
-            style={{
-              fontSize: "1.25rem",
-              fontWeight: 600,
-              margin: 0,
-              color: "#111",
-            }}
-          >
-            Office Hours
-          </h1>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <h1
+              style={{
+                fontSize: "1.5rem",
+                fontWeight: "500",
+                margin: 0,
+                color: "var(--text-primary)",
+              }}
+            >
+              Student Dashboard
+            </h1>
+            <p style={{ fontSize: "0.9rem", color: "var(--text-secondary)", margin: 0 }}>
+              {userName}
+            </p>
+          </div>
 
-          {/* Hamburger */}
+          {/* View Switcher (only for TAs) */}
+          {userRole === "ta" && (
+            <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)" }}>
+              <ViewSwitcher activeView={activeView} onViewChange={handleViewChange} />
+            </div>
+          )}
+
+        {/* Hamburger */}
           <div style={{ position: "relative" }}>
             <button
               ref={btnRef}
@@ -381,13 +448,14 @@ export function Dashboard() {
                 width: 40,
                 height: 40,
                 borderRadius: 10,
-                border: "1px solid #e5e7eb",
-                background: "#fff",
+                border: "1px solid var(--border-color)",
+                background: "var(--card-bg)",
+                color: "var(--text-primary)",
                 cursor: "pointer",
               }}
               title="Menu"
             >
-              <Menu size={20} />
+              <Menu size={20} color="var(--text-primary)" />
             </button>
 
             {menuOpen && (
@@ -399,19 +467,25 @@ export function Dashboard() {
                   right: 0,
                   marginTop: 8,
                   width: 220,
-                  background: "#fff",
-                  border: "1px solid #e5e7eb",
+                  background: "var(--card-bg)",
+                  border: "1px solid var(--border-color)",
                   borderRadius: 12,
                   boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
                   overflow: "hidden",
                 }}
               >
-                <MenuItem label="Profile" onClick={() => go("/profile")} />
-                <MenuItem label="Settings" onClick={() => go("/settings")} />
+                {/* Profile only (no Settings) */}
+                <MenuItem
+                  label="Profile"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    navigate("/profile");
+                  }}
+                />
                 <div
                   style={{
                     height: 1,
-                    background: "#f1f5f9",
+                    background: "var(--border-color)",
                     margin: "4px 0",
                   }}
                 />
@@ -422,7 +496,50 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Custom Error Banner */}
+      {errorMessage && (
+        <div
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 15,
+            background: "#fef2f2",
+            color: "#991b1b",
+            borderBottom: "1px solid #fecaca",
+            padding: "0.75rem 1rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            maxWidth: "64rem",
+            margin: "0 auto",
+          }}
+          role="alert"
+          aria-live="assertive"
+        >
+          <span style={{ fontWeight: 600 }}>{errorMessage}</span>
+          <button
+            onClick={() => setErrorMessage("")}
+            style={{
+              border: "none",
+              background: "transparent",
+              cursor: "pointer",
+              color: "#991b1b",
+              display: "inline-flex",
+              alignItems: "center",
+              padding: 4,
+            }}
+            aria-label="Dismiss error"
+            title="Dismiss"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      )}
+
+      {/* 🚩 Absence banner (new) */}
+      <AbsenceNotice />
+
+      {/* Main Content (unchanged from dev) */}
       <div style={{ maxWidth: "64rem", margin: "0 auto", padding: "1.5rem" }}>
         {/* Search Bar Section */}
         <div style={{ marginBottom: "2rem" }} ref={searchRef}>
@@ -431,7 +548,7 @@ export function Dashboard() {
               fontSize: "1rem",
               fontWeight: 600,
               margin: "0 0 0.75rem 0",
-              color: "#111",
+              color: "var(--text-primary)",
             }}
           >
             Find & Join Courses
@@ -441,17 +558,17 @@ export function Dashboard() {
               style={{
                 display: "flex",
                 alignItems: "center",
-                background: "white",
-                border: "2px solid #e5e7eb",
+                background: "var(--card-bg)",
+                border: "2px solid var(--border-color)",
                 borderRadius: "0.5rem",
                 padding: "0.75rem 1rem",
                 gap: "0.5rem",
               }}
             >
-              <Search size={20} color="#6b7280" />
+              <Search size={20} color="var(--text-secondary)" />
               <input
                 type="text"
-                placeholder="Search by course code, title, or professor..."
+                placeholder="Search by course code or title... (e.g., 'CSE 442' or just '442')"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onFocus={() => searchResults.length > 0 && setShowDropdown(true)}
@@ -460,18 +577,15 @@ export function Dashboard() {
                   border: "none",
                   outline: "none",
                   fontSize: "0.875rem",
-                  color: "#111",
+                  color: "var(--text-primary)",
                   background: "transparent",
                 }}
               />
               {searchLoading && (
-                <div style={{ color: "#6b7280", fontSize: "0.875rem" }}>
-                  Searching...
-                </div>
+                <div style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}>Searching...</div>
               )}
             </div>
 
-            {/* Dropdown with search results */}
             {showDropdown && searchResults.length > 0 && (
               <div
                 style={{
@@ -479,8 +593,8 @@ export function Dashboard() {
                   top: "calc(100% + 0.5rem)",
                   left: 0,
                   right: 0,
-                  background: "white",
-                  border: "1px solid #e5e7eb",
+                  background: "var(--card-bg)",
+                  border: "1px solid var(--border-color)",
                   borderRadius: "0.5rem",
                   boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
                   maxHeight: "300px",
@@ -493,7 +607,7 @@ export function Dashboard() {
                     key={course.id}
                     style={{
                       padding: "0.75rem 1rem",
-                      borderBottom: "1px solid #f3f4f6",
+                      borderBottom: "1px solid var(--border-color)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
@@ -501,37 +615,46 @@ export function Dashboard() {
                       transition: "background 0.15s",
                       cursor: "pointer",
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "#f9fafb")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "white")}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-secondary)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "var(--card-bg)")}
                   >
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "#111" }}>
+                      <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "var(--text-primary)" }}>
                         {course.code}
                       </div>
-                      <div style={{ fontSize: "0.75rem", color: "#6b7280", marginTop: "0.125rem" }}>
+                      <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.125rem" }}>
                         {course.title}
                       </div>
-                      <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: "0.125rem" }}>
-                        {course.professor} • {course.lecture_times}
+                      <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.125rem" }}>
+                        {course.lecture_times}
                       </div>
                     </div>
                     <button
-                      onClick={() => enrollAndFavorite(course.id)}
+                      onClick={() => !course.alreadyEnrolled && enrollAndFavorite(course.id)}
+                      disabled={course.alreadyEnrolled}
                       style={{
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                         padding: "0.5rem",
-                        background: "#10b981",
-                        color: "white",
+                        background: course.alreadyEnrolled ? "var(--border-color)" : "#10b981",
+                        color: course.alreadyEnrolled ? "var(--text-secondary)" : "white",
                         border: "none",
                         borderRadius: "0.375rem",
-                        cursor: "pointer",
+                        cursor: course.alreadyEnrolled ? "not-allowed" : "pointer",
                         transition: "background 0.15s",
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "#059669")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = "#10b981")}
-                      title="Join and add to favorites"
+                      onMouseEnter={(e) => {
+                        if (!course.alreadyEnrolled) {
+                          e.currentTarget.style.background = "#059669";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!course.alreadyEnrolled) {
+                          e.currentTarget.style.background = "#10b981";
+                        }
+                      }}
+                      title={course.alreadyEnrolled ? "Already enrolled" : "Join and add to favorites"}
                     >
                       <Plus size={18} />
                     </button>
@@ -544,47 +667,23 @@ export function Dashboard() {
 
         {/* My Upcoming Sessions Section */}
         <div style={{ marginBottom: "3rem" }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            marginBottom: '1rem'
-          }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
             <Calendar size={20} color="#3b82f6" />
-            <h2
-              style={{
-                fontSize: "1.125rem",
-                fontWeight: 600,
-                margin: 0,
-                color: "#111",
-              }}
-            >
+            <h2 style={{ fontSize: "1.125rem", fontWeight: 600, margin: 0, color: "var(--text-primary)" }}>
               My Upcoming Sessions
             </h2>
           </div>
 
-          {/* Reserved Sessions Cards or Empty State */}
           {loading ? (
-            <p style={{ textAlign: 'center', color: '#6b7280' }}>Loading sessions...</p>
+            <p style={{ textAlign: "center", color: "var(--text-secondary)" }}>Loading sessions...</p>
           ) : reservedSessions.length === 0 ? (
-            <p style={{ textAlign: 'center', color: '#6b7280', fontSize: '0.875rem', lineHeight: '1.5' }}>
+            <p style={{ textAlign: "center", color: "var(--text-primary)", fontSize: "0.875rem", lineHeight: "1.5" }}>
               Reserved office hour sessions will appear here. To reserve a session, click "View Sessions" for your course below, and reserve any session that is within 24 hours of your current time.
             </p>
           ) : (
-            <div
-              style={{
-                display: "flex",
-                gap: "1rem",
-                overflowX: "auto",
-                paddingBottom: "0.5rem",
-              }}
-            >
+            <div style={{ display: "flex", gap: "1rem", overflowX: "auto", paddingBottom: "0.5rem" }}>
               {reservedSessions.map((session) => (
-                <ReservedSessionCard
-                  key={session.sessionId}
-                  session={session}
-                  onCancel={cancelReservation}
-                />
+                <ReservedSessionCard key={session.sessionId} session={session} onCancel={cancelReservation} />
               ))}
             </div>
           )}
@@ -592,30 +691,17 @@ export function Dashboard() {
 
         {/* Favorites Section */}
         <div style={{ marginBottom: "3rem" }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            marginBottom: '1rem'
-          }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
             <Star size={20} color="#eab308" fill="#eab308" />
-            <h2
-              style={{
-                fontSize: "1.125rem",
-                fontWeight: 600,
-                margin: 0,
-                color: "#111",
-              }}
-            >
-              Favorites
-            </h2>
+            <h2 style={{ fontSize: "1.125rem", fontWeight: 600, margin: 0, color: "var(--text-primary)" }}>Favorites</h2>
           </div>
 
-          {/* Favorites Course Cards Grid */}
           {loading ? (
-            <p style={{ textAlign: 'center', color: '#6b7280' }}>Loading courses...</p>
+            <p style={{ textAlign: "center", color: "var(--text-secondary)" }}>Loading courses...</p>
           ) : favoriteCourses.length === 0 ? (
-            <p style={{ textAlign: 'center', color: '#6b7280' }}>No favorite courses yet. Use the search bar above to find and join courses!</p>
+            <p style={{ textAlign: "center", color: "var(--text-secondary)" }}>
+              No favorite courses yet. Use the search bar above to find and join courses!
+            </p>
           ) : (
             <div
               style={{
@@ -640,26 +726,13 @@ export function Dashboard() {
         {/* Enrolled Courses Section */}
         {enrolledCourses.length > 0 && (
           <div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              marginBottom: '1rem'
-            }}>
-              <Star size={20} color="#9ca3af" fill="none" />
-              <h2
-                style={{
-                  fontSize: "1.125rem",
-                  fontWeight: 600,
-                  margin: 0,
-                  color: "#111",
-                }}
-              >
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
+              <Star size={20} color="var(--text-secondary)" fill="none" />
+              <h2 style={{ fontSize: "1.125rem", fontWeight: 600, margin: 0, color: "var(--text-primary)" }}>
                 Enrolled Courses
               </h2>
             </div>
 
-            {/* Enrolled Course Cards Grid */}
             <div
               style={{
                 display: "grid",
@@ -696,7 +769,7 @@ function MenuItem({ label, onClick, danger }) {
         border: 0,
         cursor: "pointer",
         fontSize: 14,
-        color: danger ? "#b3261e" : "#111827",
+        color: danger ? "var(--error-color)" : "var(--text-primary)",
       }}
     >
       {label}

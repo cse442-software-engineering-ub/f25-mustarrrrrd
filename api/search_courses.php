@@ -20,33 +20,49 @@ $filter = isset($input["filter"]) ? strtolower(trim($input["filter"])) : "none";
 try {
     $pdo = pdo();
 
-    // Determine which column(s) to search
+    // Prepare search patterns for flexible matching
+    $searchPattern = "%{$searchTerm}%"; // Match anywhere in string
+    $searchNoSpace = "%" . str_replace(' ', '', $searchTerm) . "%"; // Match without spaces
+
+    // Determine which column(s) to search with enhanced matching
     switch ($filter) {
         case "code":
-            $where = "code LIKE :search";
+            // For code, match with or without spaces (e.g., "442" matches "CSE 442" or "CSE442")
+            $where = "code LIKE :search OR REPLACE(code, ' ', '') LIKE :search_nospace";
             break;
         case "name":
             $where = "title LIKE :search";
             break;
-        case "professor":
-            $where = "professor LIKE :search";
-            break;
         case "none":
         default:
-            // Search across all key fields
-            $where = "code LIKE :search OR title LIKE :search OR professor LIKE :search";
+            // Search across all key fields with enhanced code matching
+            $where = "code LIKE :search
+                     OR REPLACE(code, ' ', '') LIKE :search_nospace
+                     OR title LIKE :search";
             break;
     }
 
     $sql = "
-        SELECT id, code, title, lecture_times, room, professor
+        SELECT id, code, title, lecture_times, room
         FROM courses
         WHERE $where
-        ORDER BY title ASC
+        ORDER BY
+            CASE
+                WHEN code LIKE :search_prefix THEN 1
+                WHEN code LIKE :search THEN 2
+                WHEN title LIKE :search_prefix THEN 3
+                ELSE 4
+            END,
+            code ASC
     ";
 
     $stmt = $pdo->prepare($sql);
-    $stmt->execute(["search" => "{$searchTerm}%"]);
+    $params = [
+        "search" => $searchPattern,
+        "search_nospace" => $searchNoSpace,
+        "search_prefix" => "{$searchTerm}%"
+    ];
+    $stmt->execute($params);
 
     $courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

@@ -2,6 +2,10 @@
 // api/dev_dummy_login.php
 declare(strict_types=1);
 require __DIR__ . '/db.php';
+require __DIR__ . '/auth.php';
+
+header('Content-Type: application/json');
+set_cors_headers();
 
 // --- DEV ONLY: enable only on localhost ---
 if (!in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1'], true)) {
@@ -64,18 +68,17 @@ if ($uid) {
   } catch (Throwable $e) { /* noop */ }
 }
 
-// Set a fresh session token and cookie
-$token = bin2hex(random_bytes(16));
-$updTok = $pdo->prepare('UPDATE users SET session_token=? WHERE id=?');
-$updTok->execute([$token, $uid]);
 $pdo->commit();
 
-setcookie('session_token', $token, [
-  'expires'  => time() + 60*60, // 1 hour
-  'path'     => '/',
-  'secure'   => false,           // true under https
-  'httponly' => true,
-  'samesite' => 'Lax',
-]);
+// Set up session and remember-me cookie using the auth helper
+if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+session_regenerate_id(true);
+$_SESSION['user_id'] = (int)$uid;
+$_SESSION['email']   = $dummy['email'];
+$_SESSION['name']    = $dummy['name'];
+$_SESSION['role']    = $dummy['role'];
+
+// Issue persistent remember-me token (hashed in DB)
+issue_persistent_login($pdo, (int)$uid);
 
 echo json_encode(['ok'=>true, 'id'=>$uid, 'email'=>$dummy['email']]);

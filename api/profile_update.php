@@ -3,17 +3,7 @@ require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/auth.php';
 
 header('Content-Type: application/json');
-
-// CORS (reflect origin; allow credentials)
-if (isset($_SERVER['HTTP_ORIGIN'])) {
-  header('Access-Control-Allow-Origin: ' . $_SERVER['HTTP_ORIGIN']);
-  header('Access-Control-Allow-Credentials: true');
-}
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-  header('Access-Control-Allow-Methods: POST, OPTIONS');
-  header('Access-Control-Allow-Headers: Content-Type');
-  exit;
-}
+set_cors_headers();
 
 function fail($msg, $http=400, $extra=[]) {
   http_response_code($http);
@@ -21,33 +11,24 @@ function fail($msg, $http=400, $extra=[]) {
   exit;
 }
 
-// Headers first
-header('Content-Type: application/json');
-if (isset($_SERVER['HTTP_ORIGIN'])) {
-  header('Access-Control-Allow-Origin: ' . $_SERVER['HTTP_ORIGIN']);
-  header('Access-Control-Allow-Credentials: true');
-}
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-  header('Access-Control-Allow-Methods: POST, OPTIONS');
-  header('Access-Control-Allow-Headers: Content-Type');
-  exit;
-}
-
-// Includes: need BOTH db.php and auth.php for pdo(), read_json(), current_user()
-require_once __DIR__ . '/db.php';
-require_once __DIR__ . '/auth.php';
-
-// Get current user (via session or remember cookie)
+// Get current user (via session or remember-cookie)
 $u = current_user();
 if (!$u) fail('Not signed in', 401);
 
 $in = read_json();
 if (!is_array($in)) fail('Bad JSON');
 
-// Only allow these columns to be edited
-$allowed = ['name','preferred_name','pronouns','academic_year','major'];
+// Allow avatar_seed edits too
+$allowed = [
+  'name',
+  'preferred_name',
+  'pronouns',
+  'academic_year',
+  'major',
+  'avatar_seed'  // ★ added avatar seed
+];
 
-// Track present keys exactly as sent by client (so we don’t overwrite fields you didn’t touch)
+// Track present keys exactly as sent by client
 $present = [];
 foreach ($allowed as $k) {
   if (array_key_exists($k, $in)) $present[$k] = true;
@@ -59,29 +40,26 @@ if (!$present) {
   exit;
 }
 
-// Build UPDATE dynamically, binding NULLs correctly
-$sets = [];
+// Build UPDATE dynamically
+$sets   = [];
 $params = [':id' => (int)$u['id']];
 
 foreach ($allowed as $k) {
   if (!isset($present[$k])) continue;
 
-  // clamp short fields 
   $val = $in[$k];
-  
   if ($val !== null) $val = (string)$val;
-  
+
   $sets[] = "$k = :$k";
   $params[":$k"] = $val;
 }
 
-$sql = "UPDATE users SET ".implode(', ', $sets)." WHERE id = :id LIMIT 1";
+$sql = "UPDATE users SET " . implode(', ', $sets) . " WHERE id = :id LIMIT 1";
 
 try {
   $pdo = pdo();
   $stmt = $pdo->prepare($sql);
 
-  // Bind values: PDO::PARAM_NULL for NULL, otherwise string
   foreach ($params as $k => $v) {
     if ($v === null) $stmt->bindValue($k, null, PDO::PARAM_NULL);
     else             $stmt->bindValue($k, $v,   PDO::PARAM_STR);
@@ -90,11 +68,35 @@ try {
   $stmt->execute();
   $rows = $stmt->rowCount();
 
-  // Re-fetch updated profile
-  $get = $pdo->prepare('SELECT name, preferred_name, email, pronouns, academic_year, major, role FROM users WHERE id = ? LIMIT 1');
+  // Re-fetch updated profile — now includes avatar_seed ★
+  $get = $pdo->prepare("
+    SELECT 
+      name,
+      preferred_name,
+      email,
+      pronouns,
+      academic_year,
+      major,
+      role,
+      avatar_seed   -- ★ include avatar_seed
+    FROM users
+    WHERE id = ?
+    LIMIT 1
+  ");
   $get->execute([(int)$u['id']]);
   $row = $get->fetch();
+
   if (!$row) fail('Profile not found after update', 404);
+
+  // ★ Update session / auth cached user to prevent rollback on next request
+  $_SESSION['user'] = array_merge($u, [
+    'name'           => $row['name'],
+    'preferred_name' => $row['preferred_name'],
+    'pronouns'       => $row['pronouns'],
+    'academic_year'  => $row['academic_year'],
+    'major'          => $row['major'],
+    'avatar_seed'    => $row['avatar_seed'], // ★ critical
+  ]);
 
   echo json_encode([
     'ok' => true,
@@ -106,11 +108,13 @@ try {
       'pronouns' => $row['pronouns'],
       'academic_year' => $row['academic_year'],
       'major' => $row['major'],
-      'role' => $row['role'], // already 'professor' in DB
+      'role' => $row['role'],
+      'avatar_seed' => $row['avatar_seed'], // ★ returned to frontend
     ],
   ]);
+
 } catch (Throwable $e) {
-  // Show real error while you’re debugging; swap to a generic message later
+  error_log("Profile update error: {$e->getMessage()}\nSQL: " . ($sql ?? 'N/A'));
   http_response_code(500);
-  echo json_encode(['ok'=>false,'message'=>'Server error','error'=>$e->getMessage(),'sql'=>$sql]);
+  echo json_encode(['ok'=>false,'message'=>'Server error']);
 }

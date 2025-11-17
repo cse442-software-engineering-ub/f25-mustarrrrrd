@@ -34,7 +34,6 @@ try {
       c.id as course_id,
       c.code as course_code,
       c.title as course_title,
-      c.professor,
       u.name as instructor_name
     FROM queue_entries qe
     JOIN office_hours_sessions ohs ON qe.session_id = ohs.id
@@ -78,6 +77,7 @@ try {
   echo json_encode(['ok' => true, 'sessions' => $formattedSessions]);
 
 } catch (Throwable $e) {
+  error_log('My reserved sessions error: ' . $e->getMessage());
   http_response_code(500);
-  echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+  echo json_encode(['ok' => false, 'error' => 'Server error']);
 }

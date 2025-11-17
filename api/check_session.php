@@ -47,8 +47,10 @@ if ($token) {
   try {
     $pdo = pdo();
     error_log("pdo happened", 0);
-    $stmt = $pdo->prepare('SELECT id, email, name, role FROM users WHERE remember_token = ? LIMIT 1');
-    $stmt->execute([$token]);
+    // Hash the cookie value to match what's stored in DB
+    $hash = hash('sha256', $token);
+    $stmt = $pdo->prepare('SELECT id, email, name, role FROM users WHERE session_token = ? LIMIT 1');
+    $stmt->execute([$hash]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($row && isset($row['id'])) {
@@ -66,7 +68,8 @@ if ($token) {
       ]);
     }
   } catch (Throwable $e) {
-    reply(false, ['loggedIn' => false, 'error' => $e->getMessage()]);
+    error_log('Check session error: ' . $e->getMessage());
+    reply(false, ['loggedIn' => false, 'error' => 'Server error']);
   }
 }
 

@@ -12,12 +12,17 @@ try {
   }
 
   // Get user info
-  $stmt = $pdo->prepare('SELECT id, name FROM users WHERE email = ? LIMIT 1');
+  $stmt = $pdo->prepare('SELECT id, name, role FROM users WHERE email = ? LIMIT 1');
   $stmt->execute([$email]);
   $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
   if (!$user) {
     out(404, ['ok' => false, 'error' => 'User not found']);
+  }
+
+  // Only professors can create courses (TAs can join existing courses but not create new ones)
+  if ($user['role'] !== 'professor') {
+    out(403, ['ok' => false, 'error' => 'Only professors can create courses']);
   }
 
   $userId = (int)$user['id'];
@@ -58,15 +63,14 @@ try {
   try {
     // Create the course with default values for optional fields
     $stmt = $pdo->prepare('
-      INSERT INTO courses (code, title, lecture_times, room, professor)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO courses (code, title, lecture_times, room)
+      VALUES (?, ?, ?, ?)
     ');
     $stmt->execute([
       $code,
       $title,
       'TBD', // Default lecture times
-      'TBD', // Default room
-      $lastName
+      'TBD'  // Default room
     ]);
 
     $courseId = (int)$pdo->lastInsertId();

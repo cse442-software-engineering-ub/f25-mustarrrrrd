@@ -29,9 +29,10 @@ try {
   $isAllowed = false;
   $uid = isset($u['id']) ? (int)$u['id'] : 0;
   if ($row['instructor_id'] && (int)$row['instructor_id'] === $uid) {
+    // The creator (instructor_id) can always edit
     $isAllowed = true;
   } else {
-    // fallback: check enrollments for professor role on the course
+    // Only professors (not TAs) enrolled on the course may edit others' sessions
     $q = $pdo->prepare('SELECT 1 FROM enrollments WHERE course_id = ? AND user_id = ? AND role_in_course = "professor" LIMIT 1');
     $q->execute([(int)$row['course_id'], $uid]);
     if ($q->fetchColumn()) $isAllowed = true;
@@ -43,11 +44,26 @@ try {
   if ($start && strlen($start) === 5) $start .= ':00';
   if ($end && strlen($end) === 5) $end .= ':00';
 
+  // If both start and end are provided, ensure end is after start
+  if ($start && $end) {
+    // $start/$end are HH:MM or HH:MM:SS; take first two parts
+    $sparts = explode(':', $start);
+    $eparts = explode(':', $end);
+    $startMinutes = ((int)$sparts[0]) * 60 + ((int)$sparts[1]);
+    $endMinutes = ((int)$eparts[0]) * 60 + ((int)$eparts[1]);
+    if ($endMinutes <= $startMinutes) {
+      http_response_code(400);
+      echo json_encode(['ok'=>false,'error'=>'invalid_time_range','message'=>'end time must be after start time']);
+      exit;
+    }
+  }
+
   $upd = $pdo->prepare('UPDATE office_hours_sessions SET day_of_week = ?, start_time = ?, end_time = ?, location = ? WHERE id = ?');
   $upd->execute([$day, $start, $end, $location, $sessionId]);
 
   echo json_encode(['ok'=>true, 'updated'=>$upd->rowCount()]);
 } catch (Throwable $e) {
+  error_log('Update office hours session error: ' . $e->getMessage());
   http_response_code(500);
-  echo json_encode(['ok'=>false,'error'=>$e->getMessage()]);
+  echo json_encode(['ok'=>false,'error'=>'Server error']);
 }

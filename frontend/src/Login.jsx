@@ -58,6 +58,7 @@ export default function Login() {
 
         if (data?.loggedIn) {
           if (data.role === "student") navigate("/dashboard", { replace: true });
+          else if (data.role === "ta") navigate("/tadashboard", { replace: true });
           else if (data.role === "professor") navigate("/professorview", { replace: true });
           return;
         }
@@ -102,6 +103,7 @@ export default function Login() {
         setPassword("");
 
         if (data.role === "student") navigate("/dashboard");
+        else if (data.role === "ta") navigate("/tadashboard");
         else if (data.role === "professor") navigate("/professorview");
       } else {
         setMessage(data?.message || "Invalid credentials");
@@ -130,8 +132,8 @@ export default function Login() {
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          color: "#fff",
-          backgroundColor: "#000",
+          color: "var(--text-primary)",
+          backgroundColor: "var(--bg-primary)",
         }}
       >
         Checking session...
@@ -148,7 +150,7 @@ export default function Login() {
         justifyContent: "center",
         alignItems: "center",
         fontFamily: "system-ui, sans-serif",
-        backgroundColor: "#000000",
+        backgroundColor: "var(--bg-primary)",
         padding: "48px 24px",
       }}
     >
@@ -157,11 +159,11 @@ export default function Login() {
           width: "100%",
           maxWidth: 960,
           padding: 32,
-          color: "#fff",
-          background: "#0f0f0f",
-          border: "1px solid #222",
+          color: "var(--text-primary)",
+          background: "var(--bg-secondary)",
+          border: "1px solid var(--border-color)",
           borderRadius: 12,
-          boxShadow: "0 12px 32px rgba(0,0,0,0.45)",
+          boxShadow: "0 12px 32px var(--card-shadow)",
         }}
       >
         <div
@@ -190,9 +192,9 @@ export default function Login() {
               padding: 12,
               marginTop: 6,
               borderRadius: 6,
-              border: "1px solid #444",
-              backgroundColor: "#2a2a2a",
-              color: "#fff",
+              border: "1px solid var(--input-border)",
+              backgroundColor: "var(--input-bg)",
+              color: "var(--text-primary)",
               fontSize: "1rem",
               boxSizing: "border-box",
             }}
@@ -213,9 +215,9 @@ export default function Login() {
               padding: 12,
               marginTop: 6,
               borderRadius: 6,
-              border: "1px solid #444",
-              backgroundColor: "#2a2a2a",
-              color: "#fff",
+              border: "1px solid var(--input-border)",
+              backgroundColor: "var(--input-bg)",
+              color: "var(--text-primary)",
               fontSize: "1rem",
               boxSizing: "border-box",
             }}
@@ -241,14 +243,16 @@ export default function Login() {
             border: "none",
             fontSize: "1rem",
             fontWeight: 600,
-            color: "#fff",
+            color: "var(--button-text)",
             background: loading
-              ? "linear-gradient(90deg, #444, #666)"
-              : "linear-gradient(90deg, #007bff, #00c3ff)",
+              ? "var(--button-bg)"
+              : "var(--button-bg)",
             cursor: loading ? "not-allowed" : "pointer",
             transition: "all 0.2s ease-in-out",
             opacity: loading ? 0.7 : 1,
           }}
+          onMouseEnter={(e) => !loading && (e.target.style.background = "var(--button-hover)")}
+          onMouseLeave={(e) => !loading && (e.target.style.background = "var(--button-bg)")}
         >
           {loading ? "Logging in..." : "Log In"}
         </button>
@@ -256,20 +260,20 @@ export default function Login() {
         {message && <p style={{ marginTop: 16 }}>{message}</p>}
 
         <div style={{ marginTop: 24 }}>
-          <p style={{ marginBottom: 8 }}>Don’t have an account?</p>
+          <p style={{ marginBottom: 8 }}>Don't have an account?</p>
           <button
             onClick={() => navigate("/signup")}
             style={{
               padding: "10px 20px",
               borderRadius: 6,
-              border: "1px solid #007bff",
+              border: "1px solid var(--link-color)",
               background: "transparent",
-              color: "#4da6ff",
+              color: "var(--link-color)",
               fontWeight: 600,
               cursor: "pointer",
               transition: "all 0.2s ease-in-out",
             }}
-            onMouseEnter={(e) => (e.target.style.background = "#007bff33")}
+            onMouseEnter={(e) => (e.target.style.background = "var(--bg-tertiary)")}
             onMouseLeave={(e) => (e.target.style.background = "transparent")}
           >
             Sign up here

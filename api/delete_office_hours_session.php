@@ -23,8 +23,10 @@ try {
   $isAllowed = false;
   $uid = isset($u['id']) ? (int)$u['id'] : 0;
   if ($row['instructor_id'] && (int)$row['instructor_id'] === $uid) {
+    // Only the creator can always delete
     $isAllowed = true;
   } else {
+    // Only professors (not TAs) enrolled on the course may delete others' sessions
     $q = $pdo->prepare('SELECT 1 FROM enrollments WHERE course_id = ? AND user_id = ? AND role_in_course = "professor" LIMIT 1');
     $q->execute([(int)$row['course_id'], $uid]);
     if ($q->fetchColumn()) $isAllowed = true;
@@ -37,6 +39,7 @@ try {
 
   echo json_encode(['ok'=>true, 'deleted' => $del->rowCount()]);
 } catch (Throwable $e) {
+  error_log('Delete office hours session error: ' . $e->getMessage());
   http_response_code(500);
-  echo json_encode(['ok'=>false,'error'=>$e->getMessage()]);
+  echo json_encode(['ok'=>false,'error'=>'Server error']);
 }

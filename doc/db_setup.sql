@@ -104,6 +104,70 @@ CREATE TABLE `office_hours_sessions` (
         ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+--notifications table
+CREATE TABLE IF NOT EXISTS notifications (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  course_id INT NULL,
+  type ENUM('queue_absent') NOT NULL,
+  message VARCHAR(512) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  is_read TINYINT(1) DEFAULT 0,
+  INDEX (user_id, is_read)
+);
+-- Create the table used by /api/user_notifications.php and Dashboard banner
+CREATE TABLE IF NOT EXISTS `user_notifications` (
+  `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_email` VARCHAR(255) NOT NULL,
+  `notif_type` VARCHAR(64)  NOT NULL,           -- e.g., 'absent_removed'
+  `message`    VARCHAR(512) NOT NULL,
+  `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `seen`       TINYINT(1)   NOT NULL DEFAULT 0, -- 0 = unseen, 1 = dismissed
+  PRIMARY KEY (`id`),
+  KEY `idx_user_seen` (`user_email`, `seen`),
+  KEY `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Generic per-user notifications table (unused by the current banner)
+CREATE TABLE IF NOT EXISTS `notifications` (
+  `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_email` VARCHAR(255) NOT NULL,
+  `course_id`  INT UNSIGNED     DEFAULT NULL,
+  `type`       VARCHAR(64)  NOT NULL,           -- e.g., 'absent', 'system', etc.
+  `message`    VARCHAR(512) NOT NULL,
+  `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `is_read`    TINYINT(1)   NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_read` (`user_email`, `is_read`),
+  KEY `idx_course` (`course_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+                                                                              --|||
+-- Add attendance column if it doesn't exist yet. you can copy this all at once VVV
+SET @col_exists := (
+  SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'queue_entries'
+    AND COLUMN_NAME = 'attendance'
+);
+
+SET @sql := IF(@col_exists = 0,
+  'ALTER TABLE `queue_entries` ADD COLUMN `attendance` ENUM(''present'',''absent'') NULL DEFAULT NULL AFTER `user_email`',
+  'SELECT "attendance already exists"');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Helpful indexes (safe to run; guard each with a check)
+SET @idx1 := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME='queue_entries' AND INDEX_NAME='idx_session_user');
+SET @sql := IF(@idx1=0, 'ALTER TABLE `queue_entries` ADD INDEX `idx_session_user` (`session_id`,`user_email`)', 'SELECT "idx_session_user exists"');
+PREPARE s1 FROM @sql; EXECUTE s1; DEALLOCATE PREPARE s1;
+
+SET @idx2 := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME='queue_entries' AND INDEX_NAME='idx_course_user');
+SET @sql := IF(@idx2=0, 'ALTER TABLE `queue_entries` ADD INDEX `idx_course_user` (`course_id`,`user_email`)', 'SELECT "idx_course_user exists"');
+PREPARE s2 FROM @sql; EXECUTE s2; DEALLOCATE PREPARE s2;
+-- you can copy this all at once^^^
+
+
 -- Migration: Add attendance column to queue_entries (if not already present)
 ALTER TABLE queue_entries ADD COLUMN attendance ENUM('present','absent') NULL AFTER user_email;
 
@@ -114,4 +178,16 @@ ALTER TABLE queue_entries ADD CONSTRAINT fk_queue_session FOREIGN KEY (session_i
 
 -- Note: after adding the columns, the APIs will accept and use `session_id` and `attendance` when provided. Without these columns, behavior will fail.
 
-ALTER TABLE users ADD COLUMN push_sub TEXT NULL;
+-- Run these one by one to update roles in db --
+SHOW COLUMNS FROM users LIKE 'role';
+
+ALTER TABLE users
+  MODIFY role ENUM('student','ta','professor','instructor') NOT NULL;
+
+UPDATE users SET role='professor' WHERE role='instructor';
+
+ALTER TABLE users
+  MODIFY role ENUM('student','ta','professor') NOT NULL;
+-- Drop professor column from courses table
+ALTER TABLE `courses` DROP COLUMN `professor`;
+ALTER TABLE users ADD COLUMN avatar_seed VARCHAR(64) NULL AFTER email;
