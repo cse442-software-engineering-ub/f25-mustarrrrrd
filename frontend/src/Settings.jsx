@@ -3,14 +3,27 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Menu } from "lucide-react";
 
-// Build absolute base from Vite base (ends with /), safe in subfolders
 const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
 const API_ROOT = new URL("../api/", ABS_BASE).pathname;
+const VAPID_PUBLIC_KEY = "BNct9u_rYLt-VDZs4cLNG65RzzAhferGHWWZLA_eRKfGY8TSgDQNRtLkYS7M10j7oUHiBozSPv4A0NIVuL8h6-I";
 
+
+/* -------------------------------------------------------------------------- */
+/*                                Helper utils                                */
+/* -------------------------------------------------------------------------- */
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                Main Component                              */
+/* -------------------------------------------------------------------------- */
 export default function Settings() {
   const navigate = useNavigate();
 
-  // Menu state
   const [menuOpen, setMenuOpen] = useState(false);
   const btnRef = useRef(null);
   const menuRef = useRef(null);
@@ -33,14 +46,12 @@ export default function Settings() {
     applyTheme(theme);
   }, [theme]);
 
-  // Close the menu on outside click / Esc
+  /* ------------------------- Close dropdown on blur ------------------------ */
   useEffect(() => {
     function onDocClick(e) {
       if (!menuOpen) return;
-      const b = btnRef.current;
-      const m = menuRef.current;
-      if (b && b.contains(e.target)) return;
-      if (m && m.contains(e.target)) return;
+      if (btnRef.current?.contains(e.target)) return;
+      if (menuRef.current?.contains(e.target)) return;
       setMenuOpen(false);
     }
     function onKey(e) {
@@ -73,6 +84,7 @@ export default function Settings() {
     navigate(to);
   };
 
+  /* ----------------------------- Sign out user ----------------------------- */
   async function handleSignOut() {
     try {
       await fetch(`${API_ROOT}logout.php`, {
@@ -80,27 +92,70 @@ export default function Settings() {
         credentials: "include",
       });
     } catch {}
-    // Hard clear PHP session cookie (path=/ to cover subdirs)
     document.cookie = "PHPSESSID=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
     navigate("/");
   }
 
+  /* ---------------------- Notification + push handling --------------------- */
+  async function requestNotificationPermission() {
+    if (!("Notification" in window)) {
+      alert("This browser does not support notifications.");
+      return false;
+    }
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      alert("Notifications were blocked. Enable them in browser settings.");
+      return false;
+    }
+    return true;
+  }
+
+  async function subscribeToPush() {
+    const granted = await requestNotificationPermission();
+    if (!granted) return;
+
+    // Register service worker (works for subfolders)
+    const swUrl = `${import.meta.env.BASE_URL}sw.js`;
+    const reg = await navigator.serviceWorker.register(swUrl);
+    console.log("✅ Service worker registered:", reg.scope);
+
+    // Convert public VAPID key
+    const convertedKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+
+    // Try to subscribe (reuses old one if exists)
+    const existingSub = await reg.pushManager.getSubscription();
+    const sub =
+      existingSub ||
+      (await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: convertedKey,
+      }));
+
+    // Send subscription to backend
+    await fetch(`${API_ROOT}push_subscribe.php`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sub),
+    });
+
+    console.log("✅ Push subscription saved to backend!");
+  }
+
   async function saveSettings(e) {
     e?.preventDefault?.();
-    setMsg("");
-
-    // If you add a backend, POST here (example only):
-    // await fetch(`${API_ROOT}settings_update.php`, { method: "POST", credentials:"include", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ theme, pushNotif }) });
-
     setMsg("Settings saved.");
     setTimeout(() => setMsg(""), 1800);
   }
 
+  /* -------------------------------------------------------------------------- */
+  /*                                   Render                                   */
+  /* -------------------------------------------------------------------------- */
   return (
     <div
       style={{
         minHeight: "100vh",
-        background: "var(--bg-secondary)",
+        background: "#f9fafb",
         margin: 0,
         padding: 0,
         position: "fixed",
@@ -140,7 +195,6 @@ export default function Settings() {
             Settings
           </h1>
 
-          {/* Hamburger */}
           <div style={{ position: "relative" }}>
             <button
               ref={btnRef}
@@ -182,7 +236,7 @@ export default function Settings() {
               >
                 <MenuItem label="Profile" onClick={() => go("/profile")} />
                 <MenuItem label="Settings" onClick={() => go("/settings")} />
-                <div style={{ height: 1, background: "var(--border-color)", margin: "4px 0" }} />
+                <div style={{ height: 1, background: "#f1f5f9", margin: "4px 0" }} />
                 <MenuItem label="Sign out" danger onClick={handleSignOut} />
               </div>
             )}
@@ -192,10 +246,7 @@ export default function Settings() {
 
       {/* Content */}
       <div style={{ maxWidth: "64rem", margin: "0 auto", padding: "1.5rem" }}>
-        <form
-          onSubmit={saveSettings}
-          style={{ display: "grid", gap: "1rem" }}
-        >
+        <form onSubmit={saveSettings} style={{ display: "grid", gap: "1rem" }}>
           <Card title="Appearance">
             <div style={row}>
               <label style={label}>Theme</label>
@@ -213,27 +264,21 @@ export default function Settings() {
           <Card title="Notifications">
             <ToggleRow
               title="Push notifications"
-              description="Get push alerts when your turn is near."
+              description="Get alerts before your office hours or when it’s your turn."
               checked={pushNotif}
-              onChange={setPushNotif}
+              onChange={async (v) => {
+                setPushNotif(v);
+                if (v) await subscribeToPush();
+              }}
             />
           </Card>
 
           <Card title="Account">
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <button
-                type="submit"
-                style={primaryBtn}
-                title="Save settings"
-              >
+              <button type="submit" style={primaryBtn}>
                 Save changes
               </button>
-              <button
-                type="button"
-                onClick={handleSignOut}
-                style={dangerBtn}
-                title="Sign out and clear session"
-              >
+              <button type="button" onClick={handleSignOut} style={dangerBtn}>
                 Sign out
               </button>
             </div>
@@ -245,7 +290,9 @@ export default function Settings() {
   );
 }
 
-/* Reusable bits */
+/* -------------------------------------------------------------------------- */
+/*                              Reusable components                            */
+/* -------------------------------------------------------------------------- */
 function MenuItem({ label, onClick, danger }) {
   return (
     <button
@@ -276,7 +323,7 @@ function Card({ title, children }) {
         padding: 16,
       }}
     >
-      <h3 style={{ margin: 0, marginBottom: 12, fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>
+      <h3 style={{ margin: 0, marginBottom: 12, fontSize: 16, fontWeight: 600, color: "#111" }}>
         {title}
       </h3>
       <div style={{ display: "grid", gap: 12 }}>{children}</div>
@@ -300,7 +347,14 @@ function ToggleRow({ title, description, checked, onChange }) {
           <div style={{ color: "var(--text-secondary)", fontSize: 14 }}>{description}</div>
         )}
       </div>
-      <label style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+      <label
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          cursor: "pointer",
+        }}
+      >
         <input
           type="checkbox"
           checked={checked}
@@ -312,7 +366,9 @@ function ToggleRow({ title, description, checked, onChange }) {
   );
 }
 
-/* Inline styles */
+/* -------------------------------------------------------------------------- */
+/*                                 Inline styles                               */
+/* -------------------------------------------------------------------------- */
 const row = {
   display: "grid",
   gridTemplateColumns: "200px 1fr",
@@ -320,7 +376,7 @@ const row = {
   alignItems: "center",
 };
 
-const label = { color: "var(--text-secondary)", fontSize: 14 };
+const label = { color: "#374151", fontSize: 14 };
 
 const input = {
   padding: "10px 12px",
@@ -330,9 +386,7 @@ const input = {
   fontSize: 14,
   color: "var(--text-primary)",
 };
-
 const select = { ...input, appearance: "none" };
-
 const primaryBtn = {
   background: "var(--button-bg)",
   color: "var(--button-text)",
@@ -342,7 +396,6 @@ const primaryBtn = {
   fontWeight: 600,
   cursor: "pointer",
 };
-
 const dangerBtn = {
   background: "var(--error-color)",
   color: "var(--button-text)",
