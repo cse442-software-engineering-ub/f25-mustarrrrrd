@@ -2,12 +2,89 @@ import React, { useState, useEffect, useRef } from "react";
 import { Menu, Search, Plus, MoreVertical, X, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+// --- Prevent session flicker ---
+const SessionItem = React.memo(function SessionItem({ s, owned, active, onClick }) {
+  return (
+    <div
+      onClick={() => onClick(s.id, owned)}
+      aria-disabled={!owned}
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        background: "var(--bg-tertiary)",
+        border: "1px solid var(--border-color)",
+        padding: 10,
+        borderRadius: 8,
+        marginBottom: 8,
+        cursor: owned ? "pointer" : "not-allowed",
+        opacity: owned ? 1 : 0.6,
+        userSelect: "none",
+      }}
+    >
+      <div>
+        <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>
+          {s.day_of_week} • {s.start_time}–{s.end_time}
+        </div>
+
+        <div style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}>
+          {s.location || "(no location)"}
+        </div>
+
+        {(s.created_by ||
+          s.professor_email ||
+          s.instructor_email ||
+          s.owner_email) && (
+          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+            Owner:{" "}
+            {s.created_by ||
+              s.professor_email ||
+              s.instructor_email ||
+              s.owner_email}
+          </div>
+        )}
+      </div>
+
+      <div>
+        {active ? (
+          <span
+            style={{
+              fontSize: "0.75rem",
+              background: "#dcfce7",
+              color: "#166534",
+              padding: "4px 8px",
+              borderRadius: 6,
+              fontWeight: 600,
+            }}
+          >
+            Active Now
+          </span>
+        ) : (
+          <span
+            style={{
+              fontSize: "0.75rem",
+              background: "#e0f2fe",
+              color: "#0369a1",
+              padding: "4px 8px",
+              borderRadius: 6,
+              fontWeight: 600,
+            }}
+          >
+            Upcoming
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}, (prev, next) => JSON.stringify(prev.s) === JSON.stringify(next.s));
+
 export default function ProfessorView() {
   const [courses, setCourses] = useState([]);
   const [activeCourse, setActiveCourse] = useState(null);
   const [queue, setQueue] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const queueInitializedRef = useRef(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [newSession, setNewSession] = useState({
@@ -157,11 +234,21 @@ export default function ProfessorView() {
 
   // --- Fetch live queue for selected course ---
   useEffect(() => {
-    if (!activeCourse) return;
+    if (!activeCourse) {
+      queueInitializedRef.current = false;
+      return;
+    }
+
+    // Reset initialization flag when course changes
+    queueInitializedRef.current = false;
 
     async function fetchQueue() {
       try {
-        setLoading(true);
+        // Only show loading on initial fetch
+        if (!queueInitializedRef.current) {
+          setLoading(true);
+        }
+
         const res = await fetch(
           `${API_ROOT}queue_list.php?course_id=${encodeURIComponent(
             activeCourse
@@ -175,21 +262,41 @@ export default function ProfessorView() {
 
         if (!res.ok) {
           console.error("Queue fetch failed:", res.status);
-          setQueue([]);
+          // Only clear queue if we haven't initialized yet, otherwise keep existing data
+          if (!queueInitializedRef.current) {
+            setQueue([]);
+          }
           return;
         }
 
         const data = await res.json().catch(() => ({}));
         if (data.ok && Array.isArray(data.queue)) {
-          setQueue(data.queue);
+          // Avoid flicker: only update state when data actually changed
+          setQueue((prevQueue) => {
+            const prevStr = JSON.stringify(prevQueue || []);
+            const nextStr = JSON.stringify(data.queue || []);
+            if (prevStr !== nextStr) {
+              return data.queue;
+            }
+            return prevQueue;
+          });
         } else {
-          setQueue([]);
+          // Only clear queue if we haven't initialized yet
+          if (!queueInitializedRef.current) {
+            setQueue([]);
+          }
         }
       } catch (err) {
         console.error("Error fetching queue:", err);
-        setQueue([]);
+        // Only clear queue if we haven't initialized yet
+        if (!queueInitializedRef.current) {
+          setQueue([]);
+        }
       } finally {
-        setLoading(false);
+        if (!queueInitializedRef.current) {
+          setLoading(false);
+          queueInitializedRef.current = true;
+        }
       }
     }
 
@@ -245,15 +352,18 @@ export default function ProfessorView() {
       });
 
       // avoid flicker: only update state when data actually changed
-      try {
-        const prev = JSON.stringify(sessions || []);
-        const next = JSON.stringify(sorted || []);
-        if (prev !== next) {
-          setSessions(sorted);
+      setSessions((prevSessions) => {
+        try {
+          const prev = JSON.stringify(prevSessions || []);
+          const next = JSON.stringify(sorted || []);
+          if (prev !== next) {
+            return sorted;
+          }
+          return prevSessions;
+        } catch (e) {
+          return sorted;
         }
-      } catch (e) {
-        setSessions(sorted);
-      }
+      });
     } catch (err) {
       console.error("Error fetching sessions", err);
     }
@@ -1792,92 +1902,23 @@ export default function ProfessorView() {
               </div>
             </div>
 
-            {loading && <p style={{ color: "#666" }}>Loading queue...</p>}
+            {loading && queue.length === 0 && <p style={{ color: "#666" }}>Loading queue...</p>}
 
             {/* Sessions list for this course */}
             {sessions.length > 0 && (
               <div style={{ marginBottom: 12 }}>
                 {sessions.map((s) => {
                   const active = isSessionActive(s);
-
-                  // NEW: ownership check (support multiple possible keys)
                   const owned = isOwnerOfSession(s);
 
                   return (
-                    <div
+                    <SessionItem
                       key={s.id}
-                      onClick={() => onSessionClick(s.id, owned)}
-                      aria-disabled={!owned}
-                      title={
-                        owned
-                          ? "Open session"
-                          : "Session not created by you"
-                      }
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        background: "var(--bg-tertiary)",
-                        border: "1px solid var(--border-color)",
-                        padding: 10,
-                        borderRadius: 8,
-                        marginBottom: 8,
-                        cursor: owned ? "pointer" : "not-allowed",
-                        opacity: owned ? 1 : 0.6,
-                        userSelect: "none",
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>
-                          {s.day_of_week} • {s.start_time}–{s.end_time}
-                        </div>
-                        <div style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}>
-                          {s.location || "(no location)"}
-                        </div>
-                        {/* Optional: show owner email for clarity if present */}
-                        {(s.created_by ||
-                          s.professor_email ||
-                          s.instructor_email ||
-                          s.owner_email) && (
-                          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
-                            Owner:{" "}
-                            {s.created_by ||
-                              s.professor_email ||
-                              s.instructor_email ||
-                              s.owner_email}
-                          </div>
-                        )}
-                      </div>
-                      <div>
-                        {active ? (
-                          <span
-                            style={{
-                              fontSize: "0.75rem",
-                              background: "#dcfce7",
-                              color: "#166534",
-                              padding: "4px 8px",
-                              borderRadius: 6,
-                              fontWeight: 600,
-                            }}
-                          >
-                            Active Now
-                          </span>
-                        ) : (
-                          <span
-                            style={{
-                              fontSize: "0.75rem",
-                              background: "#e0f2fe",
-                              color: "#0369a1",
-                              padding: "4px 8px",
-                              borderRadius: 6,
-                              fontWeight: 600,
-                            }}
-                          >
-                            Upcoming
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                      s={s}
+                      owned={owned}
+                      active={active}
+                      onClick={onSessionClick}
+                    />
                   );
                 })}
               </div>

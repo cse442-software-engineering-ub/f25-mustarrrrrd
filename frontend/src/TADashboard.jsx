@@ -3,12 +3,110 @@ import { Menu, Search, Plus, MoreVertical, X } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { ViewSwitcher } from "./ViewSwitcher";
 
+// --- Prevent session flicker ---
+const SessionItem = React.memo(function SessionItem({ s, taCanOpen, active, currentUserId, currentUserRole, onSessionClick, onEditClick, onDeleteClick }) {
+  return (
+    <div
+      onClick={() => onSessionClick(s.id, taCanOpen)}
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        background: 'var(--bg-tertiary)',
+        border: '1px solid var(--border-color)',
+        padding: 10,
+        borderRadius: 8,
+        marginBottom: 8,
+        cursor: taCanOpen ? 'pointer' : 'not-allowed',
+        opacity: taCanOpen ? 1 : 0.6,
+        userSelect: 'none',
+      }}
+    >
+      <div>
+        <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+          {s.day_of_week} • {s.start_time}–{s.end_time}
+        </div>
+        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+          {s.location || '(no location)'}
+        </div>
+        {/* Owner tag: show who created the session when available */}
+        {(s.created_by || s.professor_email || s.instructor_email || s.owner_email) && (
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+            Owner: {s.created_by || s.professor_email || s.instructor_email || s.owner_email}
+          </div>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        {active ? (
+          <span style={{ fontSize: '0.75rem', background: '#dcfce7', color: '#166534', padding: '4px 8px', borderRadius: 6, fontWeight: 600 }}>
+            Active Now
+          </span>
+        ) : (
+          <span style={{ fontSize: '0.75rem', background: '#e0f2fe', color: '#0369a1', padding: '4px 8px', borderRadius: 6, fontWeight: 600 }}>
+            Upcoming
+          </span>
+        )}
+        {(currentUserRole === 'professor' || Number(currentUserId) === Number(s.instructor_id)) && (
+          <>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditClick(s);
+              }}
+              style={{
+                background: '#fff',
+                color: '#111827',
+                border: '1px solid #e5e7eb',
+                padding: '6px 10px',
+                borderRadius: 8,
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              Edit
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteClick(s);
+              }}
+              style={{
+                background: '#fee2e2',
+                color: '#991b1b',
+                border: '1px solid #fecaca',
+                padding: '6px 10px',
+                borderRadius: 8,
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              Delete
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}, (prev, next) => {
+  // Custom comparison: only re-render if session data, active status, or permissions changed
+  return (
+    JSON.stringify(prev.s) === JSON.stringify(next.s) &&
+    prev.active === next.active &&
+    prev.taCanOpen === next.taCanOpen &&
+    prev.currentUserId === next.currentUserId &&
+    prev.currentUserRole === next.currentUserRole
+  );
+});
+
 export default function TADashboard() {
   const [courses, setCourses] = useState([]);
   const [activeCourse, setActiveCourse] = useState(null);
   const [queue, setQueue] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const queueInitializedRef = useRef(false);
+  const sessionsInitializedRef = useRef(false);
+  const activeCourseRef = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [newSession, setNewSession] = useState({ day_of_week: 'Monday', start_time: '12:00', end_time: '13:00', location: '' });
@@ -134,13 +232,33 @@ export default function TADashboard() {
     fetchCourses();
   }, []);
 
+  // Update ref whenever activeCourse changes
+  useEffect(() => {
+    activeCourseRef.current = activeCourse;
+  }, [activeCourse]);
+
   // --- Fetch live queue for selected course ---
   useEffect(() => {
-    if (!activeCourse) return;
+    if (!activeCourse) {
+      queueInitializedRef.current = false;
+      sessionsInitializedRef.current = false;
+      setSessions([]);
+      return;
+    }
+
+    // Reset initialization flags when course changes
+    queueInitializedRef.current = false;
+    sessionsInitializedRef.current = false;
+    // Clear sessions when course changes to prevent showing old sessions
+    setSessions([]);
 
     async function fetchQueue() {
       try {
-        setLoading(true);
+        // Only show loading on initial fetch
+        if (!queueInitializedRef.current) {
+          setLoading(true);
+        }
+
         const res = await fetch(
           `${API_ROOT}queue_list.php?course_id=${encodeURIComponent(activeCourse)}`,
           {
@@ -152,22 +270,81 @@ export default function TADashboard() {
 
         if (!res.ok) {
           console.error("Queue fetch failed:", res.status);
-          setQueue([]);
+          // Only clear queue if we haven't initialized yet, otherwise keep existing data
+          if (!queueInitializedRef.current) {
+            setQueue([]);
+          }
           return;
         }
 
         const data = await res.json().catch(() => ({}));
         if (data.ok && Array.isArray(data.queue)) {
-          setQueue(data.queue);
+          // Avoid flicker: only update state when data actually changed
+          setQueue((prevQueue) => {
+            const prevStr = JSON.stringify(prevQueue || []);
+            const nextStr = JSON.stringify(data.queue || []);
+            if (prevStr !== nextStr) {
+              return data.queue;
+            }
+            return prevQueue;
+          });
         } else {
-          setQueue([]);
+          // Only clear queue if we haven't initialized yet
+          if (!queueInitializedRef.current) {
+            setQueue([]);
+          }
         }
       } catch (err) {
         console.error("Error fetching queue:", err);
-        setQueue([]);
+        // Only clear queue if we haven't initialized yet
+        if (!queueInitializedRef.current) {
+          setQueue([]);
+        }
       } finally {
-        setLoading(false);
+        if (!queueInitializedRef.current) {
+          setLoading(false);
+          queueInitializedRef.current = true;
+        }
       }
+    }
+
+    async function fetchSessions(){
+      const currentCourse = activeCourseRef.current;
+      if (!currentCourse) return;
+      try{
+        const res = await fetch(`${API_ROOT}office_hours_sessions_list.php?course_id=${encodeURIComponent(currentCourse)}`, { credentials: 'include', headers:{Accept:'application/json'} });
+        if(!res.ok){ console.error('Failed to load sessions', res.status); return; }
+        const data = await res.json().catch(()=>null);
+        if(!(data && data.ok && Array.isArray(data.sessions))){ console.error('Invalid sessions response', data); return; }
+
+        // normalize and sort sessions: Monday..Sunday then start_time ascending
+        const dayOrder = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+        const dayIdx = (d)=> Math.max(0, dayOrder.indexOf(d));
+
+        const sorted = data.sessions.slice().sort((a,b)=>{
+          const da = dayIdx(a.day_of_week);
+          const db = dayIdx(b.day_of_week);
+          if(da !== db) return da - db;
+          // compare start_time strings 'HH:MM'
+          if((a.start_time||'') < (b.start_time||'')) return -1;
+          if((a.start_time||'') > (b.start_time||'')) return 1;
+          return 0;
+        });
+
+        // avoid flicker: only update state when data actually changed
+        setSessions((prevSessions) => {
+          try {
+            const prev = JSON.stringify(prevSessions || []);
+            const next = JSON.stringify(sorted || []);
+            if (prev !== next) {
+              return sorted;
+            }
+            return prevSessions;
+          } catch (e) {
+            return sorted;
+          }
+        });
+      }catch(err){ console.error('Error fetching sessions',err); }
     }
 
     fetchQueue();
@@ -181,9 +358,12 @@ export default function TADashboard() {
     };
   }, [activeCourse]);
 
+  // Keep fetchSessions outside for other uses (like after creating/updating sessions)
   async function fetchSessions(){
+    const currentCourse = activeCourseRef.current;
+    if (!currentCourse) return;
     try{
-      const res = await fetch(`${API_ROOT}office_hours_sessions_list.php?course_id=${encodeURIComponent(activeCourse)}`, { credentials: 'include', headers:{Accept:'application/json'} });
+      const res = await fetch(`${API_ROOT}office_hours_sessions_list.php?course_id=${encodeURIComponent(currentCourse)}`, { credentials: 'include', headers:{Accept:'application/json'} });
       if(!res.ok){ console.error('Failed to load sessions', res.status); return; }
       const data = await res.json().catch(()=>null);
       if(!(data && data.ok && Array.isArray(data.sessions))){ console.error('Invalid sessions response', data); return; }
@@ -203,15 +383,18 @@ export default function TADashboard() {
       });
 
       // avoid flicker: only update state when data actually changed
-      try{
-        const prev = JSON.stringify(sessions || []);
-        const next = JSON.stringify(sorted || []);
-        if(prev !== next){
-          setSessions(sorted);
+      setSessions((prevSessions) => {
+        try {
+          const prev = JSON.stringify(prevSessions || []);
+          const next = JSON.stringify(sorted || []);
+          if (prev !== next) {
+            return sorted;
+          }
+          return prevSessions;
+        } catch (e) {
+          return sorted;
         }
-      }catch(e){
-        setSessions(sorted);
-      }
+      });
     }catch(err){ console.error('Error fetching sessions',err); }
   }
 
@@ -229,6 +412,52 @@ export default function TADashboard() {
       const endMinutes = eh*60 + em;
       return nowMinutes >= startMinutes && nowMinutes <= endMinutes;
     }catch(e){ return false; }
+  }
+
+  // Handler for session click
+  function onSessionClick(sessionId, taCanOpen) {
+    if (taCanOpen) {
+      window.location.hash = `#/session/${sessionId}`;
+    } else {
+      // show banner like the professor view
+      setNoticeMsg("session was not created by you");
+      if (noticeTimerRef.current) window.clearTimeout(noticeTimerRef.current);
+      // auto-hide after 4s
+      noticeTimerRef.current = window.setTimeout(() => setNoticeMsg(""), 4000);
+    }
+  }
+
+  // Handler for edit session
+  function onEditSessionClick(s) {
+    setEditSessionId(s.id);
+    setEditSessionData({
+      day_of_week: s.day_of_week || 'Monday',
+      start_time: s.start_time || '12:00',
+      end_time: s.end_time || '13:00',
+      location: s.location || ''
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Handler for delete session
+  async function onDeleteSessionClick(s) {
+    if (!window.confirm('Delete this session?')) return;
+    try {
+      const res = await fetch(`${API_ROOT}delete_office_hours_session.php`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ session_id: s.id })
+      });
+      if (!res.ok) throw new Error('delete failed');
+      const d = await res.json().catch(() => null);
+      if (d && d.ok) {
+        fetchSessions();
+      }
+    } catch (err) {
+      console.error('Failed to delete session', err);
+      alert('Failed to delete session');
+    }
   }
 
   async function createSession(){
@@ -1074,7 +1303,7 @@ export default function TADashboard() {
               </div>
             </div>
 
-            {loading && <p style={{ color: "var(--text-secondary)" }}>Loading queue...</p>}
+            {loading && queue.length === 0 && <p style={{ color: "var(--text-secondary)" }}>Loading queue...</p>}
             {/* Sessions list for this course */}
             {sessions.length > 0 && (
               <div style={{ marginBottom: 12 }}>
@@ -1083,45 +1312,17 @@ export default function TADashboard() {
                   // TAs can only open sessions they created (instructor_id === currentUserId)
                   const taCanOpen = Number(currentUserId) === Number(s.instructor_id);
                   return (
-                    <div
+                    <SessionItem
                       key={s.id}
-                      onClick={() => {
-                        if (taCanOpen) {
-                          window.location.hash = `#/session/${s.id}`;
-                        } else {
-                          // show banner like the professor view
-                          setNoticeMsg("session was not created by you");
-                          if (noticeTimerRef.current) window.clearTimeout(noticeTimerRef.current);
-                          // auto-hide after 4s
-                          noticeTimerRef.current = window.setTimeout(() => setNoticeMsg(""), 4000);
-                        }
-                      }}
-                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', padding: 10, borderRadius: 8, marginBottom: 8, cursor: taCanOpen ? 'pointer' : 'not-allowed', opacity: taCanOpen ? 1 : 0.6 }}
-                    >
-                        <div>
-                        <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{s.day_of_week} • {s.start_time}–{s.end_time}</div>
-                        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{s.location || '(no location)'}</div>
-                        {/* Owner tag: show who created the session when available */}
-                        {(s.created_by || s.professor_email || s.instructor_email || s.owner_email) && (
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                            Owner: {s.created_by || s.professor_email || s.instructor_email || s.owner_email}
-                          </div>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        {active ? (
-                          <span style={{ fontSize: '0.75rem', background: '#dcfce7', color: '#166534', padding: '4px 8px', borderRadius: 6, fontWeight: 600 }}>Active Now</span>
-                        ) : (
-                          <span style={{ fontSize: '0.75rem', background: '#e0f2fe', color: '#0369a1', padding: '4px 8px', borderRadius: 6, fontWeight: 600 }}>Upcoming</span>
-                        )}
-                        {(currentUserRole === 'professor' || Number(currentUserId) === Number(s.instructor_id)) && (
-                          <>
-                            <button onClick={(e) => { e.stopPropagation(); setEditSessionId(s.id); setEditSessionData({ day_of_week: s.day_of_week || 'Monday', start_time: s.start_time || '12:00', end_time: s.end_time || '13:00', location: s.location || '' }); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ background: '#fff', color: '#111827', border: '1px solid #e5e7eb', padding: '6px 10px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Edit</button>
-                            <button onClick={async (e) => { e.stopPropagation(); if(!window.confirm('Delete this session?')) return; try{ const res = await fetch(`${API_ROOT}delete_office_hours_session.php`, { method:'POST', credentials:'include', headers:{'Content-Type':'application/json', Accept:'application/json'}, body: JSON.stringify({ session_id: s.id }) }); if(!res.ok) throw new Error('delete failed'); const d = await res.json().catch(()=>null); if(d && d.ok){ fetchSessions(); } }catch(err){ console.error('Failed to delete session', err); alert('Failed to delete session'); } }} style={{ background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', padding: '6px 10px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Delete</button>
-                          </>
-                        )}
-                      </div>
-                    </div>
+                      s={s}
+                      taCanOpen={taCanOpen}
+                      active={active}
+                      currentUserId={currentUserId}
+                      currentUserRole={currentUserRole}
+                      onSessionClick={onSessionClick}
+                      onEditClick={onEditSessionClick}
+                      onDeleteClick={onDeleteSessionClick}
+                    />
                   );
                 })}
               </div>
