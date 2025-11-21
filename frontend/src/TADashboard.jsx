@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Menu, Search, Plus, MoreVertical, X } from "lucide-react";
+import notify, { confirmDialog } from './notify';
 import { useNavigate, Link } from "react-router-dom";
 import { ViewSwitcher } from "./ViewSwitcher";
 
@@ -1314,15 +1315,43 @@ export default function TADashboard() {
                   return (
                     <SessionItem
                       key={s.id}
-                      s={s}
-                      taCanOpen={taCanOpen}
-                      active={active}
-                      currentUserId={currentUserId}
-                      currentUserRole={currentUserRole}
-                      onSessionClick={onSessionClick}
-                      onEditClick={onEditSessionClick}
-                      onDeleteClick={onDeleteSessionClick}
-                    />
+                      onClick={() => {
+                        if (taCanOpen) {
+                          window.location.hash = `#/session/${s.id}`;
+                        } else {
+                          // show banner like the professor view
+                          setNoticeMsg("session was not created by you");
+                          if (noticeTimerRef.current) window.clearTimeout(noticeTimerRef.current);
+                          // auto-hide after 4s
+                          noticeTimerRef.current = window.setTimeout(() => setNoticeMsg(""), 4000);
+                        }
+                      }}
+                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)', padding: 10, borderRadius: 8, marginBottom: 8, cursor: taCanOpen ? 'pointer' : 'not-allowed', opacity: taCanOpen ? 1 : 0.6 }}
+                    >
+                        <div>
+                        <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{s.day_of_week} • {s.start_time}–{s.end_time}</div>
+                        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{s.location || '(no location)'}</div>
+                        {/* Owner tag: show who created the session when available */}
+                        {(s.created_by || s.professor_email || s.instructor_email || s.owner_email) && (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                            Owner: {s.created_by || s.professor_email || s.instructor_email || s.owner_email}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        {active ? (
+                          <span style={{ fontSize: '0.75rem', background: '#dcfce7', color: '#166534', padding: '4px 8px', borderRadius: 6, fontWeight: 600 }}>Active Now</span>
+                        ) : (
+                          <span style={{ fontSize: '0.75rem', background: '#e0f2fe', color: '#0369a1', padding: '4px 8px', borderRadius: 6, fontWeight: 600 }}>Upcoming</span>
+                        )}
+                        {(currentUserRole === 'professor' || Number(currentUserId) === Number(s.instructor_id)) && (
+                          <>
+                            <button onClick={(e) => { e.stopPropagation(); setEditSessionId(s.id); setEditSessionData({ day_of_week: s.day_of_week || 'Monday', start_time: s.start_time || '12:00', end_time: s.end_time || '13:00', location: s.location || '' }); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ background: '#fff', color: '#111827', border: '1px solid #e5e7eb', padding: '6px 10px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Edit</button>
+                            <button onClick={async (e) => { e.stopPropagation(); const ok = await confirmDialog('Delete this session?'); if(!ok) return; try{ const res = await fetch(`${API_ROOT}delete_office_hours_session.php`, { method:'POST', credentials:'include', headers:{'Content-Type':'application/json', Accept:'application/json'}, body: JSON.stringify({ session_id: s.id }) }); if(!res.ok) throw new Error('delete failed'); const d = await res.json().catch(()=>null); if(d && d.ok){ fetchSessions(); } }catch(err){ console.error('Failed to delete session', err); notify('Failed to delete session', 'error'); } }} style={{ background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', padding: '6px 10px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Delete</button>
+                          </>
+                        )}
+                      </div>
+                    </div>
                   );
                 })}
               </div>
@@ -1393,7 +1422,7 @@ export default function TADashboard() {
                       if(!res.ok) throw new Error('update failed');
                       const d = await res.json().catch(()=>null);
                       if(d && d.ok){ setEditSessionId(null); fetchSessions(); }
-                    }catch(e){ console.error('Failed to update session', e); alert('Failed to update session'); }
+                    }catch(e){ console.error('Failed to update session', e); notify('Failed to update session', 'error'); }
                   }} style={{ background: 'var(--text-primary)', color: 'var(--bg-primary)', border: 'none', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Save</button>
                   <button onClick={()=>setEditSessionId(null)} style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Cancel</button>
                 </div>

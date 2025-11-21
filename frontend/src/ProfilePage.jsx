@@ -1,6 +1,7 @@
 // src/ProfilePage.jsx
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import notify from './notify';
 
 const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
 const API_ROOT = new URL("../api/", ABS_BASE).pathname;
@@ -46,12 +47,12 @@ function urlBase64ToUint8Array(base64String) {
 
 async function requestNotificationPermission() {
   if (!("Notification" in window)) {
-    alert("This browser does not support notifications.");
+    notify("This browser does not support notifications.", 'error');
     return false;
   }
   const permission = await Notification.requestPermission();
   if (permission !== "granted") {
-    alert("Notifications were blocked. Enable them in browser settings.");
+    notify("Notifications were blocked. Enable them in browser settings.", 'error');
     return false;
   }
   return true;

@@ -2,6 +2,7 @@
 import { Star, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import notify from './notify';
 
 // Build absolute base from Vite base (ends with /), safe in subfolders
 const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
@@ -57,7 +58,7 @@ export function CourseCardDashboard({ course, onToggleFavorite, onUnenroll, isFa
 
           // Check if there's an error (e.g., already reserved another session)
           if (!data.ok && data.error === 'already_reserved') {
-            alert(data.message || 'You already have a reservation for another session in this course.');
+            notify(data.message || 'You already have a reservation for another session in this course.', 'error');
             return;
           }
         } catch (e) {

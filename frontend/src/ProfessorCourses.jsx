@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import notify from './notify';
 
 const MAX = 191;
 const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
@@ -27,7 +28,7 @@ export default function ProfCourses() {
   async function createCourse() {
     const userEmail = getCookie("userEmail"); // ✅ retrieve user email
     if (!userEmail) {
-      alert("User email not found — please log in again.");
+      notify("User email not found — please log in again.", 'error');
       return;
     }
 
@@ -50,13 +51,13 @@ export default function ProfCourses() {
       console.log("Server response:", data);
 
       if (res.ok && data.success) {
-        alert(`✅ Course created successfully (Professor: ${data.professor})`);
+        notify(`✅ Course created successfully (Professor: ${data.professor})`, 'success');
       } else {
-        alert(`❌ Error: ${data.message}`);
+        notify(`❌ Error: ${data.message}`, 'error');
       }
     } catch (error) {
       console.error("Error creating course:", error);
-      alert("Error creating course. Please try again.");
+      notify("Error creating course. Please try again.", 'error');
     }
   }
 
