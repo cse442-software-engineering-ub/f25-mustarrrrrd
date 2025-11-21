@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Menu, Search, Plus, MoreVertical, X } from "lucide-react";
+import notify, { confirmDialog } from './notify';
 import { useNavigate, Link } from "react-router-dom";
 import { ViewSwitcher } from "./ViewSwitcher";
 
@@ -1117,7 +1118,7 @@ export default function TADashboard() {
                         {(currentUserRole === 'professor' || Number(currentUserId) === Number(s.instructor_id)) && (
                           <>
                             <button onClick={(e) => { e.stopPropagation(); setEditSessionId(s.id); setEditSessionData({ day_of_week: s.day_of_week || 'Monday', start_time: s.start_time || '12:00', end_time: s.end_time || '13:00', location: s.location || '' }); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ background: '#fff', color: '#111827', border: '1px solid #e5e7eb', padding: '6px 10px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Edit</button>
-                            <button onClick={async (e) => { e.stopPropagation(); if(!window.confirm('Delete this session?')) return; try{ const res = await fetch(`${API_ROOT}delete_office_hours_session.php`, { method:'POST', credentials:'include', headers:{'Content-Type':'application/json', Accept:'application/json'}, body: JSON.stringify({ session_id: s.id }) }); if(!res.ok) throw new Error('delete failed'); const d = await res.json().catch(()=>null); if(d && d.ok){ fetchSessions(); } }catch(err){ console.error('Failed to delete session', err); alert('Failed to delete session'); } }} style={{ background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', padding: '6px 10px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Delete</button>
+                            <button onClick={async (e) => { e.stopPropagation(); const ok = await confirmDialog('Delete this session?'); if(!ok) return; try{ const res = await fetch(`${API_ROOT}delete_office_hours_session.php`, { method:'POST', credentials:'include', headers:{'Content-Type':'application/json', Accept:'application/json'}, body: JSON.stringify({ session_id: s.id }) }); if(!res.ok) throw new Error('delete failed'); const d = await res.json().catch(()=>null); if(d && d.ok){ fetchSessions(); } }catch(err){ console.error('Failed to delete session', err); notify('Failed to delete session', 'error'); } }} style={{ background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', padding: '6px 10px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Delete</button>
                           </>
                         )}
                       </div>
@@ -1192,7 +1193,7 @@ export default function TADashboard() {
                       if(!res.ok) throw new Error('update failed');
                       const d = await res.json().catch(()=>null);
                       if(d && d.ok){ setEditSessionId(null); fetchSessions(); }
-                    }catch(e){ console.error('Failed to update session', e); alert('Failed to update session'); }
+                    }catch(e){ console.error('Failed to update session', e); notify('Failed to update session', 'error'); }
                   }} style={{ background: 'var(--text-primary)', color: 'var(--bg-primary)', border: 'none', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Save</button>
                   <button onClick={()=>setEditSessionId(null)} style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '8px 12px', borderRadius: 8, fontWeight: 600 }}>Cancel</button>
                 </div>
