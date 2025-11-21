@@ -6,9 +6,7 @@
 console.log("🔥 Service Worker Loaded: AOH-v3 (FINAL)");
 
 
-// -------------------------------------------------------------------
-// PUSH EVENT — triggered when your Node script sends a push payload
-// -------------------------------------------------------------------
+
 self.addEventListener("push", (event) => {
   let data = {};
 
