@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import notify from './notify';
 import { useNavigate, useParams } from 'react-router-dom';
 
 export default function StudentSessions(){
@@ -133,7 +134,7 @@ export default function StudentSessions(){
 
       // Check if there's an error (e.g., already reserved another session)
       if (!data.ok && data.error === 'already_reserved') {
-        alert(data.message || 'You already have a reservation for another session in this course.');
+        notify(data.message || 'You already have a reservation for another session in this course.', 'error');
         return;
       }
     }catch(e){

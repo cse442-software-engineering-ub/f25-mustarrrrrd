@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Menu, Search, Plus, MoreVertical, X, Clock } from "lucide-react";
+import notify from './notify';
 import { useNavigate } from "react-router-dom";
 
 export default function ProfessorView() {
@@ -335,11 +336,11 @@ export default function ProfessorView() {
         setNewCourse({ code: "", title: "" });
         setShowCreateCourse(false);
       } else {
-        alert(data?.error || "Failed to create course");
+        notify(data?.error || "Failed to create course", 'error');
       }
     } catch (err) {
       console.error("Failed to create course", err);
-      alert("Failed to create course");
+      notify("Failed to create course", 'error');
     }
   }
 
@@ -470,11 +471,11 @@ export default function ProfessorView() {
         setJoinSearchResults([]);
         setShowJoinCourse(false);
       } else {
-        alert(data?.error || "Failed to join course");
+  notify(data?.error || "Failed to join course", 'error');
       }
     } catch (err) {
       console.error("Error joining course:", err);
-      alert("Failed to join course");
+  notify("Failed to join course", 'error');
     }
   }
 
@@ -494,11 +495,11 @@ export default function ProfessorView() {
         setNewTA({ ta_email: '' });
         setShowAddTA(false);
       } else {
-        alert(data?.error || 'Failed to add TA');
+  notify(data?.error || 'Failed to add TA', 'error');
       }
     }catch(err){
       console.error('Failed to add TA', err);
-      alert('Failed to add TA');
+  notify('Failed to add TA', 'error');
     }
   }
 
@@ -523,11 +524,11 @@ export default function ProfessorView() {
         setRemoveTASearchResults([]);
         setShowRemoveTA(false);
       } else {
-        alert(data?.error || 'Failed to remove TA');
+  notify(data?.error || 'Failed to remove TA', 'error');
       }
     } catch (err) {
       console.error('Failed to remove TA', err);
-      alert('Failed to remove TA');
+  notify('Failed to remove TA', 'error');
     }
   }
 
@@ -555,11 +556,11 @@ export default function ProfessorView() {
         // Close the menu
         setCourseMenuOpen(null);
       } else {
-        alert(data?.error || "Failed to remove course");
+  notify(data?.error || "Failed to remove course", 'error');
       }
     } catch (err) {
       console.error("Error removing course:", err);
-      alert("Failed to remove course");
+  notify("Failed to remove course", 'error');
     }
   }
 

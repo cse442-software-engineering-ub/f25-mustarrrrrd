@@ -5,6 +5,7 @@ import characterImg from './assets/character.png';
 import goatImg from './assets/goat.png';
 import carImg from './assets/car.png';
 import noEntryImg from './assets/minus.png';
+import notify, { confirmDialog } from './notify';
 
 // --- Avatar Generator (Adventure Neutral) ---
 const diceUrl = seed =>
@@ -726,7 +727,8 @@ export default function SessionQueue(){
                 }} style={{ background:'var(--text-primary)', color:'var(--bg-primary)', border:'none', padding:'8px 12px', borderRadius:8, fontWeight:600 }}>Save</button>
 
                 <button onClick={async ()=>{
-                  if(!window.confirm('Delete this session? This cannot be undone.')) return;
+                  const ok = await confirmDialog('Delete this session? This cannot be undone.');
+                  if(!ok) return;
                   try{
                     const res = await fetch(`${API_ROOT}delete_office_hours_session.php`, { method:'POST', credentials:'include', headers:{'Content-Type':'application/json', Accept:'application/json'}, body: JSON.stringify({ session_id: sessionId }) });
                     if(!res.ok) throw new Error('delete failed');
@@ -734,7 +736,7 @@ export default function SessionQueue(){
                     if(d && d.ok){
                       navigate('/professorview');
                     }
-                  }catch(e){ console.error('Failed to delete session', e); }
+                  }catch(e){ console.error('Failed to delete session', e); notify('Failed to delete session','error'); }
                 }} style={{ background:'#fee2e2', color:'#991b1b', border:'1px solid #fecaca', padding:'8px 12px', borderRadius:8, fontWeight:600 }}>Delete</button>
 
                 <button onClick={()=>setShowEditForm(false)} style={{ background:'var(--card-bg)', color:'var(--text-primary)', border:'1px solid var(--border-color)', padding:'8px 12px', borderRadius:8, fontWeight:600 }}>Cancel</button>
