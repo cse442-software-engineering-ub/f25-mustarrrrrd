@@ -72,7 +72,7 @@ export default function Login() {
 
       const savedEmail = getCookie("userEmail");
       if (savedEmail) {
-        setEmail(savedEmail);
+        setEmail((prev) => prev || savedEmail);
         setRememberMe(true);
         setMessage("Welcome back");
       }
@@ -128,23 +128,7 @@ export default function Login() {
     }
   }
 
-  if (!sessionChecked) {
-    // Prevent flickering redirect loop until session is confirmed
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          color: "var(--text-primary)",
-          backgroundColor: "var(--bg-primary)",
-        }}
-      >
-        Checking session...
-      </div>
-    );
-  }
+
 
   return (
     <div
