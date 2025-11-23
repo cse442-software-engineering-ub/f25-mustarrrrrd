@@ -9,6 +9,7 @@ import {
   LogOut,
   Settings
 } from "lucide-react";
+import CustomAlert from "./ui/CustomAlert";
 
 const ABS_BASE = new URL(import.meta.env.BASE_URL, window.location.origin);
 const API_ROOT = new URL("../api/", ABS_BASE).pathname;
@@ -287,7 +288,12 @@ function UsersView() {
   const [roleFilter, setRoleFilter] = useState("");
   const [selectedUser, setSelectedUser] = useState(null);
   const [showUserModal, setShowUserModal] = useState(false);
+
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [alertState, setAlertState] = useState({ isOpen: false, title: "", message: "", type: "success" });
+
+  const closeAlert = () => setAlertState(prev => ({ ...prev, isOpen: false }));
+  const showAlert = (title, message, type = "success") => setAlertState({ isOpen: true, title, message, type });
 
   useEffect(() => {
     fetchUsers();
@@ -353,12 +359,12 @@ function UsersView() {
 
       if (!res.ok) throw new Error("Failed to update user");
 
-      alert(isActive ? "User deactivated" : "User reactivated");
+      showAlert("Success", isActive ? "User deactivated successfully" : "User reactivated successfully", "success");
       fetchUsers();
       setShowUserModal(false);
     } catch (error) {
       console.error("Error updating user:", error);
-      alert("Failed to update user");
+      showAlert("Error", "Failed to update user", "error");
     }
   };
 
@@ -375,12 +381,12 @@ function UsersView() {
 
       if (!res.ok) throw new Error("Failed to delete user");
 
-      alert("User deleted successfully");
+      showAlert("Success", "User deleted successfully", "success");
       fetchUsers();
       setShowUserModal(false);
     } catch (error) {
       console.error("Error deleting user:", error);
-      alert("Failed to delete user");
+      showAlert("Error", "Failed to delete user", "error");
     }
   };
 
@@ -708,7 +714,12 @@ function CoursesView() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [showCourseModal, setShowCourseModal] = useState(false);
+
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [alertState, setAlertState] = useState({ isOpen: false, title: "", message: "", type: "success" });
+
+  const closeAlert = () => setAlertState(prev => ({ ...prev, isOpen: false }));
+  const showAlert = (title, message, type = "success") => setAlertState({ isOpen: true, title, message, type });
 
   useEffect(() => {
     fetchCourses();
@@ -771,12 +782,12 @@ function CoursesView() {
 
       if (!res.ok) throw new Error("Failed to delete course");
 
-      alert("Course deleted successfully");
+      showAlert("Success", "Course deleted successfully", "success");
       fetchCourses();
       setShowCourseModal(false);
     } catch (error) {
       console.error("Error deleting course:", error);
-      alert("Failed to delete course");
+      showAlert("Error", "Failed to delete course", "error");
     }
   };
 
