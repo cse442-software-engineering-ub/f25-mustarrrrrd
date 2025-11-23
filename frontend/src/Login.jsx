@@ -57,9 +57,13 @@ export default function Login() {
         const data = await res.json();
 
         if (data?.loggedIn) {
+          // Set sessionChecked BEFORE navigation to prevent infinite "Checking session..."
+          // This is critical for private browsing modes where navigation may be delayed/blocked
+          setSessionChecked(true);
           if (data.role === "student") navigate("/dashboard", { replace: true });
           else if (data.role === "ta") navigate("/tadashboard", { replace: true });
           else if (data.role === "professor") navigate("/professorview", { replace: true });
+          else if (data.role === "admin") navigate("/admin", { replace: true });
           return;
         }
       } catch (err) {
@@ -68,7 +72,7 @@ export default function Login() {
 
       const savedEmail = getCookie("userEmail");
       if (savedEmail) {
-        setEmail(savedEmail);
+        setEmail((prev) => prev || savedEmail);
         setRememberMe(true);
         setMessage("Welcome back");
       }
@@ -105,6 +109,7 @@ export default function Login() {
         if (data.role === "student") navigate("/dashboard");
         else if (data.role === "ta") navigate("/tadashboard");
         else if (data.role === "professor") navigate("/professorview");
+        else if (data.role === "admin") navigate("/admin");
       } else {
         setMessage(data?.message || "Invalid credentials");
       }
@@ -123,23 +128,7 @@ export default function Login() {
     }
   }
 
-  if (!sessionChecked) {
-    // Prevent flickering redirect loop until session is confirmed
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          color: "var(--text-primary)",
-          backgroundColor: "var(--bg-primary)",
-        }}
-      >
-        Checking session...
-      </div>
-    );
-  }
+
 
   return (
     <div

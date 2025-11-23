@@ -1313,7 +1313,7 @@ export default function TADashboard() {
                   // TAs can only open sessions they created (instructor_id === currentUserId)
                   const taCanOpen = Number(currentUserId) === Number(s.instructor_id);
                   return (
-                    <SessionItem
+                    <div
                       key={s.id}
                       onClick={() => {
                         if (taCanOpen) {

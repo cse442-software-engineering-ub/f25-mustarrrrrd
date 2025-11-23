@@ -13,6 +13,7 @@ import StudentSessions from './StudentSessions';
 import SessionQueue from './SessionQueue';
 import Settings from "./Settings.jsx";
 import InstructorProfile from "./InstructorProfile.jsx";
+import { AdminDashboard } from "./AdminDashboard";
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/professorview" element={<ProfessorView />} />
           <Route path="/tadashboard" element={<TADashboard />} />
+          <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/queue/:courseId" element={<QueueDetails />} />
           <Route path="/sessions/:courseId" element={<StudentSessions />} />
