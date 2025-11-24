@@ -29,6 +29,7 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sessionChecked, setSessionChecked] = useState(false);
+  const [justLoggedIn, setJustLoggedIn] = useState(false);
 
   const clamp = (s) => (s || "").slice(0, MAX);
 
@@ -41,6 +42,11 @@ export default function Login() {
   }, []);
 
   useEffect(() => {
+    // Skip session check if we just logged in (prevent race condition)
+    if (justLoggedIn) {
+      return;
+    }
+
     const checkSession = async () => {
       try {
         const res = await fetch(`${API_ROOT}check_session.php`, {
@@ -80,7 +86,7 @@ export default function Login() {
     };
 
     checkSession();
-  }, [navigate]);
+  }, [navigate, justLoggedIn]);
 
   async function handleLogin() {
     if (!email || !password) {
@@ -89,6 +95,7 @@ export default function Login() {
     }
     setLoading(true);
     setMessage("");
+    setJustLoggedIn(false);
     try {
       const res = await fetch(`${API_ROOT}verify.php`, {
         method: "POST",
@@ -97,26 +104,44 @@ export default function Login() {
         body: JSON.stringify({ email: clamp(email), password: clamp(password) }),
       });
 
-      const data = await res.json();
+      if (!res.ok) {
+        const text = await res.text().catch(() => res.statusText);
+        setMessage(`Login failed: ${res.status}`);
+        setLoading(false);
+        return;
+      }
+
+      const data = await res.json().catch(() => null);
+      if (!data) {
+        setMessage("Invalid response from server");
+        setLoading(false);
+        return;
+      }
 
       if (data?.match) {
         if (rememberMe && email) setCookie("userEmail", email, 30);
         else deleteCookie("userEmail");
 
-        setMessage(`Welcome ${data?.name ?? ""}`.trim());
         setPassword("");
+        setJustLoggedIn(true);
+        setMessage(`Welcome ${data?.name ?? ""}`.trim());
 
-        if (data.role === "student") navigate("/dashboard");
-        else if (data.role === "ta") navigate("/tadashboard");
-        else if (data.role === "professor") navigate("/professorview");
-        else if (data.role === "admin") navigate("/admin");
+        // Navigate immediately - don't wait
+        const targetRoute = 
+          data.role === "student" ? "/dashboard" :
+          data.role === "ta" ? "/tadashboard" :
+          data.role === "professor" ? "/professorview" :
+          data.role === "admin" ? "/admin" : "/dashboard";
+
+        // Use replace to prevent back button issues
+        navigate(targetRoute, { replace: true });
       } else {
         setMessage(data?.message || "Invalid credentials");
+        setLoading(false);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Login error:", err);
       setMessage("Server error");
-    } finally {
       setLoading(false);
     }
   }
