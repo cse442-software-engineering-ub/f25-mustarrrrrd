@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import characterImg from './assets/character.png';
@@ -57,9 +57,119 @@ export default function SessionQueue(){
   const gameContainerRef = useRef(null);
   const dinoVelocityRef = useRef(0);
   const audioContextRef = useRef(null);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [leaderboardError, setLeaderboardError] = useState(null);
+  const [yourBestScore, setYourBestScore] = useState(null);
+  const [yourBestRank, setYourBestRank] = useState(null);
+  const lastSubmittedScoreRef = useRef(null);
 
   const ABS_BASE = new URL(import.meta.env.BASE_URL || '/', window.location.origin);
   const API_ROOT = new URL('../api/', ABS_BASE).pathname;
+
+  const fetchLeaderboard = useCallback(async () => {
+    try {
+      setLeaderboardLoading(true);
+      setLeaderboardError(null);
+      const res = await fetch(`${API_ROOT}dino_leaderboard.php`, {
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      });
+      
+      if (!res.ok) {
+        const text = await res.text().catch(() => res.statusText);
+        console.error('Leaderboard fetch failed:', res.status, text);
+        throw new Error(`Server error: ${res.status}`);
+      }
+      
+      const data = await res.json().catch(() => null);
+      if (!data) {
+        throw new Error('Invalid response from server');
+      }
+      
+      if (data.ok !== true) {
+        const msg = data?.error || 'Failed to load leaderboard';
+        throw new Error(msg);
+      }
+      
+      console.log('Leaderboard data received:', data);
+      setLeaderboard(Array.isArray(data.leaderboard) ? data.leaderboard : []);
+      setYourBestScore(typeof data.yourBest === 'number' ? data.yourBest : null);
+      setYourBestRank(typeof data.yourRank === 'number' ? data.yourRank : null);
+      setLeaderboardError(null);
+    } catch (err) {
+      console.error('Leaderboard fetch error:', err);
+      setLeaderboardError(err instanceof Error ? err.message : 'Failed to load leaderboard');
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  }, [API_ROOT]);
+
+  const submitLeaderboardScore = useCallback(async (score) => {
+    try {
+      console.log('Submitting leaderboard score:', score);
+      const res = await fetch(`${API_ROOT}dino_leaderboard.php`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ score }),
+      });
+      
+      if (!res.ok) {
+        const text = await res.text().catch(() => res.statusText);
+        console.error('Leaderboard submit failed:', res.status, text);
+        notify(`Failed to submit score: ${res.status}`, 'error');
+        // Still refresh to show current leaderboard
+        setTimeout(() => fetchLeaderboard(), 500);
+        return;
+      }
+      
+      const data = await res.json().catch(() => null);
+      if (!data) {
+        console.error('Invalid response from server');
+        notify('Failed to submit score: invalid response', 'error');
+        setTimeout(() => fetchLeaderboard(), 500);
+        return;
+      }
+      
+      if (data.ok !== true) {
+        const msg = data?.error || 'Failed to submit score';
+        console.warn('Score submission warning:', msg);
+        // Don't show error if it's just "not higher than best"
+        if (msg !== 'Score not higher than best') {
+          notify(msg, 'error');
+        }
+      }
+      
+      console.log('Score submission response:', data);
+      
+      // Update from response if available
+      if (Array.isArray(data.leaderboard)) {
+        console.log('Updating leaderboard from response:', data.leaderboard.length, 'entries');
+        setLeaderboard(data.leaderboard);
+      }
+      if (typeof data.yourBest === 'number') {
+        setYourBestScore(data.yourBest);
+      }
+      if (typeof data.yourRank === 'number') {
+        setYourBestRank(data.yourRank);
+      }
+      
+      // Always refresh to get latest leaderboard
+      setTimeout(() => {
+        console.log('Refreshing leaderboard after submission');
+        fetchLeaderboard();
+      }, 500);
+    } catch (err) {
+      console.error('Failed to submit leaderboard score', err);
+      notify('Failed to submit score', 'error');
+      // Still try to refresh
+      setTimeout(() => fetchLeaderboard(), 500);
+    }
+  }, [API_ROOT, fetchLeaderboard]);
 
   // Responsive detection
   useEffect(() => {
@@ -182,6 +292,28 @@ export default function SessionQueue(){
   
     } catch (e) {}
   }, []);
+
+  useEffect(() => {
+    fetchLeaderboard();
+    const interval = setInterval(fetchLeaderboard, 60000);
+    return () => clearInterval(interval);
+  }, [fetchLeaderboard]);
+
+  useEffect(() => {
+    if (!gameOver) return;
+    if (!email) return;
+    const finalScore = Math.floor(gameScore / 10);
+    if (finalScore <= 0) return;
+    if (lastSubmittedScoreRef.current === finalScore) return;
+    lastSubmittedScoreRef.current = finalScore;
+    submitLeaderboardScore(finalScore);
+  }, [gameOver, gameScore, email, submitLeaderboardScore]);
+
+  useEffect(() => {
+    if (gameActive && !gameOver) {
+      lastSubmittedScoreRef.current = null;
+    }
+  }, [gameActive, gameOver]);
 
   // Dino game logic
   useEffect(() => {
@@ -1135,6 +1267,84 @@ export default function SessionQueue(){
                 >
                   ⏸ Pause
                 </button>
+              )}
+            </div>
+            <div style={{ marginTop: 20, borderTop: '1px solid var(--border-color)', paddingTop: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>Global Leaderboard</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                    {yourBestScore !== null
+                      ? `Your best: ${yourBestScore}${yourBestRank ? ` (rank #${yourBestRank})` : ''}`
+                      : 'Play the game to earn a spot on the board!'}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={fetchLeaderboard}
+                    disabled={leaderboardLoading}
+                    style={{
+                      background: leaderboardLoading ? '#d1d5db' : '#eef2ff',
+                      color: leaderboardLoading ? '#6b7280' : '#3730a3',
+                      border: '1px solid #e0e7ff',
+                      borderRadius: 8,
+                      padding: '6px 12px',
+                      cursor: leaderboardLoading ? 'not-allowed' : 'pointer',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {leaderboardLoading ? 'Refreshing...' : 'Refresh'}
+                  </button>
+                </div>
+              </div>
+
+              {leaderboardError && (
+                <div style={{ marginTop: 12, color: '#b91c1c', background: '#fee2e2', padding: 8, borderRadius: 8, fontSize: 13 }}>
+                  {leaderboardError}
+                </div>
+              )}
+
+              {!leaderboardError && (
+                <div style={{ marginTop: 12 }}>
+                  {leaderboard.length === 0 ? (
+                    <div style={{ color: 'var(--text-secondary)' }}>No scores yet. Be the first!</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {leaderboard.map((entry) => {
+                        const updatedLabel = entry.updated_at
+                          ? new Date(entry.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                          : '';
+                        return (
+                          <div
+                            key={`${entry.rank}-${entry.name}-${entry.score}`}
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              padding: '8px 12px',
+                              border: '1px solid var(--border-color)',
+                              borderRadius: 8,
+                              background: 'var(--bg-tertiary)',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                              <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', minWidth: 32, textAlign: 'center' }}>
+                                #{entry.rank}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{entry.name}</div>
+                                {updatedLabel && (
+                                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{updatedLabel}</div>
+                                )}
+                              </div>
+                            </div>
+                            <div style={{ fontSize: 18, fontWeight: 700, color: '#166534' }}>{entry.score}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
