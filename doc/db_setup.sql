@@ -274,3 +274,16 @@ INSERT INTO system_settings (setting_key, setting_value) VALUES
   ('max_queue_size', '50'),
   ('allow_signups', '1')
 ON DUPLICATE KEY UPDATE setting_key = setting_key;
+
+-- SQL Migration for Ratings Feature
+-- Run this script in your database to create the session_ratings table
+CREATE TABLE session_ratings (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  session_id VARCHAR(255) NOT NULL,
+  user_email VARCHAR(255) NOT NULL,
+  rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  rated_at DATETIME NOT NULL,
+  UNIQUE KEY unique_user_session (session_id, user_email),
+  INDEX idx_session (session_id),
+  INDEX idx_user_email (user_email)
+);
