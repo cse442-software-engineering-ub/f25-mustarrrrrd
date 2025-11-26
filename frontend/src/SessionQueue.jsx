@@ -33,6 +33,107 @@ export default function SessionQueue(){
   const [totalInQueue, setTotalInQueue] = useState(0);
   const [status, setStatus] = useState('Active');
 
+  // Helper: generate an .ics file for the current session (next occurrence)
+  function parse12HourTime(timeStr) {
+    if (!timeStr) return { hours: 0, minutes: 0 };
+    const parts = timeStr.trim().split(' ');
+    if (parts.length === 2) {
+      const [timePart, period] = parts;
+      const [hStr, mStr] = timePart.split(':');
+      let h = parseInt(hStr, 10) || 0;
+      const m = parseInt(mStr, 10) || 0;
+      if (period.toUpperCase() === 'PM' && h !== 12) h += 12;
+      if (period.toUpperCase() === 'AM' && h === 12) h = 0;
+      return { hours: h, minutes: m };
+    }
+    // fallback: try HH:MM
+    const [hh, mm] = (timeStr || '').split(':');
+    return { hours: parseInt(hh, 10) || 0, minutes: parseInt(mm, 10) || 0 };
+  }
+
+  function nextDateForWeekday(dayName, timeStr) {
+    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const target = days.indexOf(dayName);
+    const now = new Date();
+    if (target === -1) return null;
+    const today = now.getDay();
+    let diff = (target - today + 7) % 7;
+    const { hours, minutes } = parse12HourTime(timeStr || '12:00 PM');
+    const candidate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
+    if (diff === 0 && candidate > now) {
+      // today later
+    } else if (diff === 0) {
+      // already passed today -> next week
+      diff = 7;
+    }
+    if (diff > 0) candidate.setDate(candidate.getDate() + diff);
+    return candidate;
+  }
+
+  function formatDateForICS(d) {
+    // format as UTC YYYYMMDDTHHMMSSZ
+    const pad = (n) => String(n).padStart(2, '0');
+    return (
+      d.getUTCFullYear() +
+      pad(d.getUTCMonth() + 1) +
+      pad(d.getUTCDate()) +
+      'T' +
+      pad(d.getUTCHours()) +
+      pad(d.getUTCMinutes()) +
+      pad(d.getUTCSeconds()) +
+      'Z'
+    );
+  }
+
+  function downloadICS() {
+    if (!session) return;
+    // compute start and end datetimes (next occurrence)
+    const start = nextDateForWeekday(session.day_of_week, session.start_time);
+    const end = nextDateForWeekday(session.day_of_week, session.end_time || session.start_time);
+    if (!start || !end) {
+      notify('Unable to compute session time for .ics', 'error');
+      return;
+    }
+
+    const uid = `session-${session.id}@local`;
+    const dtstamp = formatDateForICS(new Date());
+    const dtstart = formatDateForICS(start);
+    const dtend = formatDateForICS(end);
+
+    const summary = `Office Hours (${session.course_id || 'Course'})`;
+    const location = session.location || '';
+    const description = `Office hours session for ${session.course_id || ''} — ${session.day_of_week} ${session.start_time}${session.end_time ? '–' + session.end_time : ''}`;
+
+    const icsLines = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//cse442-software-engineering-ub//Mustard//EN',
+      'CALSCALE:GREGORIAN',
+      'BEGIN:VEVENT',
+      `UID:${uid}`,
+      `DTSTAMP:${dtstamp}`,
+      `DTSTART:${dtstart}`,
+      `DTEND:${dtend}`,
+      `SUMMARY:${summary}`,
+      `LOCATION:${location}`,
+      `DESCRIPTION:${description}`,
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ];
+
+    const blob = new Blob([icsLines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `officehours-session-${session.id}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      a.remove();
+    }, 5000);
+  }
+
   const [notes, setNotes] = useState('');
   const [saved, setSaved] = useState(false);
   const pollTimer = useRef(null);
@@ -970,6 +1071,14 @@ export default function SessionQueue(){
               <div style={{ fontSize:'1rem', color:'var(--text-primary)' }}>
                 {session?.location || '—'}
               </div>
+              {/* ICS download: only show when the user is currently in the queue for this session */}
+              {yourPosition !== null && session && (
+                <div style={{ marginTop: 8 }}>
+                  <button onClick={downloadICS} style={{ background: '#eef2ff', color: '#1e40af', border: '1px solid #c7d2fe', padding: '8px 12px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
+                    Download .ics
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
