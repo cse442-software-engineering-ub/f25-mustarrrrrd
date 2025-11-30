@@ -2,6 +2,8 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ActivitySquare, MapPin, Users } from "lucide-react";
+import CustomAlert from "./ui/CustomAlert";
+import { containsBadWord } from "./utils/badWords";
 
 export default function QueueDetails() {
   const navigate = useNavigate();
@@ -20,18 +22,24 @@ export default function QueueDetails() {
   const [totalInQueue, setTotalInQueue] = useState(0);
   const [status, setStatus] = useState("Active");
 
+  // Alert state
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertTitle, setAlertTitle] = useState("");
+  const [alertMessage, setAlertMessage] = useState("");
+  const [alertType, setAlertType] = useState("error");
+
   // Course model (visuals unchanged)
   const course = useMemo(
     () =>
-      ({
-        id: courseId || "CSE116",
-        title: courseId || "CSE116",
-        sessionTime: "Mon, Wed, Fri 2:00–4:00 PM",
-        location: "Davis Hall 338",
-        totalInQueue,
-        yourPosition,
-        status,
-      }),
+    ({
+      id: courseId || "CSE116",
+      title: courseId || "CSE116",
+      sessionTime: "Mon, Wed, Fri 2:00–4:00 PM",
+      location: "Davis Hall 338",
+      totalInQueue,
+      yourPosition,
+      status,
+    }),
     [courseId, totalInQueue, yourPosition, status]
   );
 
@@ -153,6 +161,15 @@ export default function QueueDetails() {
   }, [API_ROOT, course.id, navigate]);
 
   async function saveNotes() {
+    if (containsBadWord(notes)) {
+      setAlertTitle("Warning");
+      setAlertMessage("Do not use inappropriate language. Your note has not been saved");
+      setAlertType("error");
+      setAlertOpen(true);
+      setNotes(""); // Clear the text box
+      return;
+    }
+
     // persist locally immediately
     localStorage.setItem(storageKey, notes);
     // optimistic saved UI
@@ -196,7 +213,7 @@ export default function QueueDetails() {
     // Clear local notes when leaving so rejoining does not restore old notes
     try {
       localStorage.removeItem(storageKey);
-    } catch {}
+    } catch { }
     setNotes("");
     setSaved(false);
     navigate("/dashboard");
@@ -430,7 +447,6 @@ export default function QueueDetails() {
               placeholder={
                 notes && notes.length > 0 ? undefined : "Notes for your instructor"
               }
-              readOnly={saved}
               style={{
                 width: "100%",
                 minHeight: 140,
@@ -509,6 +525,14 @@ export default function QueueDetails() {
           </div>
         </div>
       </div>
+
+      <CustomAlert
+        isOpen={alertOpen}
+        onClose={() => setAlertOpen(false)}
+        title={alertTitle}
+        message={alertMessage}
+        type={alertType}
+      />
     </div>
   );
 }
