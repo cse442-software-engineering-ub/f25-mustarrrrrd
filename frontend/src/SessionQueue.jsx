@@ -141,6 +141,11 @@ export default function SessionQueue() {
   const pollTimer = useRef(null);
   const notesRef = useRef(notes);
   const [attendanceMsg, setAttendanceMsg] = useState(null);
+  const [showRatings, setShowRatings] = useState(false);
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [showThankYouModal, setShowThankYouModal] = useState(false);
+  const previousPositionRef = useRef(null);
 
   // Dino game state
   const [gameActive, setGameActive] = useState(false);
@@ -373,9 +378,21 @@ export default function SessionQueue() {
         if (!d) { setError('Failed to parse queue status response'); return; }
         if (!d.ok) { setError(`Queue status error: ${d.error || 'unknown'}`); return; }
 
-        if (typeof d.total === 'number') setTotalInQueue(d.total);
-        setYourPosition(typeof d.position === 'number' ? d.position : null);
-        if (typeof d.status === 'string') setStatus(d.status);
+        if(typeof d.total === 'number') setTotalInQueue(d.total);
+        
+        // Check if student was removed from queue
+        const newPosition = typeof d.position === 'number' ? d.position : null;
+        
+        // If student was in queue but now is removed, show ratings page
+        if (previousPositionRef.current !== null && newPosition === null && !isInstructor) {
+          setShowRatings(true);
+          if(pollTimer.current) clearInterval(pollTimer.current);
+        }
+        
+        previousPositionRef.current = newPosition;
+        setYourPosition(newPosition);
+        
+        if(typeof d.status === 'string') setStatus(d.status);
 
         if (typeof d.notes === 'string') {
           const key = `queue_notes_session_${sessionId}`;
@@ -390,8 +407,8 @@ export default function SessionQueue() {
     }
 
     bootstrap();
-    return () => { if (pollTimer.current) clearInterval(pollTimer.current); cancelled = true; }
-  }, [sessionId, navigate, API_ROOT]);
+    return ()=>{ if(pollTimer.current) clearInterval(pollTimer.current); cancelled=true; }
+  },[sessionId, navigate, API_ROOT, isInstructor]);
 
   // Load high score on mount
   useEffect(() => {
@@ -737,16 +754,56 @@ export default function SessionQueue() {
     }
   }
 
-  async function leaveQueue() {
-    if (pollTimer.current) clearInterval(pollTimer.current);
-    if (email) {
-      try {
-        await fetch(`${API_ROOT}queue_leave.php`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ session_id: sessionId, user_email: email }) });
-      } catch (e) { }
+  async function leaveQueue(){
+    if(pollTimer.current) clearInterval(pollTimer.current);
+    
+    // Set a flag to prevent ratings page from showing
+    previousPositionRef.current = null;
+    
+    if(email){
+      try{
+        await fetch(`${API_ROOT}queue_leave.php`,{ method:'POST', credentials:'include', headers:{'Content-Type':'application/json', Accept:'application/json'}, body: JSON.stringify({ session_id: sessionId, user_email: email }) });
+      }catch(e){}
     }
     try { localStorage.removeItem(`queue_notes_session_${sessionId}`); } catch (e) { }
     setNotes(''); notesRef.current = ''; setSaved(false);
     navigate('/dashboard');
+  }
+
+  async function submitRating(){
+    if(selectedRating === 0) return;
+    
+    try{
+      await fetch(`${API_ROOT}submit_rating.php`,{ 
+        method:'POST', 
+        credentials:'include', 
+        headers:{'Content-Type':'application/json', Accept:'application/json'}, 
+        body: JSON.stringify({ session_id: sessionId, rating: selectedRating }) 
+      });
+    }catch(e){
+      console.error('Failed to submit rating:', e);
+    }
+
+    // Show thank you modal instead of alert
+    setShowThankYouModal(true);
+  }
+
+  async function submitRating(){
+    if(selectedRating === 0) return;
+    
+    try{
+      await fetch(`${API_ROOT}submit_rating.php`,{ 
+        method:'POST', 
+        credentials:'include', 
+        headers:{'Content-Type':'application/json', Accept:'application/json'}, 
+        body: JSON.stringify({ session_id: sessionId, rating: selectedRating }) 
+      });
+    }catch(e){
+      console.error('Failed to submit rating:', e);
+    }
+
+    // Show thank you modal instead of alert
+    setShowThankYouModal(true);
   }
 
   async function markAttendance(userEmail, status) {
@@ -831,6 +888,231 @@ export default function SessionQueue() {
           <div style={{ color: 'var(--error-color)', fontWeight: 600 }}>Error loading session</div>
           <div style={{ color: 'var(--text-secondary)', marginTop: 8 }}>{String(error)}</div>
         </div>
+      </div>
+    );
+  }
+
+  // -------------------------
+  // RATINGS PAGE (Student View)
+  // -------------------------
+
+  if (showRatings && !isInstructor) {
+    return (
+      <div style={pageStyle}>
+        <div style={headerStyle}>
+          <h1 style={{ margin: 0, fontSize: isMobile ? 22 : 28, fontWeight: 700, color: 'var(--text-primary)' }}>Rate Your Experience</h1>
+        </div>
+
+        <div style={{ 
+          maxWidth: '600px', 
+          margin: '0 auto', 
+          padding: isMobile ? '2rem 1rem' : '3rem 1.5rem',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: 'calc(100vh - 100px)'
+        }}>
+          <div style={{ 
+            background: 'var(--card-bg)', 
+            border: '1px solid var(--border-color)', 
+            borderRadius: 16, 
+            padding: isMobile ? '2rem 1.5rem' : '3rem 2.5rem',
+            width: '100%',
+            textAlign: 'center',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+          }}>
+            <h2 style={{ 
+              marginTop: 0, 
+              marginBottom: 12, 
+              fontSize: isMobile ? 20 : 24, 
+              fontWeight: 700, 
+              color: 'var(--text-primary)' 
+            }}>
+              How was your office hours experience?
+            </h2>
+
+            <p style={{
+              margin: '0 0 24px 0',
+              fontSize: '0.9rem',
+              color: 'var(--text-secondary)',
+              fontStyle: 'italic'
+            }}>
+              If you were marked absent, you do not need to fill out this form.
+            </p>
+
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              gap: isMobile ? 8 : 12, 
+              marginBottom: 32,
+              padding: '1rem 0'
+            }}>
+              {[1, 2, 3, 4, 5].map(star => (
+                <div
+                  key={star}
+                  onMouseEnter={() => setHoverRating(star)}
+                  onMouseLeave={() => setHoverRating(0)}
+                  onClick={() => setSelectedRating(star)}
+                  style={{
+                    fontSize: isMobile ? 48 : 64,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    color: (hoverRating >= star || selectedRating >= star) ? '#fbbf24' : '#d1d5db',
+                    transform: (hoverRating >= star || selectedRating >= star) ? 'scale(1.1)' : 'scale(1)',
+                    textShadow: (hoverRating >= star || selectedRating >= star) ? '0 2px 8px rgba(251, 191, 36, 0.3)' : 'none',
+                    userSelect: 'none'
+                  }}
+                >
+                  ★
+                </div>
+              ))}
+            </div>
+
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              justifyContent: 'center',
+              flexDirection: isMobile ? 'column' : 'row'
+            }}>
+              <button
+                onClick={submitRating}
+                disabled={selectedRating === 0}
+                style={{
+                  background: selectedRating === 0 ? 'var(--border-color)' : 'var(--text-primary)',
+                  color: selectedRating === 0 ? 'var(--text-secondary)' : 'var(--bg-primary)',
+                  border: 'none',
+                  borderRadius: 10,
+                  padding: '14px 32px',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  cursor: selectedRating === 0 ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  opacity: selectedRating === 0 ? 0.5 : 1,
+                  flex: isMobile ? 1 : 'none',
+                  minWidth: isMobile ? 'auto' : 200
+                }}
+                onMouseOver={(e) => {
+                  if (selectedRating !== 0) {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                  }
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                Submit
+              </button>
+
+              <button
+                onClick={() => navigate('/dashboard')}
+                style={{
+                  background: 'var(--card-bg)',
+                  color: 'var(--text-primary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 10,
+                  padding: '14px 32px',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  flex: isMobile ? 1 : 'none',
+                  minWidth: isMobile ? 'auto' : 200
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = 'var(--bg-tertiary)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'var(--card-bg)';
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Thank You Modal */}
+        {showThankYouModal && (
+          <div 
+            style={{ 
+              position: 'fixed', 
+              inset: 0, 
+              background: 'rgba(0, 0, 0, 0.5)', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              zIndex: 1000, 
+              padding: '1rem' 
+            }} 
+            onClick={() => {
+              setShowThankYouModal(false);
+              navigate('/dashboard');
+            }}
+          >
+            <div 
+              style={{ 
+                background: 'var(--card-bg)', 
+                borderRadius: 16, 
+                padding: '2rem', 
+                maxWidth: '400px', 
+                width: '100%', 
+                boxShadow: '0 20px 25px -5px var(--card-shadow)',
+                textAlign: 'center'
+              }} 
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ 
+                fontSize: '3rem', 
+                marginBottom: '1rem' 
+              }}>
+                ✓
+              </div>
+              <h3 style={{ 
+                margin: '0 0 0.75rem 0', 
+                fontSize: '1.5rem', 
+                fontWeight: 700, 
+                color: 'var(--text-primary)' 
+              }}>
+                Thank you for your feedback!
+              </h3>
+              <p style={{ 
+                margin: '0 0 1.5rem 0', 
+                color: 'var(--text-secondary)', 
+                fontSize: '0.95rem' 
+              }}>
+                Your rating has been submitted successfully.
+              </p>
+              <button
+                onClick={() => {
+                  setShowThankYouModal(false);
+                  navigate('/dashboard');
+                }}
+                style={{
+                  background: 'var(--text-primary)',
+                  color: 'var(--bg-primary)',
+                  border: 'none',
+                  borderRadius: 10,
+                  padding: '0.75rem 2rem',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                  width: '100%'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.opacity = '0.9';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.opacity = '1';
+                }}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -1035,6 +1317,38 @@ export default function SessionQueue() {
                   Remove
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Thank you modal */}
+        {showThankYouModal && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+            <div style={{ background: 'var(--card-bg)', borderRadius: 12, padding: '2rem', maxWidth: '400px', width: '100%', boxShadow: '0 20px 25px -5px var(--card-shadow)', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✓</div>
+              <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>Thank You for Your Feedback!</h3>
+              <p style={{ margin: '0 0 1.5rem 0', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+                Your rating has been submitted successfully.
+              </p>
+              <button
+                onClick={() => {
+                  setShowThankYouModal(false);
+                  navigate('/dashboard');
+                }}
+                style={{
+                  background: 'var(--text-primary)',
+                  color: 'var(--bg-primary)',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '0.75rem 2rem',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                  width: '100%'
+                }}
+              >
+                OK
+              </button>
             </div>
           </div>
         )}
